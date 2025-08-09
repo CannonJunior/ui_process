@@ -20,6 +20,9 @@ class ProcessFlowDesigner {
         this.advanceTaskModal = document.getElementById('advanceTaskModal');
         this.advanceOptions = document.getElementById('advanceOptions');
         this.advanceModalCancel = document.getElementById('advanceModalCancel');
+        this.saveWorkflowButton = document.getElementById('saveWorkflowButton');
+        this.loadWorkflowButton = document.getElementById('loadWorkflowButton');
+        this.loadWorkflowInput = document.getElementById('loadWorkflowInput');
         this.startNode = null;
         this.taskNodes = [];
         this.selectedTaskForAdvance = null;
@@ -98,6 +101,11 @@ class ProcessFlowDesigner {
                 this.hideAdvanceTaskModal();
             }
         });
+        
+        // Save/Load workflow event listeners
+        this.saveWorkflowButton.addEventListener('click', () => this.saveWorkflow());
+        this.loadWorkflowButton.addEventListener('click', () => this.loadWorkflowInput.click());
+        this.loadWorkflowInput.addEventListener('change', (e) => this.loadWorkflow(e));
     }
     
     createSVGDefs() {
@@ -561,6 +569,169 @@ class ProcessFlowDesigner {
         
         taskNode.style.left = targetX + 'px';
         taskNode.style.top = (targetY + offsetY) + 'px';
+    }
+    
+    saveWorkflow() {
+        const workflow = {
+            version: "1.0",
+            timestamp: new Date().toISOString(),
+            nodeCounter: this.nodeCounter,
+            nodes: this.nodes.map(node => ({
+                id: node.dataset.id,
+                type: node.dataset.type,
+                text: node.querySelector('.node-text').textContent,
+                left: parseInt(node.style.left) || 0,
+                top: parseInt(node.style.top) || 0,
+                anchoredTo: node.dataset.anchoredTo || null,
+                isTaskNode: this.taskNodes.includes(node)
+            })),
+            flowlines: this.flowlines.map(flowline => ({
+                sourceId: flowline.source.dataset.id,
+                targetId: flowline.target.dataset.id,
+                type: flowline.type || 'straight'
+            })),
+            settings: {
+                flowlineType: this.flowlineTypeDropdown.value
+            }
+        };
+        
+        const dataStr = JSON.stringify(workflow, null, 2);
+        const dataBlob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(dataBlob);
+        
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `workflow-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.json`;
+        link.click();
+        
+        URL.revokeObjectURL(url);
+    }
+    
+    loadWorkflow(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const workflow = JSON.parse(e.target.result);
+                this.clearWorkflow();
+                this.deserializeWorkflow(workflow);
+                console.log('Workflow loaded successfully');
+            } catch (error) {
+                alert('Error loading workflow: Invalid file format');
+                console.error('Error loading workflow:', error);
+            }
+        };
+        reader.readAsText(file);
+        
+        // Reset the input so the same file can be loaded again
+        event.target.value = '';
+    }
+    
+    clearWorkflow() {
+        // Remove all nodes from DOM
+        this.nodes.forEach(node => {
+            if (node.parentNode) {
+                node.parentNode.removeChild(node);
+            }
+        });
+        
+        // Remove all SVG flowlines
+        this.flowlines.forEach(flowline => {
+            if (flowline.element && flowline.element.parentNode) {
+                flowline.element.parentNode.removeChild(flowline.element);
+            }
+        });
+        
+        // Clear arrays
+        this.nodes = [];
+        this.flowlines = [];
+        this.taskNodes = [];
+        this.selectedNode = null;
+        this.startNode = null;
+        this.nodeCounter = 0;
+    }
+    
+    deserializeWorkflow(workflow) {
+        // Restore counter
+        this.nodeCounter = workflow.nodeCounter || 0;
+        
+        // Restore settings
+        if (workflow.settings && workflow.settings.flowlineType) {
+            this.flowlineTypeDropdown.value = workflow.settings.flowlineType;
+        }
+        
+        // Create nodes first
+        const nodeMap = new Map();
+        workflow.nodes.forEach(nodeData => {
+            const node = this.createNodeFromData(nodeData);
+            nodeMap.set(nodeData.id, node);
+            
+            if (nodeData.type === 'terminal' && nodeData.text === 'Start') {
+                this.startNode = node;
+            }
+        });
+        
+        // Create flowlines after all nodes exist
+        workflow.flowlines.forEach(flowlineData => {
+            const sourceNode = nodeMap.get(flowlineData.sourceId);
+            const targetNode = nodeMap.get(flowlineData.targetId);
+            
+            if (sourceNode && targetNode) {
+                this.createFlowlineBetweenNodes(sourceNode, targetNode, flowlineData.type);
+            }
+        });
+        
+        this.updateFlowlines();
+    }
+    
+    createNodeFromData(nodeData) {
+        const node = document.createElement('div');
+        node.className = `node ${nodeData.type}-node`;
+        node.dataset.type = nodeData.type;
+        node.dataset.id = nodeData.id;
+        
+        if (nodeData.anchoredTo) {
+            node.dataset.anchoredTo = nodeData.anchoredTo;
+        }
+        
+        // Create node content
+        const nodeText = document.createElement('div');
+        nodeText.className = 'node-text';
+        nodeText.textContent = nodeData.text;
+        node.appendChild(nodeText);
+        
+        // Position node
+        node.style.left = nodeData.left + 'px';
+        node.style.top = nodeData.top + 'px';
+        
+        // Add event listeners
+        node.addEventListener('mousedown', (e) => this.handleMouseDown(e, node));
+        node.addEventListener('contextmenu', (e) => this.handleContextMenu(e, node));
+        node.addEventListener('dblclick', (e) => this.handleDoubleClick(e, node));
+        
+        // Add to canvas and arrays
+        this.canvas.appendChild(node);
+        this.nodes.push(node);
+        
+        if (nodeData.isTaskNode) {
+            this.taskNodes.push(node);
+        }
+        
+        return node;
+    }
+    
+    createFlowlineBetweenNodes(sourceNode, targetNode, flowlineType = 'straight') {
+        // Temporarily set the flowline type for this creation
+        const originalType = this.flowlineTypeDropdown.value;
+        this.flowlineTypeDropdown.value = flowlineType;
+        
+        // Use the existing createFlowline method
+        this.createFlowline(sourceNode, targetNode);
+        
+        // Restore the original flowline type
+        this.flowlineTypeDropdown.value = originalType;
     }
 }
 
