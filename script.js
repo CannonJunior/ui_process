@@ -26,14 +26,37 @@ class ProcessFlowDesigner {
         this.startNode = null;
         this.taskNodes = [];
         this.selectedTaskForAdvance = null;
+        this.tagModal = document.getElementById('tagModal');
+        this.currentTags = document.getElementById('currentTags');
+        this.tagCategoryDropdown = document.getElementById('tagCategoryDropdown');
+        this.tagOptionDropdown = document.getElementById('tagOptionDropdown');
+        this.tagModalCancel = document.getElementById('tagModalCancel');
+        this.tagModalAdd = document.getElementById('tagModalAdd');
+        this.tagModalSave = document.getElementById('tagModalSave');
+        this.selectedTaskForTags = null;
         
         this.init();
     }
     
     init() {
+        this.initializeDropdowns();
         this.setupEventListeners();
         this.createSVGDefs();
         this.createDefaultStartNode();
+    }
+    
+    initializeDropdowns() {
+        // Populate node type dropdown from config
+        ConfigUtils.populateDropdown(this.nodeTypeDropdown, AppConfig.nodeTypes);
+        
+        // Populate flowline type dropdown from config
+        ConfigUtils.populateDropdown(this.flowlineTypeDropdown, AppConfig.flowlineTypes);
+        
+        // Populate tag category dropdown from config
+        ConfigUtils.populateDropdown(this.tagCategoryDropdown, AppConfig.tagSystem.categories);
+        
+        // Set default flowline type
+        this.flowlineTypeDropdown.value = 'straight';
     }
     
     setupEventListeners() {
@@ -106,6 +129,21 @@ class ProcessFlowDesigner {
         this.saveWorkflowButton.addEventListener('click', () => this.saveWorkflow());
         this.loadWorkflowButton.addEventListener('click', () => this.loadWorkflowInput.click());
         this.loadWorkflowInput.addEventListener('change', (e) => this.loadWorkflow(e));
+        
+        // Tag management event listeners
+        this.tagModalCancel.addEventListener('click', () => this.hideTagModal());
+        this.tagModalAdd.addEventListener('click', () => this.addTagToTask());
+        this.tagModalSave.addEventListener('click', () => this.saveTaskTags());
+        
+        // Tag category dropdown change
+        this.tagCategoryDropdown.addEventListener('change', (e) => this.handleTagCategoryChange(e));
+        
+        // Close tag modal when clicking outside
+        this.tagModal.addEventListener('click', (e) => {
+            if (e.target === this.tagModal) {
+                this.hideTagModal();
+            }
+        });
     }
     
     createSVGDefs() {
@@ -191,6 +229,11 @@ class ProcessFlowDesigner {
     
     handleMouseDown(e, node) {
         if (e.button === 0) { // Left click
+            // Prevent dragging for task nodes
+            if (node.dataset.type === 'task') {
+                return;
+            }
+            
             e.preventDefault();
             this.dragData.isDragging = true;
             this.dragData.node = node;
@@ -244,6 +287,15 @@ class ProcessFlowDesigner {
         const isTaskNode = node.dataset.type === 'task';
         const menu = isTaskNode ? this.taskContextMenu : this.contextMenu;
         
+        // For task nodes, show/hide the reverse option based on previous anchor availability
+        if (isTaskNode) {
+            const reverseMenuItem = menu.querySelector('[data-action="reverse"]');
+            const hasPreviousAnchor = node.dataset.previousAnchor && node.dataset.previousAnchor !== 'null';
+            if (reverseMenuItem) {
+                reverseMenuItem.style.display = hasPreviousAnchor ? 'block' : 'none';
+            }
+        }
+        
         menu.style.left = (e.clientX - canvasRect.left) + 'px';
         menu.style.top = (e.clientY - canvasRect.top) + 'px';
         menu.style.display = 'block';
@@ -273,6 +325,12 @@ class ProcessFlowDesigner {
         switch (action) {
             case 'advance':
                 this.advanceTask();
+                break;
+            case 'reverse':
+                this.reverseTask();
+                break;
+            case 'tags':
+                this.showTagModal();
                 break;
             case 'rename':
                 this.renameNode();
@@ -432,14 +490,22 @@ class ProcessFlowDesigner {
         node.dataset.type = 'task';
         node.dataset.id = ++this.nodeCounter;
         node.dataset.anchoredTo = this.startNode.dataset.id; // Anchor to Start node by default
+        node.dataset.previousAnchor = null; // No previous node initially
+        node.dataset.tags = JSON.stringify([]); // Initialize empty tags array
         
         const text = document.createElement('div');
         text.className = 'node-text';
         text.textContent = taskName;
         node.appendChild(text);
         
-        // Position task nodes below the Start node
-        this.positionTaskNode(node);
+        // Create tags display container
+        const tagsContainer = document.createElement('div');
+        tagsContainer.className = 'task-tags';
+        node.appendChild(tagsContainer);
+        
+        // Assign slot and position task node
+        this.assignTaskSlot(node);
+        this.positionTaskInSlot(node);
         
         // Add event listeners
         node.addEventListener('mousedown', (e) => this.handleMouseDown(e, node));
@@ -451,36 +517,79 @@ class ProcessFlowDesigner {
         this.taskNodes.push(node);
     }
     
-    positionTaskNode(node) {
-        if (!this.startNode) return;
+    assignTaskSlot(taskNode) {
+        const anchorNodeId = taskNode.dataset.anchoredTo;
+        const existingTasks = this.getTasksForNode(anchorNodeId).filter(task => task !== taskNode);
         
-        const startRect = this.startNode.getBoundingClientRect();
-        const canvasRect = this.canvas.getBoundingClientRect();
+        // Find the next available slot (starting from 0)
+        let slot = 0;
+        const usedSlots = existingTasks.map(task => parseInt(task.dataset.slot) || 0).sort((a, b) => a - b);
         
-        // Calculate position relative to start node
-        const startX = parseInt(this.startNode.style.left) || 50;
-        const startY = parseInt(this.startNode.style.top) || 100;
+        for (let i = 0; i < usedSlots.length; i++) {
+            if (usedSlots[i] === slot) {
+                slot++;
+            } else {
+                break;
+            }
+        }
         
-        // Position below start node with offset for each existing task
-        const taskIndex = this.taskNodes.length;
-        const offsetY = 80 + (taskIndex * 50); // 80px below start, then 50px for each task
-        
-        node.style.left = startX + 'px';
-        node.style.top = (startY + offsetY) + 'px';
+        taskNode.dataset.slot = slot.toString();
     }
     
-    moveAnchoredTaskNodes(anchorNodeId, deltaX, deltaY) {
-        this.taskNodes.forEach(taskNode => {
-            if (taskNode.dataset.anchoredTo === anchorNodeId) {
-                const currentX = parseInt(taskNode.style.left) || 0;
-                const currentY = parseInt(taskNode.style.top) || 0;
-                taskNode.style.left = (currentX + deltaX) + 'px';
-                taskNode.style.top = (currentY + deltaY) + 'px';
-            }
+    getTasksForNode(nodeId) {
+        return this.taskNodes.filter(task => task.dataset.anchoredTo === nodeId);
+    }
+    
+    positionTaskInSlot(taskNode) {
+        const anchorNodeId = taskNode.dataset.anchoredTo;
+        const anchorNode = this.nodes.find(node => node.dataset.id === anchorNodeId);
+        
+        if (!anchorNode) return;
+        
+        const anchorX = parseInt(anchorNode.style.left) || 0;
+        const anchorY = parseInt(anchorNode.style.top) || 0;
+        const slot = parseInt(taskNode.dataset.slot) || 0;
+        
+        // Constants for task positioning
+        const TASK_OFFSET_Y = 80; // Distance below anchor node for first task
+        const TASK_SPACING = 50;  // Spacing between tasks in slots
+        
+        taskNode.style.left = anchorX + 'px';
+        taskNode.style.top = (anchorY + TASK_OFFSET_Y + (slot * TASK_SPACING)) + 'px';
+    }
+    
+    repositionAllTasksForNode(nodeId) {
+        const tasks = this.getTasksForNode(nodeId);
+        tasks.forEach(task => {
+            this.positionTaskInSlot(task);
         });
     }
     
+    compactTaskSlots(nodeId) {
+        const tasks = this.getTasksForNode(nodeId);
+        
+        // Sort tasks by their current slot
+        tasks.sort((a, b) => {
+            const slotA = parseInt(a.dataset.slot) || 0;
+            const slotB = parseInt(b.dataset.slot) || 0;
+            return slotA - slotB;
+        });
+        
+        // Reassign slots starting from 0 with no gaps
+        tasks.forEach((task, index) => {
+            task.dataset.slot = index.toString();
+            this.positionTaskInSlot(task);
+        });
+    }
+    
+    moveAnchoredTaskNodes(anchorNodeId, deltaX, deltaY) {
+        // When anchor nodes move, reposition all anchored tasks using their slots
+        this.repositionAllTasksForNode(anchorNodeId);
+    }
+    
     deleteTaskNode() {
+        const anchorNodeId = this.selectedNode.dataset.anchoredTo;
+        
         // Remove from task nodes array
         this.taskNodes = this.taskNodes.filter(node => node !== this.selectedNode);
         
@@ -489,6 +598,9 @@ class ProcessFlowDesigner {
         
         // Remove from DOM
         this.canvas.removeChild(this.selectedNode);
+        
+        // Compact slots for the anchor node to remove gaps
+        this.compactTaskSlots(anchorNodeId);
     }
     
     advanceTask() {
@@ -516,6 +628,185 @@ class ProcessFlowDesigner {
             // Multiple flowlines - show selection modal
             this.showAdvanceTaskModal(outboundFlowlines);
         }
+    }
+    
+    reverseTask() {
+        if (!this.selectedNode || this.selectedNode.dataset.type !== 'task') return;
+        
+        const previousAnchorId = this.selectedNode.dataset.previousAnchor;
+        
+        // Check if there's a previous node to reverse to
+        if (!previousAnchorId || previousAnchorId === 'null') {
+            alert('No previous node to reverse to.');
+            return;
+        }
+        
+        // Find the previous anchor node
+        const previousAnchorNode = this.nodes.find(node => node.dataset.id === previousAnchorId);
+        
+        if (!previousAnchorNode) {
+            alert('Previous node no longer exists.');
+            return;
+        }
+        
+        // Move the task back to the previous node
+        this.moveTaskToNode(this.selectedNode, previousAnchorNode);
+    }
+    
+    showTagModal() {
+        if (!this.selectedNode || this.selectedNode.dataset.type !== 'task') return;
+        
+        this.selectedTaskForTags = this.selectedNode;
+        
+        // Display current tags
+        this.displayCurrentTags();
+        
+        // Reset dropdowns
+        this.tagCategoryDropdown.value = '';
+        this.tagOptionDropdown.disabled = true;
+        this.tagOptionDropdown.innerHTML = '<option value="">Select category first</option>';
+        
+        this.tagModal.style.display = 'block';
+    }
+    
+    hideTagModal() {
+        this.tagModal.style.display = 'none';
+        this.selectedTaskForTags = null;
+    }
+    
+    handleTagCategoryChange(e) {
+        const selectedCategory = e.target.value;
+        
+        if (selectedCategory) {
+            // Populate options dropdown based on selected category
+            const options = AppConfig.tagSystem.options[selectedCategory];
+            if (options) {
+                ConfigUtils.populateDropdown(this.tagOptionDropdown, options);
+                this.tagOptionDropdown.disabled = false;
+            }
+        } else {
+            this.tagOptionDropdown.disabled = true;
+            this.tagOptionDropdown.innerHTML = '<option value="">Select category first</option>';
+        }
+    }
+    
+    displayCurrentTags() {
+        if (!this.selectedTaskForTags) return;
+        
+        const tags = this.getTaskTags(this.selectedTaskForTags);
+        this.currentTags.innerHTML = '';
+        
+        tags.forEach((tag, index) => {
+            const tagElement = document.createElement('div');
+            tagElement.className = 'tag';
+            
+            const display = ConfigUtils.getTagDisplay(tag.category);
+            tagElement.style.color = display.color;
+            tagElement.style.backgroundColor = display.bgColor;
+            
+            const categoryLabel = ConfigUtils.getTagCategoryLabel(tag.category);
+            const optionLabel = ConfigUtils.getTagOptionLabel(tag.category, tag.option);
+            
+            tagElement.innerHTML = `
+                <span>${categoryLabel}: ${optionLabel}</span>
+                <button class="tag-remove" data-index="${index}">×</button>
+            `;
+            
+            // Add remove event listener
+            tagElement.querySelector('.tag-remove').addEventListener('click', (e) => {
+                this.removeTag(parseInt(e.target.dataset.index));
+            });
+            
+            this.currentTags.appendChild(tagElement);
+        });
+    }
+    
+    addTagToTask() {
+        if (!this.selectedTaskForTags) return;
+        
+        const category = this.tagCategoryDropdown.value;
+        const option = this.tagOptionDropdown.value;
+        
+        if (!category || !option) {
+            alert('Please select both a tag category and option.');
+            return;
+        }
+        
+        const tags = this.getTaskTags(this.selectedTaskForTags);
+        
+        // Check if this tag category already exists
+        const existingTagIndex = tags.findIndex(tag => tag.category === category);
+        
+        if (existingTagIndex >= 0) {
+            // Update existing tag
+            tags[existingTagIndex].option = option;
+        } else {
+            // Add new tag
+            tags.push({ category, option });
+        }
+        
+        // Update task tags
+        this.setTaskTags(this.selectedTaskForTags, tags);
+        
+        // Refresh display
+        this.displayCurrentTags();
+        this.updateTaskTagsDisplay(this.selectedTaskForTags);
+        
+        // Reset form
+        this.tagCategoryDropdown.value = '';
+        this.tagOptionDropdown.disabled = true;
+        this.tagOptionDropdown.innerHTML = '<option value="">Select category first</option>';
+    }
+    
+    removeTag(index) {
+        if (!this.selectedTaskForTags) return;
+        
+        const tags = this.getTaskTags(this.selectedTaskForTags);
+        tags.splice(index, 1);
+        
+        this.setTaskTags(this.selectedTaskForTags, tags);
+        this.displayCurrentTags();
+        this.updateTaskTagsDisplay(this.selectedTaskForTags);
+    }
+    
+    saveTaskTags() {
+        // Tags are already saved when added/removed
+        this.hideTagModal();
+    }
+    
+    getTaskTags(taskNode) {
+        try {
+            return JSON.parse(taskNode.dataset.tags || '[]');
+        } catch (e) {
+            return [];
+        }
+    }
+    
+    setTaskTags(taskNode, tags) {
+        taskNode.dataset.tags = JSON.stringify(tags);
+    }
+    
+    updateTaskTagsDisplay(taskNode) {
+        const tagsContainer = taskNode.querySelector('.task-tags');
+        if (!tagsContainer) return;
+        
+        const tags = this.getTaskTags(taskNode);
+        tagsContainer.innerHTML = '';
+        
+        tags.forEach(tag => {
+            const tagElement = document.createElement('div');
+            tagElement.className = 'tag';
+            
+            const display = ConfigUtils.getTagDisplay(tag.category);
+            tagElement.style.color = display.color;
+            tagElement.style.backgroundColor = display.bgColor;
+            
+            const categoryLabel = ConfigUtils.getTagCategoryLabel(tag.category);
+            const optionLabel = ConfigUtils.getTagOptionLabel(tag.category, tag.option);
+            
+            tagElement.textContent = `${categoryLabel}: ${optionLabel}`;
+            tagsContainer.appendChild(tagElement);
+        });
     }
     
     showAdvanceTaskModal(outboundFlowlines) {
@@ -548,27 +839,29 @@ class ProcessFlowDesigner {
     }
     
     moveTaskToNode(taskNode, targetNode) {
+        const oldAnchorNodeId = taskNode.dataset.anchoredTo;
+        
+        // Only proceed if actually moving to a different node
+        if (oldAnchorNodeId === targetNode.dataset.id) {
+            return; // Already on target node
+        }
+        
+        // Store the previous anchor for potential reversal
+        taskNode.dataset.previousAnchor = oldAnchorNodeId;
+        
         // Update the anchor reference
         taskNode.dataset.anchoredTo = targetNode.dataset.id;
         
-        // Get current tasks anchored to the target node
-        const existingTasks = this.taskNodes.filter(task => 
-            task.dataset.anchoredTo === targetNode.dataset.id && task !== taskNode
-        );
+        // Assign a new slot for the target node (this will exclude the current task from existing tasks)
+        this.assignTaskSlot(taskNode);
         
-        // Position the task relative to its new anchor node
-        const targetRect = targetNode.getBoundingClientRect();
-        const canvasRect = this.canvas.getBoundingClientRect();
+        // Position the task in its new slot
+        this.positionTaskInSlot(taskNode);
         
-        const targetX = parseInt(targetNode.style.left) || (targetRect.left - canvasRect.left);
-        const targetY = parseInt(targetNode.style.top) || (targetRect.top - canvasRect.top);
-        
-        // Position below target node with offset for existing tasks
-        const taskIndex = existingTasks.length;
-        const offsetY = 80 + (taskIndex * 50);
-        
-        taskNode.style.left = targetX + 'px';
-        taskNode.style.top = (targetY + offsetY) + 'px';
+        // Compact slots for the old anchor node to remove gaps
+        if (oldAnchorNodeId) {
+            this.compactTaskSlots(oldAnchorNodeId);
+        }
     }
     
     saveWorkflow() {
@@ -583,7 +876,20 @@ class ProcessFlowDesigner {
                 left: parseInt(node.style.left) || 0,
                 top: parseInt(node.style.top) || 0,
                 anchoredTo: node.dataset.anchoredTo || null,
-                isTaskNode: this.taskNodes.includes(node)
+                previousAnchor: node.dataset.previousAnchor || null,
+                slot: node.dataset.slot ? parseInt(node.dataset.slot) : null,
+                tags: node.dataset.tags ? JSON.parse(node.dataset.tags) : [],
+                isTaskNode: this.taskNodes.includes(node),
+                className: node.className,
+                width: node.offsetWidth,
+                height: node.offsetHeight,
+                computedStyles: {
+                    transform: window.getComputedStyle(node).transform,
+                    borderRadius: window.getComputedStyle(node).borderRadius,
+                    backgroundColor: window.getComputedStyle(node).backgroundColor,
+                    borderColor: window.getComputedStyle(node).borderColor,
+                    boxShadow: node.style.boxShadow || ''
+                }
             })),
             flowlines: this.flowlines.map(flowline => ({
                 sourceId: flowline.source.dataset.id,
@@ -683,17 +989,48 @@ class ProcessFlowDesigner {
             }
         });
         
+        // Reposition all task nodes according to their slots after everything is loaded
+        this.taskNodes.forEach(taskNode => {
+            if (taskNode.dataset.slot !== undefined) {
+                this.positionTaskInSlot(taskNode);
+            }
+            // Update tags display for loaded task nodes
+            this.updateTaskTagsDisplay(taskNode);
+        });
+        
         this.updateFlowlines();
     }
     
     createNodeFromData(nodeData) {
         const node = document.createElement('div');
-        node.className = `node ${nodeData.type}-node`;
+        
+        // Use saved className if available (preserves exact CSS classes), otherwise construct from type
+        if (nodeData.className) {
+            node.className = nodeData.className;
+        } else {
+            node.className = `node ${nodeData.type}`;
+        }
+        
         node.dataset.type = nodeData.type;
         node.dataset.id = nodeData.id;
         
         if (nodeData.anchoredTo) {
             node.dataset.anchoredTo = nodeData.anchoredTo;
+        }
+        
+        // Restore previous anchor information for task nodes
+        if (nodeData.previousAnchor) {
+            node.dataset.previousAnchor = nodeData.previousAnchor;
+        }
+        
+        // Restore slot information for task nodes
+        if (nodeData.slot !== null && nodeData.slot !== undefined) {
+            node.dataset.slot = nodeData.slot.toString();
+        }
+        
+        // Restore tag information
+        if (nodeData.tags) {
+            node.dataset.tags = JSON.stringify(nodeData.tags);
         }
         
         // Create node content
@@ -702,9 +1039,31 @@ class ProcessFlowDesigner {
         nodeText.textContent = nodeData.text;
         node.appendChild(nodeText);
         
-        // Position node
-        node.style.left = nodeData.left + 'px';
-        node.style.top = nodeData.top + 'px';
+        // Create tags container for task nodes
+        if (nodeData.type === 'task') {
+            const tagsContainer = document.createElement('div');
+            tagsContainer.className = 'task-tags';
+            node.appendChild(tagsContainer);
+        }
+        
+        // Position node - use slot positioning for task nodes if available
+        if (nodeData.type === 'task' && nodeData.slot !== null && nodeData.slot !== undefined && nodeData.anchoredTo) {
+            // For task nodes with slot data, position will be calculated after all nodes are loaded
+            // Just set initial position for now
+            node.style.left = nodeData.left + 'px';
+            node.style.top = nodeData.top + 'px';
+        } else {
+            node.style.left = nodeData.left + 'px';
+            node.style.top = nodeData.top + 'px';
+        }
+        
+        // Restore visual properties if saved
+        if (nodeData.computedStyles) {
+            // Restore any custom box shadow (from flowline creation mode, etc.)
+            if (nodeData.computedStyles.boxShadow) {
+                node.style.boxShadow = nodeData.computedStyles.boxShadow;
+            }
+        }
         
         // Add event listeners
         node.addEventListener('mousedown', (e) => this.handleMouseDown(e, node));
