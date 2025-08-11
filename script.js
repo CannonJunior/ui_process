@@ -31,6 +31,9 @@ class ProcessFlowDesigner {
         this.tagCategoryDropdown = document.getElementById('tagCategoryDropdown');
         this.tagOptionDropdown = document.getElementById('tagOptionDropdown');
         this.tagDateInput = document.getElementById('tagDateInput');
+        this.tagDescriptionInput = document.getElementById('tagDescriptionInput');
+        this.tagLinkInput = document.getElementById('tagLinkInput');
+        this.tagCompletedInput = document.getElementById('tagCompletedInput');
         this.tagModalCancel = document.getElementById('tagModalCancel');
         this.tagModalAdd = document.getElementById('tagModalAdd');
         this.tagModalSave = document.getElementById('tagModalSave');
@@ -87,12 +90,16 @@ class ProcessFlowDesigner {
         
         // Prevent dragging tags to invalid locations
         this.canvas.addEventListener('dragover', (e) => {
-            // Only allow dropping on next-action-slots
+            // Only allow dropping on next-action-slots for the same task
             if (!e.target.classList.contains('next-action-slot')) {
                 e.preventDefault();
                 e.dataTransfer.dropEffect = 'none';
+            } else if (this.draggedTag && e.target.dataset.taskId !== this.draggedTag.taskId) {
+                // Prevent dropping on other tasks' next-action-slots
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'none';
             } else {
-                // Allow dropping on next-action-slots
+                // Allow dropping on same task's next-action-slot
                 e.preventDefault();
                 e.dataTransfer.dropEffect = 'move';
             }
@@ -100,7 +107,8 @@ class ProcessFlowDesigner {
         
         this.canvas.addEventListener('drop', (e) => {
             // Prevent drops on invalid locations
-            if (!e.target.classList.contains('next-action-slot')) {
+            if (!e.target.classList.contains('next-action-slot') || 
+                (this.draggedTag && e.target.dataset.taskId !== this.draggedTag.taskId)) {
                 e.preventDefault();
             }
         });
@@ -127,8 +135,12 @@ class ProcessFlowDesigner {
         document.addEventListener('mousemove', (e) => this.handleMouseMove(e));
         document.addEventListener('mouseup', (e) => this.handleMouseUp(e));
         
-        // Prevent context menu on canvas
-        this.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+        // Prevent context menu on canvas, but allow on tags
+        this.canvas.addEventListener('contextmenu', (e) => {
+            if (!e.target.classList.contains('tag')) {
+                e.preventDefault();
+            }
+        });
         
         // Task modal event listeners
         this.addTaskButton.addEventListener('click', () => this.showTaskModal());
@@ -184,6 +196,9 @@ class ProcessFlowDesigner {
                 this.handleTagAttributeClick(attribute, e);
             } else if (action === 'delete') {
                 this.deleteSelectedTag();
+                this.hideTagContextMenus();
+            } else if (action === 'reset-next-action') {
+                this.resetTagFromNextAction();
                 this.hideTagContextMenus();
             }
         });
@@ -502,6 +517,14 @@ class ProcessFlowDesigner {
         const finishRename = () => {
             textElement.textContent = input.value || currentText;
             this.selectedNode.replaceChild(textElement, input);
+            
+            // Update next-action-slot position if this is a task node
+            if (this.selectedNode.dataset.type === 'task') {
+                // Add small delay to allow DOM to update size
+                setTimeout(() => {
+                    this.updateNextActionSlotPosition(this.selectedNode);
+                }, 10);
+            }
         };
         
         input.addEventListener('blur', finishRename);
@@ -552,51 +575,101 @@ class ProcessFlowDesigner {
         taskContainer.className = 'task-container';
         taskContainer.dataset.id = ++this.nodeCounter;
         
-        const node = document.createElement('div');
-        node.className = 'node task';
-        node.dataset.type = 'task';
-        node.dataset.id = this.nodeCounter;
-        node.dataset.anchoredTo = this.startNode.dataset.id; // Anchor to Start node by default
-        node.dataset.previousAnchor = null; // No previous node initially
-        node.dataset.tags = JSON.stringify([]); // Initialize empty tags array
+        // Create task banner (smaller height, full width)
+        const taskBanner = document.createElement('div');
+        taskBanner.className = 'task-banner';
+        taskBanner.dataset.type = 'task';
+        taskBanner.dataset.id = this.nodeCounter;
+        taskBanner.dataset.anchoredTo = this.startNode.dataset.id; // Anchor to Start node by default
+        taskBanner.dataset.previousAnchor = null; // No previous node initially
+        taskBanner.dataset.tags = JSON.stringify([]); // Initialize empty tags array
         
         const text = document.createElement('div');
         text.className = 'node-text';
         text.textContent = taskName;
-        node.appendChild(text);
+        taskBanner.appendChild(text);
         
-        // Create tags display container
+        // Create tags display area (below banner)
+        const tagsArea = document.createElement('div');
+        tagsArea.className = 'task-tags-area';
+        
         const tagsContainer = document.createElement('div');
         tagsContainer.className = 'task-tags';
-        node.appendChild(tagsContainer);
+        tagsArea.appendChild(tagsContainer);
         
-        // Create Next Action slot
+        // Add vertical structure: banner on top, tags area below
+        taskContainer.appendChild(taskBanner);
+        taskContainer.appendChild(tagsArea);
+        
+        // Create Next Action slot (positioned to right of task-container)
         const nextActionSlot = document.createElement('div');
         nextActionSlot.className = 'next-action-slot';
         nextActionSlot.title = 'Next Action';
         nextActionSlot.dataset.taskId = this.nodeCounter;
         
-        // Add container structure
-        taskContainer.appendChild(node);
-        taskContainer.appendChild(nextActionSlot);
+        // Add task container to canvas
+        this.canvas.appendChild(taskContainer);
+        
+        // Add next-action-slot to canvas (positioned separately)
+        this.canvas.appendChild(nextActionSlot);
         
         // Assign slot and position task node
-        this.assignTaskSlot(node);
-        this.positionTaskInSlot(node);
+        this.assignTaskSlot(taskBanner);
+        this.positionTaskInSlot(taskBanner);
         
-        // Add event listeners to the task node
-        node.addEventListener('mousedown', (e) => this.handleMouseDown(e, node));
-        node.addEventListener('contextmenu', (e) => this.handleContextMenu(e, node));
-        node.addEventListener('dblclick', (e) => this.handleDoubleClick(e, node));
+        // Position next-action-slot to the right of task-container
+        this.positionNextActionSlot(taskContainer, nextActionSlot);
+        
+        // Add event listeners to the task banner (now the main task element)
+        taskBanner.addEventListener('mousedown', (e) => this.handleMouseDown(e, taskBanner));
+        taskBanner.addEventListener('contextmenu', (e) => this.handleContextMenu(e, taskBanner));
+        taskBanner.addEventListener('dblclick', (e) => this.handleDoubleClick(e, taskBanner));
         
         // Add drop event listeners to the Next Action slot
         nextActionSlot.addEventListener('dragover', (e) => this.handleSlotDragOver(e));
         nextActionSlot.addEventListener('drop', (e) => this.handleSlotDrop(e));
         nextActionSlot.addEventListener('dragleave', (e) => this.handleSlotDragLeave(e));
         
-        this.canvas.appendChild(taskContainer);
-        this.nodes.push(node);
-        this.taskNodes.push(node);
+        // Add ResizeObserver to monitor task container size changes
+        if (window.ResizeObserver) {
+            const resizeObserver = new ResizeObserver(() => {
+                this.updateNextActionSlotPosition(taskBanner);
+            });
+            resizeObserver.observe(taskContainer);
+            
+            // Store observer reference for cleanup
+            taskContainer._resizeObserver = resizeObserver;
+        }
+        
+        this.nodes.push(taskBanner);
+        this.taskNodes.push(taskBanner);
+    }
+    
+    positionNextActionSlot(taskContainer, nextActionSlot) {
+        // Position the next-action-slot to the right of the task-container
+        const taskRect = taskContainer.getBoundingClientRect();
+        const canvasRect = this.canvas.getBoundingClientRect();
+        
+        // Calculate position relative to canvas
+        const leftOffset = taskRect.right - canvasRect.left + 10; // 10px gap
+        const topOffset = taskRect.top - canvasRect.top;
+        
+        nextActionSlot.style.position = 'absolute';
+        nextActionSlot.style.left = leftOffset + 'px';
+        nextActionSlot.style.top = topOffset + 'px';
+    }
+    
+    updateNextActionSlotPosition(taskNode) {
+        // Update next-action-slot position when task size changes
+        const taskContainer = taskNode.parentNode;
+        if (!taskContainer || !taskContainer.classList.contains('task-container')) {
+            return;
+        }
+        
+        const nextActionSlot = this.canvas.querySelector(`.next-action-slot[data-task-id="${taskNode.dataset.id}"]`);
+        if (nextActionSlot) {
+            this.positionNextActionSlot(taskContainer, nextActionSlot);
+        }
     }
     
     assignTaskSlot(taskNode) {
@@ -641,6 +714,12 @@ class ProcessFlowDesigner {
         if (taskContainer && taskContainer.classList.contains('task-container')) {
             taskContainer.style.left = anchorX + 'px';
             taskContainer.style.top = (anchorY + TASK_OFFSET_Y + (slot * TASK_SPACING)) + 'px';
+            
+            // Also position the associated next-action-slot
+            const nextActionSlot = this.canvas.querySelector(`.next-action-slot[data-task-id="${taskNode.dataset.id}"]`);
+            if (nextActionSlot) {
+                this.positionNextActionSlot(taskContainer, nextActionSlot);
+            }
         } else {
             // Fallback for task nodes without container (shouldn't happen with new structure)
             taskNode.style.left = anchorX + 'px';
@@ -686,9 +765,22 @@ class ProcessFlowDesigner {
         // Remove from general nodes array
         this.nodes = this.nodes.filter(node => node !== this.selectedNode);
         
+        // Remove the associated next-action-slot
+        const nextActionSlot = this.canvas.querySelector(`.next-action-slot[data-task-id="${this.selectedNode.dataset.id}"]`);
+        if (nextActionSlot && nextActionSlot.parentNode) {
+            nextActionSlot.parentNode.removeChild(nextActionSlot);
+        }
+        
         // Remove from DOM - handle container structure
         if (this.selectedNode.parentNode && this.selectedNode.parentNode.classList.contains('task-container')) {
             const container = this.selectedNode.parentNode;
+            
+            // Clean up ResizeObserver
+            if (container._resizeObserver) {
+                container._resizeObserver.disconnect();
+                delete container._resizeObserver;
+            }
+            
             if (container.parentNode) {
                 container.parentNode.removeChild(container);
             }
@@ -759,11 +851,14 @@ class ProcessFlowDesigner {
         // Display current tags
         this.displayCurrentTags();
         
-        // Reset dropdowns and date input
+        // Reset dropdowns and input fields
         this.tagCategoryDropdown.value = '';
         this.tagOptionDropdown.disabled = true;
         this.tagOptionDropdown.innerHTML = '<option value="">Select category first</option>';
         this.tagDateInput.value = '';
+        this.tagDescriptionInput.value = '';
+        this.tagLinkInput.value = '';
+        this.tagCompletedInput.checked = false;
         
         this.tagModal.style.display = 'block';
     }
@@ -827,6 +922,9 @@ class ProcessFlowDesigner {
         const category = this.tagCategoryDropdown.value;
         const option = this.tagOptionDropdown.value;
         const date = this.tagDateInput.value; // Date is optional
+        const description = this.tagDescriptionInput.value.trim(); // Description is optional
+        const link = this.tagLinkInput.value.trim(); // Link is optional
+        const completed = this.tagCompletedInput.checked; // Completed is boolean
         
         if (!category || !option) {
             alert('Please select both a tag category and option.');
@@ -835,10 +933,19 @@ class ProcessFlowDesigner {
         
         const tags = this.getTaskTags(this.selectedTaskForTags);
         
-        // Create tag object with optional date
+        // Create tag object with optional fields
         const tagData = { category, option };
         if (date) {
             tagData.date = date;
+        }
+        if (description) {
+            tagData.description = description;
+        }
+        if (link) {
+            tagData.link = link;
+        }
+        if (completed) {
+            tagData.completed = completed;
         }
         
         // Check if this tag category already exists
@@ -864,6 +971,9 @@ class ProcessFlowDesigner {
         this.tagOptionDropdown.disabled = true;
         this.tagOptionDropdown.innerHTML = '<option value="">Select category first</option>';
         this.tagDateInput.value = '';
+        this.tagDescriptionInput.value = '';
+        this.tagLinkInput.value = '';
+        this.tagCompletedInput.checked = false;
     }
     
     removeTag(index) {
@@ -895,13 +1005,35 @@ class ProcessFlowDesigner {
     }
     
     updateTaskTagsDisplay(taskNode) {
-        const tagsContainer = taskNode.querySelector('.task-tags');
+        // Find the task container (parent of the banner)
+        const taskContainer = taskNode.parentNode;
+        if (!taskContainer) return;
+        
+        // Find the tags container within the task-tags-area
+        const tagsContainer = taskContainer.querySelector('.task-tags');
         if (!tagsContainer) return;
         
         const tags = this.getTaskTags(taskNode);
+        
+        // Find the next-action-slot for this task
+        const nextActionSlot = this.canvas.querySelector(`.next-action-slot[data-task-id="${taskNode.dataset.id}"]`);
+        
+        // Get existing tag elements that are in next-action state (in the slot)
+        const existingTagElements = nextActionSlot ? Array.from(nextActionSlot.querySelectorAll('.tag-in-slot[data-task-id="' + taskNode.dataset.id + '"]')) : [];
+        
         tagsContainer.innerHTML = '';
         
         tags.forEach((tag, index) => {
+            // Check if this tag is already positioned in the next-action-slot
+            const existingNextActionTag = existingTagElements.find(el => 
+                parseInt(el.dataset.tagIndex) === index && el.dataset.isInNextAction === 'true'
+            );
+            
+            if (existingNextActionTag) {
+                // Update the existing next-action tag's data but don't recreate it
+                existingNextActionTag.dataset.tagIndex = index;
+                return; // Skip creating a new element
+            }
             const tagElement = document.createElement('div');
             tagElement.className = 'tag';
             tagElement.draggable = true;
@@ -922,8 +1054,14 @@ class ProcessFlowDesigner {
             tagElement.addEventListener('dragstart', (e) => this.handleTagDragStart(e));
             tagElement.addEventListener('dragend', (e) => this.handleTagDragEnd(e));
             
-            // Add context menu event listener
-            tagElement.addEventListener('contextmenu', (e) => this.handleTagContextMenu(e, tagElement, taskNode, index));
+            // Add context menu event listener (simple - no overlap issues)
+            tagElement.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Right-click detected on tag:', tagElement);
+                console.log('Tag data:', tags[index]);
+                this.showSimpleTagMenu(e, tagElement, tags[index]);
+            });
             
             tagsContainer.appendChild(tagElement);
         });
@@ -1303,9 +1441,14 @@ class ProcessFlowDesigner {
     }
     
     handleSlotDragOver(e) {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = 'move';
-        e.target.classList.add('drag-over');
+        // Only allow dragover if it's the same task
+        if (this.draggedTag && e.target.dataset.taskId === this.draggedTag.taskId) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            e.target.classList.add('drag-over');
+        } else {
+            e.dataTransfer.dropEffect = 'none';
+        }
     }
     
     handleSlotDragLeave(e) {
@@ -1332,54 +1475,69 @@ class ProcessFlowDesigner {
         
         console.log('Source task ID:', sourceTaskId, 'Target task ID:', targetTaskId);
         
-        // Find the source and target task nodes
-        const sourceTaskNode = this.nodes.find(node => node.dataset.id === sourceTaskId);
-        const targetTaskNode = this.nodes.find(node => node.dataset.id === targetTaskId);
-        
-        console.log('Source node:', sourceTaskNode, 'Target node:', targetTaskNode);
-        
-        if (!sourceTaskNode || !targetTaskNode) {
-            console.log('Could not find source or target task node');
+        // Only allow dropping on the same task's next-action-slot
+        if (sourceTaskId !== targetTaskId) {
+            console.log('Cannot drop on different task');
             return;
         }
         
-        // Get the tag data
-        const sourceTags = this.getTaskTags(sourceTaskNode);
-        const tagData = sourceTags[this.draggedTag.tagIndex];
-        
-        console.log('Tag data:', tagData, 'from index:', this.draggedTag.tagIndex);
-        
-        if (!tagData) {
-            console.log('No tag data found at index');
-            return;
-        }
-        
-        // Set successful drop flag BEFORE modifying anything
+        // Set successful drop flag
         this.successfulDrop = true;
         
-        // Remove tag from source task
-        sourceTags.splice(this.draggedTag.tagIndex, 1);
-        this.setTaskTags(sourceTaskNode, sourceTags);
+        // Animate the tag to snap to the next-action-slot location
+        this.snapTagToSlot(this.draggedTag.element, e.target);
         
-        // Add tag to target task (check for duplicates by category)
-        const targetTags = this.getTaskTags(targetTaskNode);
-        const existingTagIndex = targetTags.findIndex(tag => tag.category === tagData.category);
+        console.log('Tag snapped to next-action-slot');
+    }
+    
+    snapTagToSlot(tagElement, slotElement) {
+        // Store restoration data on the tag element
+        tagElement.dataset.originalParent = 'task-tags';
         
-        if (existingTagIndex >= 0) {
-            // Update existing tag
-            targetTags[existingTagIndex] = tagData;
-        } else {
-            // Add new tag
-            targetTags.push(tagData);
-        }
+        // Get current and target positions for animation
+        const tagRect = tagElement.getBoundingClientRect();
+        const slotRect = slotElement.getBoundingClientRect();
         
-        this.setTaskTags(targetTaskNode, targetTags);
+        // Calculate animation offset
+        const deltaX = slotRect.left - tagRect.left;
+        const deltaY = slotRect.top - tagRect.top;
         
-        // Update displays
-        this.updateTaskTagsDisplay(sourceTaskNode);
-        this.updateTaskTagsDisplay(targetTaskNode);
+        console.log('Snapping tag to slot - deltaX:', deltaX, 'deltaY:', deltaY);
         
-        console.log('Drop completed successfully');
+        // Add visual styling for the animation
+        tagElement.classList.add('tag-animating-to-slot');
+        tagElement.style.zIndex = '1000';
+        
+        // Animate the tag to the slot position using transform
+        tagElement.style.transition = 'all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+        tagElement.style.transform = `translate(${deltaX}px, ${deltaY}px) scale(1.05)`;
+        
+        // After animation completes, move the tag to the slot
+        setTimeout(() => {
+            // Remove the tag from its current parent (task-tags container)
+            tagElement.remove();
+            
+            // Reset animation styles
+            tagElement.style.transition = '';
+            tagElement.style.transform = '';
+            tagElement.style.zIndex = '';
+            tagElement.classList.remove('tag-animating-to-slot');
+            
+            // Add the tag as a child of the next-action-slot
+            tagElement.classList.add('tag-in-slot');
+            tagElement.dataset.isInNextAction = 'true';
+            slotElement.appendChild(tagElement);
+            
+            // Context menu event listener is preserved when moving DOM elements
+            
+            // Add temporary glow effect
+            tagElement.classList.add('in-next-action');
+            setTimeout(() => {
+                tagElement.classList.remove('in-next-action');
+            }, 1500);
+            
+            console.log('Tag successfully snapped to next-action slot');
+        }, 400);
     }
     
     snapTagBack() {
@@ -1410,10 +1568,84 @@ class ProcessFlowDesigner {
         }
     }
     
+    // Simple Tag Menu Functions
+    showSimpleTagMenu(e, tagElement, tagData) {
+        console.log('Showing simple tag menu for:', tagData);
+        
+        // Hide any existing context menus
+        this.hideTagContextMenus();
+        this.hideContextMenu();
+        
+        // Create or update the simple tag menu content
+        const tagMenu = document.getElementById('tagContextMenu');
+        tagMenu.innerHTML = '';
+        
+        // Add tag information
+        const categoryItem = document.createElement('div');
+        categoryItem.className = 'menu-item menu-info';
+        categoryItem.innerHTML = `<strong>Category:</strong> ${tagData.category || 'None'}`;
+        tagMenu.appendChild(categoryItem);
+        
+        if (tagData.option) {
+            const optionItem = document.createElement('div');
+            optionItem.className = 'menu-item menu-info';
+            optionItem.innerHTML = `<strong>Option:</strong> ${tagData.option}`;
+            tagMenu.appendChild(optionItem);
+        }
+        
+        if (tagData.date) {
+            const dateItem = document.createElement('div');
+            dateItem.className = 'menu-item menu-info';
+            dateItem.innerHTML = `<strong>Date:</strong> ${tagData.date}`;
+            tagMenu.appendChild(dateItem);
+        }
+        
+        if (tagData.description) {
+            const descItem = document.createElement('div');
+            descItem.className = 'menu-item menu-info';
+            descItem.innerHTML = `<strong>Description:</strong> ${tagData.description}`;
+            tagMenu.appendChild(descItem);
+        }
+        
+        if (tagData.link) {
+            const linkItem = document.createElement('div');
+            linkItem.className = 'menu-item menu-info';
+            linkItem.innerHTML = `<strong>Link:</strong> <a href="${tagData.link}" target="_blank" rel="noopener">${tagData.link}</a>`;
+            linkItem.style.pointerEvents = 'auto'; // Allow clicking on the link
+            tagMenu.appendChild(linkItem);
+        }
+        
+        if (tagData.completed !== undefined) {
+            const completedItem = document.createElement('div');
+            completedItem.className = 'menu-item menu-info';
+            completedItem.innerHTML = `<strong>Status:</strong> ${tagData.completed ? '✓ Completed' : '○ Not completed'}`;
+            tagMenu.appendChild(completedItem);
+        }
+        
+        // Add separator
+        const separator = document.createElement('div');
+        separator.className = 'menu-separator';
+        tagMenu.appendChild(separator);
+        
+        // Add close option
+        const closeItem = document.createElement('div');
+        closeItem.className = 'menu-item';
+        closeItem.textContent = 'Close';
+        closeItem.addEventListener('click', () => {
+            this.hideTagContextMenus();
+        });
+        tagMenu.appendChild(closeItem);
+        
+        // Position and show menu
+        const canvasRect = this.canvas.getBoundingClientRect();
+        tagMenu.style.left = (e.clientX - canvasRect.left) + 'px';
+        tagMenu.style.top = (e.clientY - canvasRect.top) + 'px';
+        tagMenu.style.display = 'block';
+    }
+    
     // Tag Context Menu Functions
     handleTagContextMenu(e, tagElement, taskNode, tagIndex) {
         e.preventDefault();
-        e.stopPropagation();
         
         this.selectedTagForEdit = tagElement;
         this.currentTagData = {
@@ -1421,6 +1653,12 @@ class ProcessFlowDesigner {
             tagIndex: tagIndex,
             attribute: null
         };
+        
+        // Show/hide reset option based on whether tag is in next-action state
+        const resetMenuItem = this.tagContextMenu.querySelector('[data-action="reset-next-action"]');
+        if (resetMenuItem) {
+            resetMenuItem.style.display = tagElement.dataset.isInNextAction === 'true' ? 'block' : 'none';
+        }
         
         const canvasRect = this.canvas.getBoundingClientRect();
         this.tagContextMenu.style.left = (e.clientX - canvasRect.left) + 'px';
@@ -1589,6 +1827,48 @@ class ProcessFlowDesigner {
                 this.displayCurrentTags();
             }
         }
+    }
+    
+    resetTagFromNextAction() {
+        if (!this.selectedTagForEdit || !this.currentTagData) return;
+        
+        const tagElement = this.selectedTagForEdit;
+        const taskNode = this.currentTagData.taskNode;
+        
+        // Find the task container (parent of the banner)
+        const taskContainer = taskNode.parentNode;
+        if (!taskContainer) {
+            console.error('Could not find task container');
+            return;
+        }
+        
+        // Find the task's tags container
+        const tagsContainer = taskContainer.querySelector('.task-tags');
+        if (!tagsContainer) {
+            console.error('Could not find task tags container');
+            return;
+        }
+        
+        // Remove the tag from its current parent (next-action-slot or canvas)
+        tagElement.remove();
+        
+        // Reset tag styling to normal
+        tagElement.style.position = '';
+        tagElement.style.left = '';
+        tagElement.style.top = '';
+        tagElement.style.zIndex = '';
+        tagElement.style.transform = '';
+        tagElement.style.transition = '';
+        
+        // Remove next-action state and classes
+        delete tagElement.dataset.isInNextAction;
+        delete tagElement.dataset.originalParent;
+        tagElement.classList.remove('in-next-action', 'tag-animating-to-slot', 'tag-in-slot');
+        
+        // Add the tag back to the task's tags container
+        tagsContainer.appendChild(tagElement);
+        
+        console.log('Tag reset from next-action state and returned to task');
     }
     
     hideTagContextMenus() {

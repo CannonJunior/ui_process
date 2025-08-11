@@ -143,35 +143,55 @@ body {
     padding: 6px 12px;
 }
 
-/* Task Container */
+/* Task Container - Vertical Layout */
 .task-container {
     position: absolute;
     display: flex;
-    flex-direction: row;
-    align-items: center;
-    gap: 8px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    min-width: 120px;
+    max-width: 200px;
 }
 
-/* Responsive Task Nodes */
-.node.task {
-    width: clamp(80px, 12vw, 120px);
-    min-height: 40px;
+/* Task Banner - Compact header */
+.task-banner {
+    width: 100%;
+    min-height: 30px;
     height: auto;
     border-radius: 6px;
-    font-size: clamp(9px, 2vw, 10px);
+    font-size: clamp(10px, 2.5vw, 12px);
+    font-weight: 500;
+    color: #333;
+    border: 2px solid #333;
     background-color: #f8f9fa;
-    border-color: #6c757d;
-    cursor: default;
-    padding: 4px 6px;
-    gap: 2px;
-    z-index: 50; /* Higher than regular nodes (10) but lower than dragging nodes (1000) */
-    position: relative;
+    cursor: move;
+    user-select: none;
+    padding: 4px 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-/* Next Action Slot */
+/* Task Tags Area - Below banner */
+.task-tags-area {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 2px;
+}
+
+/* Legacy task node styles - now handled by task-banner */
+.node.task {
+    /* These styles are now applied to .task-banner */
+}
+
+/* Next Action Slot - Square positioned to right of task-container */
 .next-action-slot {
-    width: 24px;
-    height: 24px;
+    width: 40px;
+    height: 40px;
     border: 2px dashed #007bff;
     border-radius: 4px;
     background-color: transparent;
@@ -180,8 +200,21 @@ body {
     justify-content: center;
     cursor: pointer;
     transition: all 0.2s ease;
-    position: relative;
-    flex-shrink: 0;
+    position: absolute;
+    z-index: 10;
+}
+
+/* When slot contains a tag, adjust its styling */
+.next-action-slot:has(.tag-in-slot) {
+    border-style: solid;
+    background-color: rgba(0, 123, 255, 0.05);
+    justify-content: flex-start;
+    padding: 6px;
+}
+
+/* Hide the + icon when slot contains a tag */
+.next-action-slot:has(.tag-in-slot)::after {
+    display: none;
 }
 
 .next-action-slot::after {
@@ -251,18 +284,14 @@ input.node-input {
     min-width: 0;
 }
 
-/* Responsive Tag System */
+/* Task Tags Container - Now separate from banner */
 .task-tags {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 3px;
     width: 100%;
-    max-width: 100%;
-    justify-content: flex-start;
-    align-items: flex-start;
-    margin-top: 2px;
-    /* Removed max-height and overflow hidden to show all tags */
-    /* Allow natural height expansion for all tags */
+    padding: 0;
+    margin: 0;
 }
 
 .task-tags .tag {
@@ -320,6 +349,65 @@ input.node-input {
     100% { transform: scale(1); opacity: 1; }
 }
 
+.tag.in-next-action {
+    animation: nextActionGlow 0.8s ease-out;
+    box-shadow: 0 0 15px rgba(0, 123, 255, 0.8);
+    border: 2px solid #007bff;
+    background-color: rgba(0, 123, 255, 0.1);
+}
+
+/* Persistent indicator for tags that are in next-action state */
+.tag[data-is-in-next-action="true"] {
+    border-left: 4px solid #007bff;
+    padding-left: 6px;
+    background: linear-gradient(90deg, rgba(0, 123, 255, 0.1), transparent 50%);
+}
+
+.tag-clone-animating {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    border: 2px solid #007bff;
+}
+
+.tag-animating-to-slot {
+    box-shadow: 0 6px 20px rgba(0, 123, 255, 0.4);
+    border: 2px solid #007bff;
+    z-index: 1000;
+}
+
+/* Tags positioned within next-action-slot */
+.tag-in-slot {
+    position: relative;
+    z-index: 10;
+    pointer-events: all;
+    margin: 0;
+    font-size: clamp(8px, 1.8vw, 10px);
+    padding: 2px 4px;
+    border-radius: 4px;
+    white-space: nowrap;
+}
+
+/* Persistent indicator for tags in next-action slot */
+.tag-in-slot[data-is-in-next-action="true"] {
+    border: 1px solid #007bff;
+    background: linear-gradient(90deg, rgba(0, 123, 255, 0.15), rgba(0, 123, 255, 0.05));
+    box-shadow: 0 1px 3px rgba(0, 123, 255, 0.2);
+}
+
+@keyframes nextActionGlow {
+    0% { 
+        box-shadow: 0 0 5px rgba(0, 123, 255, 0.3);
+        border: 1px solid transparent; 
+    }
+    50% { 
+        box-shadow: 0 0 15px rgba(0, 123, 255, 0.8);
+        border: 2px solid #007bff; 
+    }
+    100% { 
+        box-shadow: 0 0 10px rgba(0, 123, 255, 0.6);
+        border: 2px solid #007bff; 
+    }
+}
+
 .tag-remove {
     background: none;
     border: none;
@@ -372,6 +460,18 @@ input.node-input {
 
 .menu-item:last-child {
     border-bottom: none;
+}
+
+.menu-item.menu-info {
+    color: #333;
+    font-size: 12px;
+    background-color: #f8f9fa;
+    cursor: default;
+    pointer-events: none;
+}
+
+.menu-item.menu-info:hover {
+    background-color: #f8f9fa;
 }
 
 .menu-separator {
@@ -518,6 +618,74 @@ input.node-input {
     border-color: #007bff;
     outline: none;
     box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.tag-description-selector,
+.tag-link-selector,
+.tag-completed-selector {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.tag-description-selector label,
+.tag-link-selector label,
+.tag-completed-selector label {
+    font-size: 13px;
+    font-weight: 500;
+    color: #333;
+}
+
+.tag-description-input {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 13px;
+    font-family: inherit;
+    width: 100%;
+    box-sizing: border-box;
+    resize: vertical;
+    min-height: 60px;
+}
+
+.tag-description-input:focus {
+    border-color: #007bff;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.tag-link-input {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 13px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.tag-link-input:focus {
+    border-color: #007bff;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    font-size: 13px;
+    gap: 8px;
+}
+
+.tag-completed-input {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+
+.checkmark {
+    font-size: 13px;
+    user-select: none;
 }
 
 /* Current Tags Display in Modal */

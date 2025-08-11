@@ -11,7 +11,7 @@
 - [x] CSS styling for nodes and interface (2025-07-27)
 - [x] JavaScript application with full functionality (2025-07-27)
 
-## Task Status: COMPLETED
+## Previous Task Status: COMPLETED
 All core requirements from PLANNING.md have been implemented:
 1. ✅ Dropdown with node types (Process, Decision, Terminal)
 2. ✅ Visual representations (rectangle, diamond, rounded rectangle)
@@ -20,6 +20,11 @@ All core requirements from PLANNING.md have been implemented:
 5. ✅ Flowline creation between nodes
 6. ✅ Node renaming functionality
 7. ✅ Node deletion functionality
+
+## Current Task
+**Task:** Add chat interface with local Ollama models for process flow assistance
+**Date Added:** 2025-08-10
+**Description:** Implement right sidebar chat interface powered by local Ollama models to help users with tasks, processes, and application features. Include RAG system for ingesting local documentation from assets folder.
 
 ## Discovered During Work
 - [x] Enhanced save/load workflow to preserve visual fidelity (2025-08-09)

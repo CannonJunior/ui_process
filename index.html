@@ -56,6 +56,7 @@
         <div class="menu-item" data-attribute="option">Option</div>
         <div class="menu-item" data-attribute="date">Date</div>
         <div class="menu-separator"></div>
+        <div class="menu-item" data-action="reset-next-action" style="display: none;">Move Back to Task</div>
         <div class="menu-item" data-action="delete">Delete Tag</div>
     </div>
     
@@ -110,6 +111,21 @@
                     <div class="tag-date-selector">
                         <label for="tagDateInput">Date (optional):</label>
                         <input type="date" id="tagDateInput" class="tag-date-input">
+                    </div>
+                    <div class="tag-description-selector">
+                        <label for="tagDescriptionInput">Description (optional):</label>
+                        <textarea id="tagDescriptionInput" class="tag-description-input" placeholder="Enter tag description..." rows="3"></textarea>
+                    </div>
+                    <div class="tag-link-selector">
+                        <label for="tagLinkInput">Link (optional):</label>
+                        <input type="url" id="tagLinkInput" class="tag-link-input" placeholder="https://example.com">
+                    </div>
+                    <div class="tag-completed-selector">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="tagCompletedInput" class="tag-completed-input">
+                            <span class="checkmark"></span>
+                            Mark as completed
+                        </label>
                     </div>
                 </div>
             </div>
