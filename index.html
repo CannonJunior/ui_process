@@ -30,10 +30,59 @@
         <select id="flowlineTypeDropdown">
             <!-- Options will be populated by config.js -->
         </select>
+        
+        <button id="toggleChatButton" class="toolbar-button chat-toggle">💬 Chat</button>
     </div>
     
-    <div id="canvas" class="canvas">
-        <!-- Nodes will be created here -->
+    <div class="main-container">
+        <div id="canvas" class="canvas">
+            <!-- Nodes will be created here -->
+        </div>
+        
+        <div id="chatSidebar" class="chat-sidebar">
+            <div class="chat-header">
+                <h3>Process Flow Assistant</h3>
+                <button id="closeChatButton" class="close-chat-btn">×</button>
+            </div>
+            
+            <div class="chat-status">
+                <div id="chatConnectionStatus" class="connection-status">
+                    <span class="status-indicator" id="statusIndicator">○</span>
+                    <span id="statusText">Connecting to Ollama...</span>
+                </div>
+            </div>
+            
+            <div id="chatMessages" class="chat-messages">
+                <div class="welcome-message">
+                    <p>👋 Hi! I'm your Process Flow Assistant.</p>
+                    <p>I can help you with:</p>
+                    <ul>
+                        <li>Creating and managing process flows</li>
+                        <li>Understanding node types and connections</li>
+                        <li>Task management and tagging</li>
+                        <li>Troubleshooting issues</li>
+                    </ul>
+                    <p>Ask me anything about your workflow!</p>
+                </div>
+            </div>
+            
+            <div class="chat-input-container">
+                <div class="chat-input-wrapper">
+                    <textarea id="chatInput" 
+                             class="chat-input" 
+                             placeholder="Ask me about process flows, tasks, or nodes..."
+                             rows="2"
+                             maxlength="1000"></textarea>
+                    <button id="sendChatButton" class="send-button" disabled>
+                        <span id="sendButtonText">Send</span>
+                        <span id="sendButtonLoader" class="loader" style="display: none;">●●●</span>
+                    </button>
+                </div>
+                <div class="char-counter">
+                    <span id="charCount">0</span>/1000
+                </div>
+            </div>
+        </div>
     </div>
     
     <div id="contextMenu" class="context-menu">
@@ -139,6 +188,7 @@
     </div>
     
     <script src="config.js"></script>
+    <script src="chat-interface.js"></script>
     <script src="script.js"></script>
 </body>
 </html>

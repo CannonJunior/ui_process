@@ -632,8 +632,15 @@ class ProcessFlowDesigner {
         
         // Add ResizeObserver to monitor task container size changes
         if (window.ResizeObserver) {
+            let resizeTimeout;
             const resizeObserver = new ResizeObserver(() => {
-                this.updateNextActionSlotPosition(taskBanner);
+                // Debounce to avoid excessive repositioning
+                clearTimeout(resizeTimeout);
+                resizeTimeout = setTimeout(() => {
+                    this.updateNextActionSlotPosition(taskBanner);
+                    // Also reposition tasks below this one when height changes
+                    this.repositionTasksAfterHeightChange(taskBanner);
+                }, 50);
             });
             resizeObserver.observe(taskContainer);
             
@@ -707,13 +714,37 @@ class ProcessFlowDesigner {
         
         // Constants for task positioning
         const TASK_OFFSET_Y = 80; // Distance below anchor node for first task
-        const TASK_SPACING = 50;  // Spacing between tasks in slots
+        const MIN_TASK_GAP = 10;   // Minimum gap between tasks
+        
+        // Calculate dynamic Y position based on actual heights of previous tasks
+        let yPosition = anchorY + TASK_OFFSET_Y;
+        
+        if (slot > 0) {
+            // Get all tasks for this anchor node that come before this one
+            const allTasks = this.getTasksForNode(anchorNodeId);
+            const sortedTasks = allTasks.sort((a, b) => {
+                const slotA = parseInt(a.dataset.slot) || 0;
+                const slotB = parseInt(b.dataset.slot) || 0;
+                return slotA - slotB;
+            });
+            
+            // Calculate cumulative height from previous tasks
+            for (let i = 0; i < slot && i < sortedTasks.length; i++) {
+                const prevTask = sortedTasks[i];
+                const prevTaskContainer = prevTask.parentNode;
+                
+                if (prevTaskContainer && prevTaskContainer.classList.contains('task-container')) {
+                    const prevTaskHeight = this.getTaskContainerTotalHeight(prevTaskContainer);
+                    yPosition += prevTaskHeight + MIN_TASK_GAP;
+                }
+            }
+        }
         
         // Find the task container (parent of the task node)
         const taskContainer = taskNode.parentNode;
         if (taskContainer && taskContainer.classList.contains('task-container')) {
             taskContainer.style.left = anchorX + 'px';
-            taskContainer.style.top = (anchorY + TASK_OFFSET_Y + (slot * TASK_SPACING)) + 'px';
+            taskContainer.style.top = yPosition + 'px';
             
             // Also position the associated next-action-slot
             const nextActionSlot = this.canvas.querySelector(`.next-action-slot[data-task-id="${taskNode.dataset.id}"]`);
@@ -723,8 +754,36 @@ class ProcessFlowDesigner {
         } else {
             // Fallback for task nodes without container (shouldn't happen with new structure)
             taskNode.style.left = anchorX + 'px';
-            taskNode.style.top = (anchorY + TASK_OFFSET_Y + (slot * TASK_SPACING)) + 'px';
+            taskNode.style.top = yPosition + 'px';
         }
+    }
+    
+    getTaskContainerTotalHeight(taskContainer) {
+        // Get the actual rendered height of the entire task container including tags
+        // Use a small delay to ensure DOM updates have been processed
+        const rect = taskContainer.getBoundingClientRect();
+        
+        // Ensure minimum height for tasks without tags
+        const minHeight = 40; // Minimum height for task banner
+        return Math.max(rect.height, minHeight);
+    }
+    
+    repositionTasksAfterHeightChange(changedTaskNode) {
+        // When a task's height changes, reposition all tasks below it
+        const anchorNodeId = changedTaskNode.dataset.anchoredTo;
+        const changedSlot = parseInt(changedTaskNode.dataset.slot) || 0;
+        
+        // Get all tasks for this anchor that are in slots after the changed task
+        const allTasks = this.getTasksForNode(anchorNodeId);
+        const tasksToReposition = allTasks.filter(task => {
+            const taskSlot = parseInt(task.dataset.slot) || 0;
+            return taskSlot > changedSlot;
+        });
+        
+        // Reposition each affected task
+        tasksToReposition.forEach(task => {
+            this.positionTaskInSlot(task);
+        });
     }
     
     repositionAllTasksForNode(nodeId) {
@@ -966,6 +1025,9 @@ class ProcessFlowDesigner {
         this.displayCurrentTags();
         this.updateTaskTagsDisplay(this.selectedTaskForTags);
         
+        // Reposition tasks below this one since height may have changed
+        this.repositionTasksAfterHeightChange(this.selectedTaskForTags);
+        
         // Reset form
         this.tagCategoryDropdown.value = '';
         this.tagOptionDropdown.disabled = true;
@@ -985,6 +1047,9 @@ class ProcessFlowDesigner {
         this.setTaskTags(this.selectedTaskForTags, tags);
         this.displayCurrentTags();
         this.updateTaskTagsDisplay(this.selectedTaskForTags);
+        
+        // Reposition tasks below this one since height may have changed
+        this.repositionTasksAfterHeightChange(this.selectedTaskForTags);
     }
     
     saveTaskTags() {
@@ -1537,6 +1602,14 @@ class ProcessFlowDesigner {
             }, 1500);
             
             console.log('Tag successfully snapped to next-action slot');
+            
+            // Reposition tasks below this one since height may have changed
+            const taskBanner = this.nodes.find(node => node.dataset.id === slotElement.dataset.taskId);
+            if (taskBanner) {
+                setTimeout(() => {
+                    this.repositionTasksAfterHeightChange(taskBanner);
+                }, 50); // Small delay to allow DOM updates
+            }
         }, 400);
     }
     
@@ -1869,6 +1942,9 @@ class ProcessFlowDesigner {
         tagsContainer.appendChild(tagElement);
         
         console.log('Tag reset from next-action state and returned to task');
+        
+        // Reposition tasks below this one since height may have changed
+        this.repositionTasksAfterHeightChange(taskNode);
     }
     
     hideTagContextMenus() {
