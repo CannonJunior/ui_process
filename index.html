@@ -6,6 +6,9 @@
     <title>Process Flow Designer</title>
     <link rel="stylesheet" href="styles.css">
     
+    <!-- D3.js for animations -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    
     <!-- PrimeReact Dependencies -->
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
@@ -41,16 +44,16 @@
             <!-- Eisenhower Matrix Container -->
             <div id="eisenhowerMatrix" class="eisenhower-matrix" style="display: none;">
                 <div class="quadrant quadrant-1" data-quadrant="1">
-                    <div class="quadrant-label">Urgent & Important</div>
-                </div>
-                <div class="quadrant quadrant-2" data-quadrant="2">
                     <div class="quadrant-label">Not Urgent & Important</div>
                 </div>
+                <div class="quadrant quadrant-2" data-quadrant="2">
+                    <div class="quadrant-label">Urgent & Important</div>
+                </div>
                 <div class="quadrant quadrant-3" data-quadrant="3">
-                    <div class="quadrant-label">Urgent & Not Important</div>
+                    <div class="quadrant-label">Not Urgent & Not Important</div>
                 </div>
                 <div class="quadrant quadrant-4" data-quadrant="4">
-                    <div class="quadrant-label">Not Urgent & Not Important</div>
+                    <div class="quadrant-label">Urgent & Not Important</div>
                 </div>
             </div>
             <!-- Nodes will be created here -->

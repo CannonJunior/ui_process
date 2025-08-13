@@ -52,7 +52,7 @@ class ProcessFlowDesigner {
         this.eisenhowerToggle = document.getElementById('eisenhowerToggle');
         this.eisenhowerMatrix = document.getElementById('eisenhowerMatrix');
         this.isMatrixMode = false;
-        this.originalTaskPositions = new Map(); // Store original positions before matrix mode
+        this.originalNodePositions = new Map(); // Store original positions for ALL nodes before matrix mode
         
         this.init();
     }
@@ -629,12 +629,50 @@ class ProcessFlowDesigner {
         // Add next-action-slot to canvas (positioned separately)
         this.canvas.appendChild(nextActionSlot);
         
-        // Assign slot and position task node
-        this.assignTaskSlot(taskBanner);
-        this.positionTaskInSlot(taskBanner);
+        // Add to arrays first
+        this.nodes.push(taskBanner);
+        this.taskNodes.push(taskBanner);
         
-        // Position next-action-slot to the right of task-container
-        this.positionNextActionSlot(taskContainer, nextActionSlot);
+        // Check if Eisenhower Matrix is active
+        if (this.isMatrixMode) {
+            // First, calculate the normal slot position for this task
+            this.assignTaskSlot(taskBanner);
+            const normalPosition = this.calculateTaskSlotPosition(taskBanner);
+            const normalSlotPosition = { x: normalPosition.x + 130, y: normalPosition.y }; // Next-action-slot offset
+            
+            // Store the normal positions as "original" positions
+            this.originalNodePositions.set(taskBanner.dataset.id, {
+                element: taskContainer,
+                x: normalPosition.x,
+                y: normalPosition.y,
+                type: 'task-container'
+            });
+            this.originalNodePositions.set(`slot-${taskBanner.dataset.id}`, {
+                element: nextActionSlot,
+                x: normalSlotPosition.x,
+                y: normalSlotPosition.y,
+                type: 'next-action-slot'
+            });
+            
+            // Position new task off-screen initially, then animate into matrix
+            taskContainer.style.left = `-${200}px`;
+            taskContainer.style.top = '100px';
+            nextActionSlot.style.left = `-${200}px`;
+            nextActionSlot.style.top = '100px';
+            
+            // Position in matrix using D3 transition after a short delay to ensure DOM is ready
+            setTimeout(() => {
+                this.positionSingleTaskInMatrix(taskBanner);
+            }, 100);
+        } else {
+            // Normal positioning when matrix is not active
+            // Assign slot and position task node
+            this.assignTaskSlot(taskBanner);
+            this.positionTaskInSlot(taskBanner);
+            
+            // Position next-action-slot to the right of task-container
+            this.positionNextActionSlot(taskContainer, nextActionSlot);
+        }
         
         // Add event listeners to the task banner (now the main task element)
         taskBanner.addEventListener('mousedown', (e) => this.handleMouseDown(e, taskBanner));
@@ -663,9 +701,6 @@ class ProcessFlowDesigner {
             // Store observer reference for cleanup
             taskContainer._resizeObserver = resizeObserver;
         }
-        
-        this.nodes.push(taskBanner);
-        this.taskNodes.push(taskBanner);
     }
     
     positionNextActionSlot(taskContainer, nextActionSlot) {
@@ -1069,7 +1104,12 @@ class ProcessFlowDesigner {
     }
     
     saveTaskTags() {
-        // Tags are already saved when added/removed
+        // Tags are already saved when added/removed, but if matrix is active,
+        // reposition the task based on its updated tags
+        if (this.isMatrixMode && this.selectedTaskForTags) {
+            this.positionSingleTaskInMatrix(this.selectedTaskForTags);
+        }
+        
         this.hideTagModal();
     }
     
@@ -2056,55 +2096,121 @@ class ProcessFlowDesigner {
     enterMatrixMode() {
         console.log('Entering Eisenhower Matrix mode');
         
-        // Store original positions of all tasks
-        this.storeOriginalTaskPositions();
+        // Store original positions of all nodes
+        this.storeOriginalNodePositions();
         
         // Show the matrix overlay
         this.eisenhowerMatrix.style.display = 'grid';
         
-        // Position tasks in appropriate quadrants
-        this.positionTasksInMatrix();
+        // Use D3 to transition all nodes off-screen to the left
+        this.transitionNodesOffScreen().then(() => {
+            // After nodes are off-screen, position tasks in matrix quadrants
+            this.positionTasksInMatrix();
+        });
     }
     
     exitMatrixMode() {
         console.log('Exiting Eisenhower Matrix mode');
         
-        // Hide the matrix overlay
-        this.eisenhowerMatrix.style.display = 'none';
-        
-        // Restore original task positions
-        this.restoreOriginalTaskPositions();
+        // Use D3 to transition all nodes back to original positions
+        this.transitionNodesToOriginalPositions().then(() => {
+            // After transition completes, hide the matrix overlay
+            this.eisenhowerMatrix.style.display = 'none';
+        });
     }
     
-    storeOriginalTaskPositions() {
-        this.originalTaskPositions.clear();
+    storeOriginalNodePositions() {
+        this.originalNodePositions.clear();
         
-        this.taskNodes.forEach(taskNode => {
-            const taskContainer = taskNode.closest('.task-container');
-            if (taskContainer) {
-                this.originalTaskPositions.set(taskNode.dataset.taskId, {
-                    x: taskContainer.offsetLeft,
-                    y: taskContainer.offsetTop
+        // Store positions for all regular nodes
+        this.nodes.forEach(node => {
+            if (node.dataset.type === 'task') {
+                // For task nodes, store the task container position
+                const taskContainer = node.closest('.task-container');
+                if (taskContainer) {
+                    this.originalNodePositions.set(node.dataset.id, {
+                        element: taskContainer,
+                        x: taskContainer.offsetLeft,
+                        y: taskContainer.offsetTop,
+                        type: 'task-container'
+                    });
+                }
+            } else {
+                // For regular nodes (process, decision, terminal)
+                this.originalNodePositions.set(node.dataset.id, {
+                    element: node,
+                    x: node.offsetLeft,
+                    y: node.offsetTop,
+                    type: 'node'
                 });
             }
         });
         
-        console.log('Stored original positions for', this.originalTaskPositions.size, 'tasks');
-    }
-    
-    restoreOriginalTaskPositions() {
-        this.taskNodes.forEach(taskNode => {
-            const taskContainer = taskNode.closest('.task-container');
-            const taskId = taskNode.dataset.taskId;
-            
-            if (taskContainer && this.originalTaskPositions.has(taskId)) {
-                const originalPos = this.originalTaskPositions.get(taskId);
-                taskContainer.style.left = originalPos.x + 'px';
-                taskContainer.style.top = originalPos.y + 'px';
-            }
+        // Store positions for next-action-slots
+        const nextActionSlots = this.canvas.querySelectorAll('.next-action-slot');
+        nextActionSlots.forEach(slot => {
+            this.originalNodePositions.set(`slot-${slot.dataset.taskId}`, {
+                element: slot,
+                x: slot.offsetLeft,
+                y: slot.offsetTop,
+                type: 'next-action-slot'
+            });
         });
         
-        console.log('Restored original positions for tasks');
+        console.log('Stored original positions for', this.originalNodePositions.size, 'elements');
+    }
+    
+    transitionNodesOffScreen() {
+        return new Promise((resolve) => {
+            const elementsToAnimate = Array.from(this.originalNodePositions.values());
+            
+            if (elementsToAnimate.length === 0) {
+                resolve();
+                return;
+            }
+            
+            // Use D3 to select and animate elements
+            d3.selectAll(elementsToAnimate.map(item => item.element))
+                .transition()
+                .duration(800)
+                .ease(d3.easeCubicOut)
+                .style('left', (d, i) => {
+                    const item = elementsToAnimate[i];
+                    // Move off-screen to the left (negative x value)
+                    return `-${item.element.offsetWidth + 50}px`;
+                })
+                .on('end', () => {
+                    resolve();
+                });
+        });
+    }
+    
+    transitionNodesToOriginalPositions() {
+        return new Promise((resolve) => {
+            const elementsToAnimate = Array.from(this.originalNodePositions.values());
+            
+            if (elementsToAnimate.length === 0) {
+                resolve();
+                return;
+            }
+            
+            // Use D3 to select and animate elements back to original positions
+            d3.selectAll(elementsToAnimate.map(item => item.element))
+                .transition()
+                .duration(800)
+                .ease(d3.easeCubicOut)
+                .style('left', (d, i) => {
+                    const item = elementsToAnimate[i];
+                    return `${item.x}px`;
+                })
+                .style('top', (d, i) => {
+                    const item = elementsToAnimate[i];
+                    return `${item.y}px`;
+                })
+                .on('end', () => {
+                    resolve();
+                });
+        });
     }
     
     positionTasksInMatrix() {
@@ -2114,30 +2220,249 @@ class ProcessFlowDesigner {
         
         // Define quadrant positions (with padding from edges and labels)
         const quadrants = {
-            1: { x: 20, y: 40 }, // Urgent & Important (top-left)
-            2: { x: quadrantWidth + 20, y: 40 }, // Not Urgent & Important (top-right) 
-            3: { x: 20, y: quadrantHeight + 40 }, // Urgent & Not Important (bottom-left)
-            4: { x: quadrantWidth + 20, y: quadrantHeight + 40 } // Not Urgent & Not Important (bottom-right)
+            1: { x: 20, y: 40 }, // Not Urgent & Important (top-left)
+            2: { x: quadrantWidth + 20, y: 40 }, // Urgent & Important (top-right) 
+            3: { x: 20, y: quadrantHeight + 40 }, // Not Urgent & Not Important (bottom-left)
+            4: { x: quadrantWidth + 20, y: quadrantHeight + 40 } // Urgent & Not Important (bottom-right)
         };
+        
+        // Prepare task containers for animation based on their urgency/importance tags
+        const taskContainersData = [];
+        const quadrantCounts = { 1: 0, 2: 0, 3: 0, 4: 0 }; // Track tasks per quadrant for positioning
         
         this.taskNodes.forEach((taskNode, index) => {
             const taskContainer = taskNode.closest('.task-container');
-            if (taskContainer) {
-                // For now, distribute tasks evenly across quadrants
-                // In a real implementation, this would be based on task priority/urgency
-                const quadrantNum = (index % 4) + 1;
-                const quadrant = quadrants[quadrantNum];
+            if (!taskContainer) return;
+            
+            // Parse task tags to determine urgency and importance
+            const tags = this.getTaskTags(taskNode);
+            const { isUrgent, isImportant } = this.analyzeTaskUrgencyImportance(tags);
+            
+            // Determine quadrant based on urgency/importance
+            let quadrantNum;
+            if (isImportant && !isUrgent) {
+                quadrantNum = 1; // Not Urgent & Important (top-left)
+            } else if (isImportant && isUrgent) {
+                quadrantNum = 2; // Urgent & Important (top-right)
+            } else if (!isImportant && !isUrgent) {
+                quadrantNum = 3; // Not Urgent & Not Important (bottom-left)
+            } else if (!isImportant && isUrgent) {
+                quadrantNum = 4; // Urgent & Not Important (bottom-right)
+            } else {
+                // Default to quadrant 3 if no clear classification
+                quadrantNum = 3;
+            }
+            
+            const quadrant = quadrants[quadrantNum];
+            
+            // Calculate position within quadrant to prevent overlapping
+            const tasksInQuadrant = quadrantCounts[quadrantNum];
+            const offsetX = (tasksInQuadrant % 2) * 180; // 2 columns per quadrant
+            const offsetY = Math.floor(tasksInQuadrant / 2) * 80; // Stack vertically
+            
+            // Ensure we don't exceed quadrant boundaries
+            const maxOffsetX = quadrantWidth - 220;
+            const maxOffsetY = quadrantHeight - 120;
+            const clampedOffsetX = Math.min(offsetX, maxOffsetX);
+            const clampedOffsetY = Math.min(offsetY, maxOffsetY);
+            
+            taskContainersData.push({
+                element: taskContainer,
+                targetX: quadrant.x + clampedOffsetX,
+                targetY: quadrant.y + clampedOffsetY,
+                quadrant: quadrantNum,
+                taskNode: taskNode
+            });
+            
+            quadrantCounts[quadrantNum]++;
+        });
+        
+        // Use D3 to animate task containers into matrix positions
+        if (taskContainersData.length > 0) {
+            d3.selectAll(taskContainersData.map(item => item.element))
+                .transition()
+                .duration(1000)
+                .delay((d, i) => i * 50) // Stagger animations
+                .ease(d3.easeCubicOut)
+                .style('left', (d, i) => `${taskContainersData[i].targetX}px`)
+                .style('top', (d, i) => `${taskContainersData[i].targetY}px`);
+        }
+        
+        // Also animate next-action-slots to positions relative to their tasks
+        taskContainersData.forEach((taskData, index) => {
+            const nextActionSlot = this.canvas.querySelector(`.next-action-slot[data-task-id="${taskData.taskNode.dataset.id}"]`);
+            
+            if (nextActionSlot) {
+                // Position next-action-slot to the right of its task container
+                const slotX = taskData.targetX + 130; // 130px to the right
+                const slotY = taskData.targetY;
                 
-                // Add some offset to prevent tasks from overlapping
-                const offsetX = (Math.floor(index / 4) * 150) % (quadrantWidth - 200);
-                const offsetY = Math.floor(index / 8) * 80;
-                
-                taskContainer.style.left = (quadrant.x + offsetX) + 'px';
-                taskContainer.style.top = (quadrant.y + offsetY) + 'px';
+                d3.select(nextActionSlot)
+                    .transition()
+                    .duration(1000)
+                    .delay(index * 50) // Stagger with tasks
+                    .ease(d3.easeCubicOut)
+                    .style('left', `${slotX}px`)
+                    .style('top', `${slotY}px`);
             }
         });
         
-        console.log('Positioned', this.taskNodes.length, 'tasks in matrix quadrants');
+        console.log('Positioned', this.taskNodes.length, 'tasks in matrix quadrants with D3 transitions');
+    }
+    
+    analyzeTaskUrgencyImportance(tags) {
+        let isUrgent = false;
+        let isImportant = false;
+        
+        // Analyze tags to determine urgency and importance
+        tags.forEach(tag => {
+            if (tag.category === 'urgency') {
+                if (tag.option === 'urgent') {
+                    isUrgent = true;
+                } else if (tag.option === 'not-urgent') {
+                    isUrgent = false;
+                }
+            } else if (tag.category === 'importance') {
+                if (tag.option === 'important') {
+                    isImportant = true;
+                } else if (tag.option === 'not-important') {
+                    isImportant = false;
+                }
+            }
+        });
+        
+        return { isUrgent, isImportant };
+    }
+    
+    positionSingleTaskInMatrix(taskNode) {
+        if (!this.isMatrixMode) return;
+        
+        const taskContainer = taskNode.closest('.task-container');
+        const nextActionSlot = this.canvas.querySelector(`.next-action-slot[data-task-id="${taskNode.dataset.id}"]`);
+        
+        if (!taskContainer) return;
+        
+        // Get canvas dimensions for quadrant calculations
+        const canvasRect = this.canvas.getBoundingClientRect();
+        const quadrantWidth = canvasRect.width / 2;
+        const quadrantHeight = canvasRect.height / 2;
+        
+        // Define quadrant positions (same as in positionTasksInMatrix)
+        const quadrants = {
+            1: { x: 20, y: 40 }, // Not Urgent & Important (top-left)
+            2: { x: quadrantWidth + 20, y: 40 }, // Urgent & Important (top-right) 
+            3: { x: 20, y: quadrantHeight + 40 }, // Not Urgent & Not Important (bottom-left)
+            4: { x: quadrantWidth + 20, y: quadrantHeight + 40 } // Urgent & Not Important (bottom-right)
+        };
+        
+        // Parse task tags to determine urgency and importance
+        const tags = this.getTaskTags(taskNode);
+        const { isUrgent, isImportant } = this.analyzeTaskUrgencyImportance(tags);
+        
+        // Determine quadrant based on urgency/importance
+        let quadrantNum;
+        if (isImportant && !isUrgent) {
+            quadrantNum = 1; // Not Urgent & Important (top-left)
+        } else if (isImportant && isUrgent) {
+            quadrantNum = 2; // Urgent & Important (top-right)
+        } else if (!isImportant && !isUrgent) {
+            quadrantNum = 3; // Not Urgent & Not Important (bottom-left)
+        } else if (!isImportant && isUrgent) {
+            quadrantNum = 4; // Urgent & Not Important (bottom-right)
+        } else {
+            // Default to quadrant 3 if no clear classification
+            quadrantNum = 3;
+        }
+        
+        const quadrant = quadrants[quadrantNum];
+        
+        // Count existing tasks in this quadrant to calculate position
+        let tasksInQuadrant = 0;
+        this.taskNodes.forEach(existingTaskNode => {
+            if (existingTaskNode === taskNode) return; // Don't count the current task
+            
+            const existingTags = this.getTaskTags(existingTaskNode);
+            const { isUrgent: existingUrgent, isImportant: existingImportant } = this.analyzeTaskUrgencyImportance(existingTags);
+            
+            // Determine existing task's quadrant
+            let existingQuadrant;
+            if (existingImportant && !existingUrgent) {
+                existingQuadrant = 1;
+            } else if (existingImportant && existingUrgent) {
+                existingQuadrant = 2;
+            } else if (!existingImportant && !existingUrgent) {
+                existingQuadrant = 3;
+            } else if (!existingImportant && existingUrgent) {
+                existingQuadrant = 4;
+            } else {
+                existingQuadrant = 3;
+            }
+            
+            if (existingQuadrant === quadrantNum) {
+                tasksInQuadrant++;
+            }
+        });
+        
+        // Calculate position within quadrant
+        const offsetX = (tasksInQuadrant % 2) * 180; // 2 columns per quadrant
+        const offsetY = Math.floor(tasksInQuadrant / 2) * 80; // Stack vertically
+        
+        // Ensure we don't exceed quadrant boundaries
+        const maxOffsetX = quadrantWidth - 220;
+        const maxOffsetY = quadrantHeight - 120;
+        const clampedOffsetX = Math.min(offsetX, maxOffsetX);
+        const clampedOffsetY = Math.min(offsetY, maxOffsetY);
+        
+        const targetX = quadrant.x + clampedOffsetX;
+        const targetY = quadrant.y + clampedOffsetY;
+        
+        // Use D3 to animate task container into position
+        d3.select(taskContainer)
+            .transition()
+            .duration(1000)
+            .ease(d3.easeCubicOut)
+            .style('left', `${targetX}px`)
+            .style('top', `${targetY}px`);
+        
+        // Also animate next-action-slot if it exists
+        if (nextActionSlot) {
+            const slotX = targetX + 130; // 130px to the right of task
+            const slotY = targetY;
+            
+            d3.select(nextActionSlot)
+                .transition()
+                .duration(1000)
+                .ease(d3.easeCubicOut)
+                .style('left', `${slotX}px`)
+                .style('top', `${slotY}px`);
+        }
+        
+        console.log(`Positioned new task "${taskNode.querySelector('.node-text').textContent}" in quadrant ${quadrantNum} using D3 transitions`);
+    }
+    
+    calculateTaskSlotPosition(taskNode) {
+        // Calculate where a task would be positioned in its normal slot
+        const anchorId = taskNode.dataset.anchoredTo;
+        const slotIndex = parseInt(taskNode.dataset.slot) || 0;
+        
+        // Find anchor node
+        const anchorNode = this.nodes.find(node => node.dataset.id === anchorId);
+        if (!anchorNode) {
+            return { x: 100, y: 100 }; // Default position
+        }
+        
+        // Calculate position based on anchor node and slot
+        const anchorRect = anchorNode.getBoundingClientRect();
+        const canvasRect = this.canvas.getBoundingClientRect();
+        
+        // Convert from viewport coordinates to canvas-relative coordinates
+        const anchorX = anchorRect.left - canvasRect.left + anchorNode.offsetWidth / 2 - 60; // Center and adjust
+        const anchorY = anchorRect.top - canvasRect.top + anchorNode.offsetHeight;
+        
+        // Calculate slot position
+        const taskY = anchorY + AppConfig.ui.taskOffset + (slotIndex * (AppConfig.ui.taskSpacing + 60));
+        
+        return { x: anchorX, y: taskY };
     }
 }
 

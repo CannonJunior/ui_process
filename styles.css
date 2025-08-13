@@ -1167,23 +1167,23 @@ input.node-input {
 }
 
 .quadrant-1 {
-    border-color: rgba(220, 53, 69, 0.6); /* Red - Urgent & Important */
-    background-color: rgba(220, 53, 69, 0.05);
-}
-
-.quadrant-2 {
     border-color: rgba(40, 167, 69, 0.6); /* Green - Not Urgent & Important */
     background-color: rgba(40, 167, 69, 0.05);
 }
 
+.quadrant-2 {
+    border-color: rgba(220, 53, 69, 0.6); /* Red - Urgent & Important */
+    background-color: rgba(220, 53, 69, 0.05);
+}
+
 .quadrant-3 {
-    border-color: rgba(255, 193, 7, 0.6); /* Yellow - Urgent & Not Important */
-    background-color: rgba(255, 193, 7, 0.05);
+    border-color: rgba(108, 117, 125, 0.6); /* Gray - Not Urgent & Not Important */
+    background-color: rgba(108, 117, 125, 0.05);
 }
 
 .quadrant-4 {
-    border-color: rgba(108, 117, 125, 0.6); /* Gray - Not Urgent & Not Important */
-    background-color: rgba(108, 117, 125, 0.05);
+    border-color: rgba(255, 193, 7, 0.6); /* Yellow - Urgent & Not Important */
+    background-color: rgba(255, 193, 7, 0.05);
 }
 
 .quadrant-label {
