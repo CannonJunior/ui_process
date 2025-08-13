@@ -48,6 +48,12 @@ class ProcessFlowDesigner {
         this.selectedTagForEdit = null;
         this.currentTagData = null;
         
+        // Eisenhower Matrix elements
+        this.eisenhowerToggle = document.getElementById('eisenhowerToggle');
+        this.eisenhowerMatrix = document.getElementById('eisenhowerMatrix');
+        this.isMatrixMode = false;
+        this.originalTaskPositions = new Map(); // Store original positions before matrix mode
+        
         this.init();
     }
     
@@ -171,6 +177,9 @@ class ProcessFlowDesigner {
         this.saveWorkflowButton.addEventListener('click', () => this.saveWorkflow());
         this.loadWorkflowButton.addEventListener('click', () => this.loadWorkflowInput.click());
         this.loadWorkflowInput.addEventListener('change', (e) => this.loadWorkflow(e));
+        
+        // Eisenhower Matrix toggle event listener
+        this.eisenhowerToggle.addEventListener('click', () => this.toggleEisenhowerMatrix());
         
         // Tag management event listeners
         this.tagModalCancel.addEventListener('click', () => this.hideTagModal());
@@ -567,6 +576,13 @@ class ProcessFlowDesigner {
         if (taskName) {
             this.createTaskNode(taskName);
             this.hideTaskModal();
+            
+            // Get the newly created task node (last one in taskNodes array)
+            const newTaskNode = this.taskNodes[this.taskNodes.length - 1];
+            
+            // Set it as selected and open tag management modal
+            this.selectedNode = newTaskNode;
+            this.showTagModal();
         }
     }
     
@@ -1189,31 +1205,55 @@ class ProcessFlowDesigner {
     
     saveWorkflow() {
         const workflow = {
-            version: "1.0",
+            version: "1.1",
             timestamp: new Date().toISOString(),
             nodeCounter: this.nodeCounter,
-            nodes: this.nodes.map(node => ({
-                id: node.dataset.id,
-                type: node.dataset.type,
-                text: node.querySelector('.node-text').textContent,
-                left: parseInt(node.style.left) || 0,
-                top: parseInt(node.style.top) || 0,
-                anchoredTo: node.dataset.anchoredTo || null,
-                previousAnchor: node.dataset.previousAnchor || null,
-                slot: node.dataset.slot ? parseInt(node.dataset.slot) : null,
-                tags: node.dataset.tags ? JSON.parse(node.dataset.tags) : [],
-                isTaskNode: this.taskNodes.includes(node),
-                className: node.className,
-                width: node.offsetWidth,
-                height: node.offsetHeight,
-                computedStyles: {
-                    transform: window.getComputedStyle(node).transform,
-                    borderRadius: window.getComputedStyle(node).borderRadius,
-                    backgroundColor: window.getComputedStyle(node).backgroundColor,
-                    borderColor: window.getComputedStyle(node).borderColor,
-                    boxShadow: node.style.boxShadow || ''
+            nodes: this.nodes.map(node => {
+                const nodeData = {
+                    id: node.dataset.id,
+                    type: node.dataset.type,
+                    text: node.querySelector('.node-text').textContent,
+                    left: parseInt(node.style.left) || 0,
+                    top: parseInt(node.style.top) || 0,
+                    anchoredTo: node.dataset.anchoredTo || null,
+                    previousAnchor: node.dataset.previousAnchor || null,
+                    slot: node.dataset.slot ? parseInt(node.dataset.slot) : null,
+                    tags: node.dataset.tags ? JSON.parse(node.dataset.tags) : [],
+                    isTaskNode: this.taskNodes.includes(node),
+                    className: node.className,
+                    width: node.offsetWidth,
+                    height: node.offsetHeight,
+                    computedStyles: {
+                        transform: window.getComputedStyle(node).transform,
+                        borderRadius: window.getComputedStyle(node).borderRadius,
+                        backgroundColor: window.getComputedStyle(node).backgroundColor,
+                        borderColor: window.getComputedStyle(node).borderColor,
+                        boxShadow: node.style.boxShadow || ''
+                    }
+                };
+                
+                // For task nodes, also save container and next-action-slot positions
+                if (node.dataset.type === 'task') {
+                    const taskContainer = node.closest('.task-container');
+                    const nextActionSlot = this.canvas.querySelector(`.next-action-slot[data-task-id="${node.dataset.id}"]`);
+                    
+                    if (taskContainer) {
+                        nodeData.containerPosition = {
+                            left: taskContainer.offsetLeft,
+                            top: taskContainer.offsetTop
+                        };
+                    }
+                    
+                    if (nextActionSlot) {
+                        nodeData.nextActionSlotPosition = {
+                            left: nextActionSlot.offsetLeft,
+                            top: nextActionSlot.offsetTop
+                        };
+                    }
                 }
-            })),
+                
+                return nodeData;
+            }),
             flowlines: this.flowlines.map(flowline => ({
                 sourceId: flowline.source.dataset.id,
                 targetId: flowline.target.dataset.id,
@@ -1271,6 +1311,14 @@ class ProcessFlowDesigner {
                 } else {
                     node.parentNode.removeChild(node);
                 }
+            }
+        });
+        
+        // Remove all next-action-slots (they are positioned separately from task containers)
+        const nextActionSlots = this.canvas.querySelectorAll('.next-action-slot');
+        nextActionSlots.forEach(slot => {
+            if (slot.parentNode) {
+                slot.parentNode.removeChild(slot);
             }
         });
         
@@ -1339,78 +1387,114 @@ class ProcessFlowDesigner {
             taskContainer.className = 'task-container';
             taskContainer.dataset.id = nodeData.id;
             
-            const node = document.createElement('div');
-            
-            // Use saved className if available (preserves exact CSS classes), otherwise construct from type
-            if (nodeData.className) {
-                node.className = nodeData.className;
-            } else {
-                node.className = `node ${nodeData.type}`;
-            }
-            
-            node.dataset.type = nodeData.type;
-            node.dataset.id = nodeData.id;
+            // Create task banner (the main task element)
+            const taskBanner = document.createElement('div');
+            taskBanner.className = 'task-banner';
+            taskBanner.dataset.type = nodeData.type;
+            taskBanner.dataset.id = nodeData.id;
             
             if (nodeData.anchoredTo) {
-                node.dataset.anchoredTo = nodeData.anchoredTo;
+                taskBanner.dataset.anchoredTo = nodeData.anchoredTo;
             }
             
             // Restore previous anchor information for task nodes
             if (nodeData.previousAnchor) {
-                node.dataset.previousAnchor = nodeData.previousAnchor;
+                taskBanner.dataset.previousAnchor = nodeData.previousAnchor;
             }
             
             // Restore slot information for task nodes
             if (nodeData.slot !== null && nodeData.slot !== undefined) {
-                node.dataset.slot = nodeData.slot.toString();
+                taskBanner.dataset.slot = nodeData.slot.toString();
             }
             
             // Restore tag information
             if (nodeData.tags) {
-                node.dataset.tags = JSON.stringify(nodeData.tags);
+                taskBanner.dataset.tags = JSON.stringify(nodeData.tags);
             }
             
-            // Create node content
+            // Create task banner content
             const nodeText = document.createElement('div');
             nodeText.className = 'node-text';
             nodeText.textContent = nodeData.text;
-            node.appendChild(nodeText);
+            taskBanner.appendChild(nodeText);
             
-            // Create tags container for task nodes
+            // Create tags display area (separate from banner)
+            const tagsArea = document.createElement('div');
+            tagsArea.className = 'task-tags-area';
+            
             const tagsContainer = document.createElement('div');
             tagsContainer.className = 'task-tags';
-            node.appendChild(tagsContainer);
+            tagsArea.appendChild(tagsContainer);
             
-            // Create Next Action slot
+            // Add vertical structure: banner on top, tags area below
+            taskContainer.appendChild(taskBanner);
+            taskContainer.appendChild(tagsArea);
+            
+            // Create Next Action slot (positioned separately)
             const nextActionSlot = document.createElement('div');
             nextActionSlot.className = 'next-action-slot';
             nextActionSlot.title = 'Next Action';
             nextActionSlot.dataset.taskId = nodeData.id;
             
-            // Add container structure
-            taskContainer.appendChild(node);
-            taskContainer.appendChild(nextActionSlot);
+            // Position task container - use saved position if available, otherwise fallback
+            if (nodeData.containerPosition) {
+                taskContainer.style.left = nodeData.containerPosition.left + 'px';
+                taskContainer.style.top = nodeData.containerPosition.top + 'px';
+            } else {
+                // Fallback to old position data
+                taskContainer.style.left = nodeData.left + 'px';
+                taskContainer.style.top = nodeData.top + 'px';
+            }
             
-            // Position container
-            taskContainer.style.left = nodeData.left + 'px';
-            taskContainer.style.top = nodeData.top + 'px';
+            // Add task container to canvas
+            this.canvas.appendChild(taskContainer);
             
-            // Add event listeners to the task node
-            node.addEventListener('mousedown', (e) => this.handleMouseDown(e, node));
-            node.addEventListener('contextmenu', (e) => this.handleContextMenu(e, node));
-            node.addEventListener('dblclick', (e) => this.handleDoubleClick(e, node));
+            // Add next-action-slot to canvas (positioned separately)
+            this.canvas.appendChild(nextActionSlot);
+            
+            // Position next-action-slot - use saved position if available, otherwise calculate
+            if (nodeData.nextActionSlotPosition) {
+                nextActionSlot.style.position = 'absolute';
+                nextActionSlot.style.left = nodeData.nextActionSlotPosition.left + 'px';
+                nextActionSlot.style.top = nodeData.nextActionSlotPosition.top + 'px';
+            } else {
+                // Fallback: position to the right of task container
+                this.positionNextActionSlot(taskContainer, nextActionSlot);
+            }
+            
+            // Add event listeners to the task banner
+            taskBanner.addEventListener('mousedown', (e) => this.handleMouseDown(e, taskBanner));
+            taskBanner.addEventListener('contextmenu', (e) => this.handleContextMenu(e, taskBanner));
+            taskBanner.addEventListener('dblclick', (e) => this.handleDoubleClick(e, taskBanner));
             
             // Add drop event listeners to the Next Action slot
             nextActionSlot.addEventListener('dragover', (e) => this.handleSlotDragOver(e));
             nextActionSlot.addEventListener('drop', (e) => this.handleSlotDrop(e));
             nextActionSlot.addEventListener('dragleave', (e) => this.handleSlotDragLeave(e));
             
-            // Add to canvas and arrays
-            this.canvas.appendChild(taskContainer);
-            this.nodes.push(node);
-            this.taskNodes.push(node);
+            // Add ResizeObserver to monitor task container size changes
+            if (window.ResizeObserver) {
+                let resizeTimeout;
+                const resizeObserver = new ResizeObserver(() => {
+                    // Debounce to avoid excessive repositioning
+                    clearTimeout(resizeTimeout);
+                    resizeTimeout = setTimeout(() => {
+                        this.updateNextActionSlotPosition(taskBanner);
+                        // Also reposition tasks below this one when height changes
+                        this.repositionTasksAfterHeightChange(taskBanner);
+                    }, 50);
+                });
+                resizeObserver.observe(taskContainer);
+                
+                // Store observer reference for cleanup
+                taskContainer._resizeObserver = resizeObserver;
+            }
             
-            return node;
+            // Add to arrays
+            this.nodes.push(taskBanner);
+            this.taskNodes.push(taskBanner);
+            
+            return taskBanner;
         } else {
             // Handle regular nodes (process, decision, terminal)
             const node = document.createElement('div');
@@ -1953,6 +2037,107 @@ class ProcessFlowDesigner {
         this.tagDatePicker.style.display = 'none';
         this.selectedTagForEdit = null;
         this.currentTagData = null;
+    }
+    
+    // Eisenhower Matrix Methods
+    toggleEisenhowerMatrix() {
+        this.isMatrixMode = !this.isMatrixMode;
+        
+        if (this.isMatrixMode) {
+            this.enterMatrixMode();
+        } else {
+            this.exitMatrixMode();
+        }
+        
+        // Update button text
+        this.eisenhowerToggle.textContent = this.isMatrixMode ? '📊 Exit Matrix' : '📊 Matrix';
+    }
+    
+    enterMatrixMode() {
+        console.log('Entering Eisenhower Matrix mode');
+        
+        // Store original positions of all tasks
+        this.storeOriginalTaskPositions();
+        
+        // Show the matrix overlay
+        this.eisenhowerMatrix.style.display = 'grid';
+        
+        // Position tasks in appropriate quadrants
+        this.positionTasksInMatrix();
+    }
+    
+    exitMatrixMode() {
+        console.log('Exiting Eisenhower Matrix mode');
+        
+        // Hide the matrix overlay
+        this.eisenhowerMatrix.style.display = 'none';
+        
+        // Restore original task positions
+        this.restoreOriginalTaskPositions();
+    }
+    
+    storeOriginalTaskPositions() {
+        this.originalTaskPositions.clear();
+        
+        this.taskNodes.forEach(taskNode => {
+            const taskContainer = taskNode.closest('.task-container');
+            if (taskContainer) {
+                this.originalTaskPositions.set(taskNode.dataset.taskId, {
+                    x: taskContainer.offsetLeft,
+                    y: taskContainer.offsetTop
+                });
+            }
+        });
+        
+        console.log('Stored original positions for', this.originalTaskPositions.size, 'tasks');
+    }
+    
+    restoreOriginalTaskPositions() {
+        this.taskNodes.forEach(taskNode => {
+            const taskContainer = taskNode.closest('.task-container');
+            const taskId = taskNode.dataset.taskId;
+            
+            if (taskContainer && this.originalTaskPositions.has(taskId)) {
+                const originalPos = this.originalTaskPositions.get(taskId);
+                taskContainer.style.left = originalPos.x + 'px';
+                taskContainer.style.top = originalPos.y + 'px';
+            }
+        });
+        
+        console.log('Restored original positions for tasks');
+    }
+    
+    positionTasksInMatrix() {
+        const canvasRect = this.canvas.getBoundingClientRect();
+        const quadrantWidth = canvasRect.width / 2;
+        const quadrantHeight = canvasRect.height / 2;
+        
+        // Define quadrant positions (with padding from edges and labels)
+        const quadrants = {
+            1: { x: 20, y: 40 }, // Urgent & Important (top-left)
+            2: { x: quadrantWidth + 20, y: 40 }, // Not Urgent & Important (top-right) 
+            3: { x: 20, y: quadrantHeight + 40 }, // Urgent & Not Important (bottom-left)
+            4: { x: quadrantWidth + 20, y: quadrantHeight + 40 } // Not Urgent & Not Important (bottom-right)
+        };
+        
+        this.taskNodes.forEach((taskNode, index) => {
+            const taskContainer = taskNode.closest('.task-container');
+            if (taskContainer) {
+                // For now, distribute tasks evenly across quadrants
+                // In a real implementation, this would be based on task priority/urgency
+                const quadrantNum = (index % 4) + 1;
+                const quadrant = quadrants[quadrantNum];
+                
+                // Add some offset to prevent tasks from overlapping
+                const offsetX = (Math.floor(index / 4) * 150) % (quadrantWidth - 200);
+                const offsetY = Math.floor(index / 8) * 80;
+                
+                taskContainer.style.left = (quadrant.x + offsetX) + 'px';
+                taskContainer.style.top = (quadrant.y + offsetY) + 'px';
+            }
+        });
+        
+        console.log('Positioned', this.taskNodes.length, 'tasks in matrix quadrants');
     }
 }
 

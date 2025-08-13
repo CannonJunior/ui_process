@@ -32,10 +32,27 @@
         </select>
         
         <button id="toggleChatButton" class="toolbar-button chat-toggle">💬 Chat</button>
+        
+        <button id="eisenhowerToggle" class="toolbar-button">📊 Matrix</button>
     </div>
     
     <div class="main-container">
         <div id="canvas" class="canvas">
+            <!-- Eisenhower Matrix Container -->
+            <div id="eisenhowerMatrix" class="eisenhower-matrix" style="display: none;">
+                <div class="quadrant quadrant-1" data-quadrant="1">
+                    <div class="quadrant-label">Urgent & Important</div>
+                </div>
+                <div class="quadrant quadrant-2" data-quadrant="2">
+                    <div class="quadrant-label">Not Urgent & Important</div>
+                </div>
+                <div class="quadrant quadrant-3" data-quadrant="3">
+                    <div class="quadrant-label">Urgent & Not Important</div>
+                </div>
+                <div class="quadrant quadrant-4" data-quadrant="4">
+                    <div class="quadrant-label">Not Urgent & Not Important</div>
+                </div>
+            </div>
             <!-- Nodes will be created here -->
         </div>
         
