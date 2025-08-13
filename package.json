@@ -1,0 +1,25 @@
+{
+  "name": "process-flow-designer",
+  "version": "1.0.0",
+  "description": "A web-based process flow designer with Eisenhower Matrix task management",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "serve": "node server.js"
+  },
+  "keywords": [
+    "process-flow",
+    "task-management",
+    "eisenhower-matrix",
+    "workflow",
+    "visualization"
+  ],
+  "author": "Process Flow Designer",
+  "license": "MIT",
+  "dependencies": {},
+  "devDependencies": {},
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}
