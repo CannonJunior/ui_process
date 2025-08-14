@@ -28,6 +28,7 @@ class ProcessFlowDesigner {
         
         // Initialize UI managers
         this.modalManager = new ModalManager(this);
+        this.contextMenuManager = new ContextMenuManager(this);
         
         this.init();
     }
@@ -88,12 +89,7 @@ class ProcessFlowDesigner {
             }
         });
         
-        // Canvas click to hide context menu
-        this.canvas.addEventListener('click', (e) => {
-            if (e.target === this.canvas) {
-                this.hideContextMenu();
-            }
-        });
+        // Note: Canvas click to hide context menu is now handled by ContextMenuManager
         
         // Prevent dragging tags to invalid locations
         this.canvas.addEventListener('dragover', (e) => {
@@ -120,23 +116,7 @@ class ProcessFlowDesigner {
             }
         });
         
-        // Context menu click handling
-        this.contextMenu.addEventListener('click', (e) => {
-            const action = e.target.dataset.action;
-            if (action && this.selectedNode) {
-                this.handleContextMenuAction(action);
-            }
-            this.hideContextMenu();
-        });
-        
-        // Task context menu click handling
-        this.taskContextMenu.addEventListener('click', (e) => {
-            const action = e.target.dataset.action;
-            if (action && this.selectedNode) {
-                this.handleTaskContextMenuAction(action);
-            }
-            this.hideContextMenu();
-        });
+        // Note: Context menu click handling is now handled by ContextMenuManager
         
         // Global mouse events for dragging
         document.addEventListener('mousemove', (e) => this.handleMouseMove(e));
@@ -167,40 +147,7 @@ class ProcessFlowDesigner {
         
         // Tag modal click outside listener is now handled by ModalManager
         
-        // Tag context menu event listeners
-        this.tagContextMenu.addEventListener('click', (e) => {
-            const attribute = e.target.dataset.attribute;
-            const action = e.target.dataset.action;
-            
-            if (attribute) {
-                this.handleTagAttributeClick(attribute, e);
-            } else if (action === 'delete') {
-                this.deleteSelectedTag();
-                this.hideTagContextMenus();
-            } else if (action === 'reset-next-action') {
-                this.resetTagFromNextAction();
-                this.hideTagContextMenus();
-            }
-        });
-        
-        // Tag attribute menu event listeners
-        this.tagAttributeMenu.addEventListener('click', (e) => {
-            const value = e.target.dataset.value;
-            if (value && this.selectedTagForEdit && this.currentTagData) {
-                this.updateTagAttribute(this.currentTagData.attribute, value);
-                this.hideTagContextMenus();
-            }
-        });
-        
-        // Global click handler to close tag context menus
-        document.addEventListener('click', (e) => {
-            if (!this.tagContextMenu.contains(e.target) && 
-                !this.tagAttributeMenu.contains(e.target) && 
-                !this.tagDatePicker.contains(e.target) &&
-                !e.target.classList.contains('tag')) {
-                this.hideTagContextMenus();
-            }
-        });
+        // Note: Tag context menu event listeners are now handled by ContextMenuManager
     }
     
     createSVGDefs() {
@@ -336,66 +283,23 @@ class ProcessFlowDesigner {
     }
     
     handleContextMenu(e, node) {
-        e.preventDefault();
-        this.selectedNode = node;
-        
-        const canvasRect = this.canvas.getBoundingClientRect();
-        const isTaskNode = node.dataset.type === 'task';
-        const menu = isTaskNode ? this.taskContextMenu : this.contextMenu;
-        
-        // For task nodes, show/hide the reverse option based on previous anchor availability
-        if (isTaskNode) {
-            const reverseMenuItem = menu.querySelector('[data-action="reverse"]');
-            const hasPreviousAnchor = node.dataset.previousAnchor && node.dataset.previousAnchor !== 'null';
-            if (reverseMenuItem) {
-                reverseMenuItem.style.display = hasPreviousAnchor ? 'block' : 'none';
-            }
-        }
-        
-        menu.style.left = (e.clientX - canvasRect.left) + 'px';
-        menu.style.top = (e.clientY - canvasRect.top) + 'px';
-        menu.style.display = 'block';
+        // Delegate to context menu manager
+        this.contextMenuManager.handleContextMenu(e, node);
     }
     
     hideContextMenu() {
-        this.contextMenu.style.display = 'none';
-        this.taskContextMenu.style.display = 'none';
-        this.hideTagContextMenus();
-        this.selectedNode = null;
+        // Delegate to context menu manager
+        this.contextMenuManager.hideContextMenu();
     }
     
     handleContextMenuAction(action) {
-        switch (action) {
-            case 'flowline':
-                this.startFlowlineCreation();
-                break;
-            case 'rename':
-                this.renameNode();
-                break;
-            case 'delete':
-                this.deleteNode();
-                break;
-        }
+        // Delegate to context menu manager
+        this.contextMenuManager.handleContextMenuAction(action);
     }
     
     handleTaskContextMenuAction(action) {
-        switch (action) {
-            case 'advance':
-                this.advanceTask();
-                break;
-            case 'reverse':
-                this.reverseTask();
-                break;
-            case 'tags':
-                this.showTagModal();
-                break;
-            case 'rename':
-                this.renameNode();
-                break;
-            case 'delete':
-                this.deleteTaskNode();
-                break;
-        }
+        // Delegate to context menu manager
+        this.contextMenuManager.handleTaskContextMenuAction(action);
     }
     
     handleDoubleClick(e, node) {
@@ -1767,130 +1671,33 @@ class ProcessFlowDesigner {
     
     // Tag Context Menu Functions
     handleTagContextMenu(e, tagElement, taskNode, tagIndex) {
-        e.preventDefault();
-        
-        this.selectedTagForEdit = tagElement;
-        this.currentTagData = {
-            taskNode: taskNode,
-            tagIndex: tagIndex,
-            attribute: null
-        };
-        
-        // Show/hide reset option based on whether tag is in next-action state
-        const resetMenuItem = this.tagContextMenu.querySelector('[data-action="reset-next-action"]');
-        if (resetMenuItem) {
-            resetMenuItem.style.display = tagElement.dataset.isInNextAction === 'true' ? 'block' : 'none';
-        }
-        
-        const canvasRect = this.canvas.getBoundingClientRect();
-        this.tagContextMenu.style.left = (e.clientX - canvasRect.left) + 'px';
-        this.tagContextMenu.style.top = (e.clientY - canvasRect.top) + 'px';
-        this.tagContextMenu.style.display = 'block';
-        
-        // Hide other menus
-        this.hideContextMenu();
-        this.tagAttributeMenu.style.display = 'none';
-        this.tagDatePicker.style.display = 'none';
+        // Delegate to context menu manager
+        this.contextMenuManager.showTagContextMenu(tagElement, e);
     }
     
     handleTagAttributeClick(attribute, e) {
-        this.currentTagData.attribute = attribute;
-        
-        if (attribute === 'date') {
-            this.showTagDatePicker(e);
-        } else {
-            this.showTagAttributeOptions(attribute, e);
-        }
+        // Delegate to context menu manager
+        this.contextMenuManager.handleTagAttributeClick(attribute, e);
     }
     
     showTagAttributeOptions(attribute, e) {
-        const canvasRect = this.canvas.getBoundingClientRect();
-        const menuRect = this.tagContextMenu.getBoundingClientRect();
-        
-        // Position to the right of the context menu
-        this.tagAttributeMenu.style.left = (menuRect.right - canvasRect.left + 5) + 'px';
-        this.tagAttributeMenu.style.top = (e.clientY - canvasRect.top) + 'px';
-        
-        // Populate options
-        this.tagAttributeMenu.innerHTML = '';
-        
-        if (attribute === 'category') {
-            AppConfig.tagSystem.categories.forEach(category => {
-                if (category.value && !category.disabled) {
-                    const option = document.createElement('div');
-                    option.className = 'menu-item';
-                    option.dataset.value = category.value;
-                    option.textContent = category.label;
-                    this.tagAttributeMenu.appendChild(option);
-                }
-            });
-        } else if (attribute === 'option') {
-            const tags = this.getTaskTags(this.currentTagData.taskNode);
-            const currentTag = tags[this.currentTagData.tagIndex];
-            if (currentTag && currentTag.category) {
-                const options = AppConfig.tagSystem.options[currentTag.category];
-                if (options) {
-                    options.forEach(option => {
-                        if (option.value && !option.disabled) {
-                            const menuItem = document.createElement('div');
-                            menuItem.className = 'menu-item';
-                            menuItem.dataset.value = option.value;
-                            menuItem.textContent = option.label;
-                            this.tagAttributeMenu.appendChild(menuItem);
-                        }
-                    });
-                }
-            }
-        }
-        
-        this.tagAttributeMenu.style.display = 'block';
+        // Delegate to context menu manager
+        this.contextMenuManager.showTagAttributeMenu(attribute, e);
     }
     
     showTagDatePicker(e) {
-        const canvasRect = this.canvas.getBoundingClientRect();
-        const menuRect = this.tagContextMenu.getBoundingClientRect();
-        
-        // Position to the right of the context menu
-        this.tagDatePicker.style.left = (menuRect.right - canvasRect.left + 5) + 'px';
-        this.tagDatePicker.style.top = (e.clientY - canvasRect.top) + 'px';
-        
-        // Get current date value
-        const tags = this.getTaskTags(this.currentTagData.taskNode);
-        const currentTag = tags[this.currentTagData.tagIndex];
-        const currentDate = currentTag.date || '';
-        
-        // Create simple date input for now (we'll enhance with PrimeReact later)
-        this.tagDatePicker.innerHTML = `
-            <input type="date" id="tagDatePickerInput" value="${currentDate}" style="padding: 6px 8px; border: 1px solid #ddd; border-radius: 4px;">
-            <div style="margin-top: 5px;">
-                <button onclick="window.processFlowDesigner.applyTagDate()" style="padding: 4px 8px; background: #007bff; color: white; border: none; border-radius: 3px; margin-right: 5px;">Apply</button>
-                <button onclick="window.processFlowDesigner.clearTagDate()" style="padding: 4px 8px; background: #6c757d; color: white; border: none; border-radius: 3px;">Clear</button>
-            </div>
-        `;
-        
-        this.tagDatePicker.style.display = 'block';
-        
-        // Focus the date input
-        setTimeout(() => {
-            const input = document.getElementById('tagDatePickerInput');
-            if (input) input.focus();
-        }, 10);
+        // Delegate to context menu manager
+        this.contextMenuManager.showTagDatePicker(e);
     }
     
     applyTagDate() {
-        const input = document.getElementById('tagDatePickerInput');
-        if (input && this.currentTagData) {
-            const newDate = input.value;
-            this.updateTagAttribute('date', newDate);
-            this.hideTagContextMenus();
-        }
+        // Delegate to context menu manager
+        this.contextMenuManager.applyTagDate();
     }
     
     clearTagDate() {
-        if (this.currentTagData) {
-            this.updateTagAttribute('date', '');
-            this.hideTagContextMenus();
-        }
+        // Delegate to context menu manager
+        this.contextMenuManager.clearTagDate();
     }
     
     updateTagAttribute(attribute, value) {
@@ -1997,11 +1804,8 @@ class ProcessFlowDesigner {
     }
     
     hideTagContextMenus() {
-        this.tagContextMenu.style.display = 'none';
-        this.tagAttributeMenu.style.display = 'none';
-        this.tagDatePicker.style.display = 'none';
-        this.selectedTagForEdit = null;
-        this.currentTagData = null;
+        // Delegate to context menu manager
+        this.contextMenuManager.hideTagContextMenus();
     }
     
     // Eisenhower Matrix Methods
