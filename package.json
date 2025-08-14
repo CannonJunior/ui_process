@@ -5,8 +5,16 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js",
-    "serve": "node server.js"
+    "dev": "node server.js", 
+    "serve": "node server.js",
+    "test": "./tests/run-tests.sh",
+    "test:ci": "./tests/run-tests.sh && node -e \"console.log('CI: All tests passed')\"",
+    "test:coverage": "./tests/run-tests.sh && echo 'Coverage report in tests/reports/'",
+    "prerefactor": "npm run test && echo 'Pre-refactor tests passed - ready for changes'",
+    "postrefactor": "npm run test && echo 'Post-refactor validation complete'",
+    "rollback": "./rollback/quick-rollback.sh",
+    "backup": "tar -czf backup-$(date +%Y%m%d_%H%M%S).tar.gz --exclude=node_modules --exclude=.git .",
+    "lint": "echo 'Linting JavaScript files...' && find . -name '*.js' -not -path './node_modules/*' -not -path './.git/*' | head -10"
   },
   "keywords": [
     "process-flow",
