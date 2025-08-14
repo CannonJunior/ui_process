@@ -1,60 +1,59 @@
 class ProcessFlowDesigner {
     constructor() {
+        // Initialize application state
         this.nodes = [];
         this.nodeCounter = 0;
         this.flowlines = [];
         this.selectedNode = null;
         this.dragData = { isDragging: false, offset: { x: 0, y: 0 } };
-        this.contextMenu = document.getElementById('contextMenu');
-        this.taskContextMenu = document.getElementById('taskContextMenu');
-        this.canvas = document.getElementById('canvas');
-        this.nodeTypeDropdown = document.getElementById('nodeTypeDropdown');
-        this.flowlineTypeDropdown = document.getElementById('flowlineTypeDropdown');
         this.flowlineCreationMode = false;
         this.sourceNodeForFlowline = null;
-        this.addTaskButton = document.getElementById('addTaskButton');
-        this.taskModal = document.getElementById('taskModal');
-        this.taskNameInput = document.getElementById('taskNameInput');
-        this.taskModalCancel = document.getElementById('taskModalCancel');
-        this.taskModalCreate = document.getElementById('taskModalCreate');
-        this.advanceTaskModal = document.getElementById('advanceTaskModal');
-        this.advanceOptions = document.getElementById('advanceOptions');
-        this.advanceModalCancel = document.getElementById('advanceModalCancel');
-        this.saveWorkflowButton = document.getElementById('saveWorkflowButton');
-        this.loadWorkflowButton = document.getElementById('loadWorkflowButton');
-        this.loadWorkflowInput = document.getElementById('loadWorkflowInput');
         this.startNode = null;
         this.taskNodes = [];
         this.selectedTaskForAdvance = null;
-        this.tagModal = document.getElementById('tagModal');
-        this.currentTags = document.getElementById('currentTags');
-        this.tagCategoryDropdown = document.getElementById('tagCategoryDropdown');
-        this.tagOptionDropdown = document.getElementById('tagOptionDropdown');
-        this.tagDateInput = document.getElementById('tagDateInput');
-        this.tagDescriptionInput = document.getElementById('tagDescriptionInput');
-        this.tagLinkInput = document.getElementById('tagLinkInput');
-        this.tagCompletedInput = document.getElementById('tagCompletedInput');
-        this.tagModalCancel = document.getElementById('tagModalCancel');
-        this.tagModalAdd = document.getElementById('tagModalAdd');
-        this.tagModalSave = document.getElementById('tagModalSave');
         this.selectedTaskForTags = null;
         this.draggedTag = null;
         this.successfulDrop = false;
-        
-        // Tag context menu elements
-        this.tagContextMenu = document.getElementById('tagContextMenu');
-        this.tagAttributeMenu = document.getElementById('tagAttributeMenu');
-        this.tagDatePicker = document.getElementById('tagDatePicker');
         this.selectedTagForEdit = null;
         this.currentTagData = null;
-        
-        // Eisenhower Matrix elements
-        this.eisenhowerToggle = document.getElementById('eisenhowerToggle');
-        this.eisenhowerMatrix = document.getElementById('eisenhowerMatrix');
         this.isMatrixMode = false;
         this.originalNodePositions = new Map(); // Store original positions for ALL nodes before matrix mode
         
+        // Initialize services
+        this.domService = getDOMService();
+        this.configService = getConfigService();
+        
+        // Cache DOM element references using DOM service
+        this.initializeDOMElements();
+        
         this.init();
+    }
+    
+    initializeDOMElements() {
+        // Get all required DOM elements through DOM service
+        const elements = this.domService.getElements([
+            'contextMenu', 'taskContextMenu', 'canvas', 'nodeTypeDropdown', 'flowlineTypeDropdown',
+            'addTaskButton', 'taskModal', 'taskNameInput', 'taskModalCancel', 'taskModalCreate',
+            'advanceTaskModal', 'advanceOptions', 'advanceModalCancel', 'saveWorkflowButton',
+            'loadWorkflowButton', 'loadWorkflowInput', 'tagModal', 'currentTags',
+            'tagCategoryDropdown', 'tagOptionDropdown', 'tagDateInput', 'tagDescriptionInput',
+            'tagLinkInput', 'tagCompletedInput', 'tagModalCancel', 'tagModalAdd', 'tagModalSave',
+            'tagContextMenu', 'tagAttributeMenu', 'tagDatePicker', 'eisenhowerToggle', 'eisenhowerMatrix'
+        ]);
+        
+        // Assign elements to instance properties for backward compatibility
+        Object.assign(this, elements);
+        
+        // Validate that critical elements are present
+        const validation = this.domService.validateElements();
+        if (!validation.isValid) {
+            console.error('ProcessFlowDesigner: Critical DOM elements missing:', validation.errors);
+            throw new Error('Required DOM elements not found');
+        }
+        
+        if (validation.warnings.length > 0) {
+            console.warn('ProcessFlowDesigner: Some DOM elements missing:', validation.warnings);
+        }
     }
     
     init() {
@@ -65,14 +64,10 @@ class ProcessFlowDesigner {
     }
     
     initializeDropdowns() {
-        // Populate node type dropdown from config
-        ConfigUtils.populateDropdown(this.nodeTypeDropdown, AppConfig.nodeTypes);
-        
-        // Populate flowline type dropdown from config
-        ConfigUtils.populateDropdown(this.flowlineTypeDropdown, AppConfig.flowlineTypes);
-        
-        // Populate tag category dropdown from config
-        ConfigUtils.populateDropdown(this.tagCategoryDropdown, AppConfig.tagSystem.categories);
+        // Populate dropdowns using configuration service
+        this.configService.populateDropdown(this.nodeTypeDropdown, 'nodeTypes');
+        this.configService.populateDropdown(this.flowlineTypeDropdown, 'flowlineTypes');
+        this.configService.populateDropdown(this.tagCategoryDropdown, 'tagSystem.categories');
         
         // Set default flowline type
         this.flowlineTypeDropdown.value = 'straight';
@@ -986,10 +981,9 @@ class ProcessFlowDesigner {
         const selectedCategory = e.target.value;
         
         if (selectedCategory) {
-            // Populate options dropdown based on selected category
-            const options = AppConfig.tagSystem.options[selectedCategory];
-            if (options) {
-                ConfigUtils.populateDropdown(this.tagOptionDropdown, options);
+            // Populate options dropdown based on selected category using config service
+            const success = this.configService.populateDropdown(this.tagOptionDropdown, `tagSystem.options.${selectedCategory}`);
+            if (success) {
                 this.tagOptionDropdown.disabled = false;
             }
         } else {
@@ -1008,12 +1002,13 @@ class ProcessFlowDesigner {
             const tagElement = document.createElement('div');
             tagElement.className = 'tag';
             
-            const display = ConfigUtils.getTagDisplay(tag.category);
+            const configService = this.configService;
+            const display = configService.getTagDisplay(tag.category);
             tagElement.style.color = display.color;
             tagElement.style.backgroundColor = display.bgColor;
             
-            const categoryLabel = ConfigUtils.getTagCategoryLabel(tag.category);
-            const optionLabel = ConfigUtils.getTagOptionLabel(tag.category, tag.option);
+            const categoryLabel = configService.getTagCategoryLabel(tag.category);
+            const optionLabel = configService.getTagOptionLabel(tag.category, tag.option);
             const dateText = tag.date ? ` (${this.formatDateForDisplay(tag.date)})` : '';
             
             tagElement.innerHTML = `
@@ -1165,12 +1160,13 @@ class ProcessFlowDesigner {
             tagElement.dataset.tagIndex = index;
             tagElement.dataset.taskId = taskNode.dataset.id;
             
-            const display = ConfigUtils.getTagDisplay(tag.category);
+            const configService = this.configService;
+            const display = configService.getTagDisplay(tag.category);
             tagElement.style.color = display.color;
             tagElement.style.backgroundColor = display.bgColor;
             
-            const categoryLabel = ConfigUtils.getTagCategoryLabel(tag.category);
-            const optionLabel = ConfigUtils.getTagOptionLabel(tag.category, tag.option);
+            const categoryLabel = configService.getTagCategoryLabel(tag.category);
+            const optionLabel = configService.getTagOptionLabel(tag.category, tag.option);
             const dateText = tag.date ? ` (${this.formatDateForDisplay(tag.date)})` : '';
             
             tagElement.textContent = `${categoryLabel}: ${optionLabel}${dateText}`;
@@ -2455,12 +2451,12 @@ class ProcessFlowDesigner {
             return { x: 100, y: 100 }; // Default position
         }
         
-        // Use GeometryUtils for calculation
+        // Use GeometryUtils for calculation with config service
         return GeometryUtils.calculateTaskSlotPosition(
             anchorNode, 
             this.canvas, 
             slotIndex, 
-            AppConfig.ui
+            this.configService.getUIConfig()
         );
     }
 }
