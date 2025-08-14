@@ -299,10 +299,9 @@ class ProcessFlowDesigner {
         text.textContent = `${type.charAt(0).toUpperCase() + type.slice(1)} ${this.nodeCounter}`;
         node.appendChild(text);
         
-        // Position node randomly on canvas
-        const canvasRect = this.canvas.getBoundingClientRect();
-        node.style.left = Math.random() * (canvasRect.width - 150) + 'px';
-        node.style.top = Math.random() * (canvasRect.height - 150) + 100 + 'px';
+        // Position node randomly on canvas using GeometryUtils
+        const position = GeometryUtils.calculateRandomPosition(this.canvas, 150, 150, 100);
+        DOMUtils.setPosition(node, position.x, position.y);
         
         // Add event listeners
         node.addEventListener('mousedown', (e) => this.handleMouseDown(e, node));
@@ -344,9 +343,9 @@ class ProcessFlowDesigner {
             const deltaX = newX - currentX;
             const deltaY = newY - currentY;
             
-            // Move the main node
-            this.dragData.node.style.left = Math.max(0, Math.min(newX, canvasRect.width - this.dragData.node.offsetWidth)) + 'px';
-            this.dragData.node.style.top = Math.max(0, Math.min(newY, canvasRect.height - this.dragData.node.offsetHeight)) + 'px';
+            // Move the main node using GeometryUtils constraint
+            const constrainedPosition = GeometryUtils.constrainToCanvas(newX, newY, this.canvas, this.dragData.node);
+            DOMUtils.setPosition(this.dragData.node, constrainedPosition.x, constrainedPosition.y);
             
             // Move anchored task nodes if this is not a task node itself
             if (this.dragData.node.dataset.type !== 'task') {
@@ -572,9 +571,11 @@ class ProcessFlowDesigner {
     }
     
     createTaskFromModal() {
-        const taskName = this.taskNameInput.value.trim();
-        if (taskName) {
-            this.createTaskNode(taskName);
+        const taskNameRaw = this.taskNameInput.value;
+        const validation = ValidationUtils.validateTaskName(taskNameRaw);
+        
+        if (validation.isValid) {
+            this.createTaskNode(validation.value);
             this.hideTaskModal();
             
             // Get the newly created task node (last one in taskNodes array)
@@ -583,6 +584,11 @@ class ProcessFlowDesigner {
             // Set it as selected and open tag management modal
             this.selectedNode = newTaskNode;
             this.showTagModal();
+        } else {
+            // Show validation error to user
+            alert(validation.error);
+            // Set focus back to input for correction
+            this.taskNameInput.focus();
         }
     }
     
@@ -704,17 +710,15 @@ class ProcessFlowDesigner {
     }
     
     positionNextActionSlot(taskContainer, nextActionSlot) {
-        // Position the next-action-slot to the right of the task-container
-        const taskRect = taskContainer.getBoundingClientRect();
-        const canvasRect = this.canvas.getBoundingClientRect();
+        // Use GeometryUtils for positioning calculation
+        const position = GeometryUtils.calculateNextActionSlotPosition(
+            taskContainer, 
+            this.canvas, 
+            10,  // 10px gap offset
+            0
+        );
         
-        // Calculate position relative to canvas
-        const leftOffset = taskRect.right - canvasRect.left + 10; // 10px gap
-        const topOffset = taskRect.top - canvasRect.top;
-        
-        nextActionSlot.style.position = 'absolute';
-        nextActionSlot.style.left = leftOffset + 'px';
-        nextActionSlot.style.top = topOffset + 'px';
+        DOMUtils.setPosition(nextActionSlot, position.x, position.y);
     }
     
     updateNextActionSlotPosition(taskNode) {
@@ -2441,7 +2445,7 @@ class ProcessFlowDesigner {
     }
     
     calculateTaskSlotPosition(taskNode) {
-        // Calculate where a task would be positioned in its normal slot
+        // Delegate to GeometryUtils with interface preservation
         const anchorId = taskNode.dataset.anchoredTo;
         const slotIndex = parseInt(taskNode.dataset.slot) || 0;
         
@@ -2451,18 +2455,13 @@ class ProcessFlowDesigner {
             return { x: 100, y: 100 }; // Default position
         }
         
-        // Calculate position based on anchor node and slot
-        const anchorRect = anchorNode.getBoundingClientRect();
-        const canvasRect = this.canvas.getBoundingClientRect();
-        
-        // Convert from viewport coordinates to canvas-relative coordinates
-        const anchorX = anchorRect.left - canvasRect.left + anchorNode.offsetWidth / 2 - 60; // Center and adjust
-        const anchorY = anchorRect.top - canvasRect.top + anchorNode.offsetHeight;
-        
-        // Calculate slot position
-        const taskY = anchorY + AppConfig.ui.taskOffset + (slotIndex * (AppConfig.ui.taskSpacing + 60));
-        
-        return { x: anchorX, y: taskY };
+        // Use GeometryUtils for calculation
+        return GeometryUtils.calculateTaskSlotPosition(
+            anchorNode, 
+            this.canvas, 
+            slotIndex, 
+            AppConfig.ui
+        );
     }
 }
 
