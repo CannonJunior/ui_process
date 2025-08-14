@@ -26,6 +26,9 @@ class ProcessFlowDesigner {
         // Cache DOM element references using DOM service
         this.initializeDOMElements();
         
+        // Initialize UI managers
+        this.modalManager = new ModalManager(this);
+        
         this.init();
     }
     
@@ -61,6 +64,9 @@ class ProcessFlowDesigner {
         this.setupEventListeners();
         this.createSVGDefs();
         this.createDefaultStartNode();
+        
+        // Initialize modal manager after all setup is complete
+        this.modalManager.initialize();
     }
     
     initializeDropdowns() {
@@ -143,30 +149,7 @@ class ProcessFlowDesigner {
             }
         });
         
-        // Task modal event listeners
-        this.addTaskButton.addEventListener('click', () => this.showTaskModal());
-        this.taskModalCancel.addEventListener('click', () => this.hideTaskModal());
-        this.taskModalCreate.addEventListener('click', () => this.createTaskFromModal());
-        this.taskNameInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                this.createTaskFromModal();
-            }
-        });
-        
-        // Close modal when clicking outside
-        this.taskModal.addEventListener('click', (e) => {
-            if (e.target === this.taskModal) {
-                this.hideTaskModal();
-            }
-        });
-        
-        // Advance task modal event listeners
-        this.advanceModalCancel.addEventListener('click', () => this.hideAdvanceTaskModal());
-        this.advanceTaskModal.addEventListener('click', (e) => {
-            if (e.target === this.advanceTaskModal) {
-                this.hideAdvanceTaskModal();
-            }
-        });
+        // Modal event listeners are now handled by ModalManager
         
         // Save/Load workflow event listeners
         this.saveWorkflowButton.addEventListener('click', () => this.saveWorkflow());
@@ -176,20 +159,13 @@ class ProcessFlowDesigner {
         // Eisenhower Matrix toggle event listener
         this.eisenhowerToggle.addEventListener('click', () => this.toggleEisenhowerMatrix());
         
-        // Tag management event listeners
-        this.tagModalCancel.addEventListener('click', () => this.hideTagModal());
-        this.tagModalAdd.addEventListener('click', () => this.addTagToTask());
-        this.tagModalSave.addEventListener('click', () => this.saveTaskTags());
+        // Tag modal event listeners are now handled by ModalManager
+        // Note: Tag category dropdown change listener is kept here as it's tag logic, not modal management
         
         // Tag category dropdown change
         this.tagCategoryDropdown.addEventListener('change', (e) => this.handleTagCategoryChange(e));
         
-        // Close tag modal when clicking outside
-        this.tagModal.addEventListener('click', (e) => {
-            if (e.target === this.tagModal) {
-                this.hideTagModal();
-            }
-        });
+        // Tag modal click outside listener is now handled by ModalManager
         
         // Tag context menu event listeners
         this.tagContextMenu.addEventListener('click', (e) => {
@@ -556,35 +532,18 @@ class ProcessFlowDesigner {
     }
     
     showTaskModal() {
-        this.taskModal.style.display = 'block';
-        this.taskNameInput.value = '';
-        this.taskNameInput.focus();
+        // Delegate to modal manager while preserving interface
+        this.modalManager.showTaskModal();
     }
     
     hideTaskModal() {
-        this.taskModal.style.display = 'none';
+        // Delegate to modal manager while preserving interface
+        this.modalManager.hideTaskModal();
     }
     
     createTaskFromModal() {
-        const taskNameRaw = this.taskNameInput.value;
-        const validation = ValidationUtils.validateTaskName(taskNameRaw);
-        
-        if (validation.isValid) {
-            this.createTaskNode(validation.value);
-            this.hideTaskModal();
-            
-            // Get the newly created task node (last one in taskNodes array)
-            const newTaskNode = this.taskNodes[this.taskNodes.length - 1];
-            
-            // Set it as selected and open tag management modal
-            this.selectedNode = newTaskNode;
-            this.showTagModal();
-        } else {
-            // Show validation error to user
-            alert(validation.error);
-            // Set focus back to input for correction
-            this.taskNameInput.focus();
-        }
+        // Delegate to modal manager while preserving interface
+        this.modalManager.createTaskFromModal();
     }
     
     createTaskNode(taskName) {
@@ -953,28 +912,13 @@ class ProcessFlowDesigner {
     }
     
     showTagModal() {
-        if (!this.selectedNode || this.selectedNode.dataset.type !== 'task') return;
-        
-        this.selectedTaskForTags = this.selectedNode;
-        
-        // Display current tags
-        this.displayCurrentTags();
-        
-        // Reset dropdowns and input fields
-        this.tagCategoryDropdown.value = '';
-        this.tagOptionDropdown.disabled = true;
-        this.tagOptionDropdown.innerHTML = '<option value="">Select category first</option>';
-        this.tagDateInput.value = '';
-        this.tagDescriptionInput.value = '';
-        this.tagLinkInput.value = '';
-        this.tagCompletedInput.checked = false;
-        
-        this.tagModal.style.display = 'block';
+        // Delegate to modal manager while preserving interface
+        this.modalManager.showTagModal();
     }
     
     hideTagModal() {
-        this.tagModal.style.display = 'none';
-        this.selectedTaskForTags = null;
+        // Delegate to modal manager while preserving interface
+        this.modalManager.hideTagModal();
     }
     
     handleTagCategoryChange(e) {
@@ -1189,32 +1133,13 @@ class ProcessFlowDesigner {
     }
     
     showAdvanceTaskModal(outboundFlowlines) {
-        this.selectedTaskForAdvance = this.selectedNode;
-        this.advanceOptions.innerHTML = '';
-        
-        outboundFlowlines.forEach(flowline => {
-            const option = document.createElement('div');
-            option.className = 'advance-option';
-            option.dataset.targetId = flowline.target.dataset.id;
-            
-            const targetNodeText = flowline.target.querySelector('.node-text').textContent;
-            const targetNodeType = flowline.target.dataset.type;
-            option.textContent = `${targetNodeText} (${targetNodeType})`;
-            
-            option.addEventListener('click', () => {
-                this.moveTaskToNode(this.selectedTaskForAdvance, flowline.target);
-                this.hideAdvanceTaskModal();
-            });
-            
-            this.advanceOptions.appendChild(option);
-        });
-        
-        this.advanceTaskModal.style.display = 'block';
+        // Delegate to modal manager while preserving interface
+        this.modalManager.showAdvanceTaskModal(outboundFlowlines);
     }
     
     hideAdvanceTaskModal() {
-        this.advanceTaskModal.style.display = 'none';
-        this.selectedTaskForAdvance = null;
+        // Delegate to modal manager while preserving interface
+        this.modalManager.hideAdvanceTaskModal();
     }
     
     moveTaskToNode(taskNode, targetNode) {
