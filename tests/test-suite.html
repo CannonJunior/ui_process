@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Process Flow Designer - Test Suite</title>
+    <link rel="stylesheet" href="../styles.css">
+    
+    <!-- Test Framework - Mocha & Chai -->
+    <link rel="stylesheet" href="https://unpkg.com/mocha@10.2.0/mocha.css">
+    <script src="https://unpkg.com/mocha@10.2.0/mocha.js"></script>
+    <script src="https://unpkg.com/chai@4.3.10/chai.js"></script>
+    
+    <!-- D3.js for animations -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    
+    <!-- PrimeReact Dependencies -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/primereact/api/api.min.js"></script>
+    <script src="https://unpkg.com/primereact/calendar/calendar.min.js"></script>
+    
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        .test-header {
+            background: #2c3e50;
+            color: white;
+            padding: 20px;
+            margin: -20px -20px 20px -20px;
+            text-align: center;
+        }
+        
+        .test-controls {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #ecf0f1;
+            border-radius: 5px;
+        }
+        
+        .test-controls button {
+            margin-right: 10px;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .btn-primary {
+            background: #3498db;
+            color: white;
+        }
+        
+        .btn-success {
+            background: #27ae60;
+            color: white;
+        }
+        
+        .btn-warning {
+            background: #f39c12;
+            color: white;
+        }
+        
+        .test-app-container {
+            position: fixed;
+            top: 0;
+            left: -100vw;
+            width: 100vw;
+            height: 100vh;
+            background: white;
+            z-index: 10000;
+            transition: left 0.3s ease;
+        }
+        
+        .test-app-container.visible {
+            left: 0;
+        }
+        
+        .test-app-header {
+            background: #34495e;
+            color: white;
+            padding: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .close-test-app {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        
+        #test-app-frame {
+            width: 100%;
+            height: calc(100vh - 50px);
+            border: none;
+        }
+        
+        .coverage-info {
+            margin-top: 20px;
+            padding: 15px;
+            background: #d5e8d4;
+            border-left: 4px solid #27ae60;
+            border-radius: 3px;
+        }
+        
+        .error-info {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8d7da;
+            border-left: 4px solid #e74c3c;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-header">
+        <h1>🧪 Process Flow Designer - Comprehensive Test Suite</h1>
+        <p>Week 1 Foundation Preparation: Automated Testing Infrastructure</p>
+    </div>
+    
+    <div class="test-controls">
+        <button class="btn-primary" onclick="runAllTests()">🚀 Run All Tests</button>
+        <button class="btn-success" onclick="runCoreTests()">⚡ Core Functionality</button>
+        <button class="btn-success" onclick="runUITests()">🎨 UI Components</button>
+        <button class="btn-success" onclick="runIntegrationTests()">🔗 Integration Tests</button>
+        <button class="btn-warning" onclick="showTestApp()">📱 View Test App</button>
+        <button class="btn-warning" onclick="generateCoverageReport()">📊 Coverage Report</button>
+    </div>
+    
+    <!-- Mocha Test Results Container -->
+    <div id="mocha"></div>
+    
+    <!-- Coverage Information -->
+    <div class="coverage-info">
+        <h3>📈 Test Coverage Goals</h3>
+        <ul>
+            <li><strong>Core Functionality:</strong> >95% (Node creation, task management, matrix operations)</li>
+            <li><strong>UI Components:</strong> >90% (Modals, context menus, drag-and-drop)</li>
+            <li><strong>Integration:</strong> >85% (Save/load workflows, cross-component interactions)</li>
+            <li><strong>Edge Cases:</strong> >80% (Error handling, boundary conditions)</li>
+        </ul>
+    </div>
+    
+    <!-- Test Application Container -->
+    <div class="test-app-container" id="testAppContainer">
+        <div class="test-app-header">
+            <h3>🧪 Test Application Instance</h3>
+            <button class="close-test-app" onclick="hideTestApp()">✕ Close</button>
+        </div>
+        <iframe id="test-app-frame" src="test-app.html"></iframe>
+    </div>
+    
+    <!-- Application Dependencies -->
+    <script src="../config.js"></script>
+    <script src="../chat-interface.js"></script>
+    <script src="../script.js"></script>
+    
+    <!-- Test Suite Scripts -->
+    <script src="core-functionality.test.js"></script>
+    <script src="ui-components.test.js"></script>
+    <script src="integration.test.js"></script>
+    <script src="test-runner.js"></script>
+    
+    <script>
+        // Test Suite Configuration
+        mocha.setup('bdd');
+        const expect = chai.expect;
+        
+        // Global test utilities
+        window.TestUtils = {
+            createMockDOM: function() {
+                // Create DOM elements needed for testing
+                const elements = [
+                    'canvas', 'contextMenu', 'taskContextMenu', 'nodeTypeDropdown',
+                    'flowlineTypeDropdown', 'addTaskButton', 'taskModal', 'taskNameInput',
+                    'taskModalCancel', 'taskModalCreate', 'advanceTaskModal', 'advanceOptions',
+                    'advanceModalCancel', 'saveWorkflowButton', 'loadWorkflowButton',
+                    'loadWorkflowInput', 'tagModal', 'currentTags', 'tagCategoryDropdown',
+                    'tagOptionDropdown', 'tagDateInput', 'tagDescriptionInput', 'tagLinkInput',
+                    'tagCompletedInput', 'tagModalCancel', 'tagModalAdd', 'tagModalSave',
+                    'eisenhowerToggle', 'eisenhowerMatrix'
+                ];
+                
+                elements.forEach(id => {
+                    if (!document.getElementById(id)) {
+                        const element = document.createElement('div');
+                        element.id = id;
+                        if (id.includes('Dropdown')) {
+                            element.innerHTML = '<option value="test">Test Option</option>';
+                        }
+                        document.body.appendChild(element);
+                    }
+                });
+            },
+            
+            createTestInstance: function() {
+                this.createMockDOM();
+                return new ProcessFlowDesigner();
+            },
+            
+            cleanupDOM: function() {
+                // Remove test elements
+                const testElements = document.querySelectorAll('[id]');
+                testElements.forEach(el => {
+                    if (el.id && !el.id.startsWith('mocha') && !el.id.startsWith('test')) {
+                        el.remove();
+                    }
+                });
+            },
+            
+            async wait: function(ms = 100) {
+                return new Promise(resolve => setTimeout(resolve, ms));
+            }
+        };
+        
+        // Test Controls
+        function runAllTests() {
+            mocha.run();
+        }
+        
+        function runCoreTests() {
+            mocha.grep('Core Functionality').run();
+        }
+        
+        function runUITests() {
+            mocha.grep('UI Components').run();
+        }
+        
+        function runIntegrationTests() {
+            mocha.grep('Integration').run();
+        }
+        
+        function showTestApp() {
+            document.getElementById('testAppContainer').classList.add('visible');
+        }
+        
+        function hideTestApp() {
+            document.getElementById('testAppContainer').classList.remove('visible');
+        }
+        
+        function generateCoverageReport() {
+            // Placeholder for coverage report generation
+            alert('Coverage report functionality would be implemented with Istanbul/NYC in a real project');
+        }
+        
+        // Auto-run tests when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🧪 Test Suite Loaded - Ready for Foundation Testing');
+        });
+    </script>
+</body>
+</html>
