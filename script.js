@@ -1,9 +1,11 @@
 class ProcessFlowDesigner {
     constructor() {
         // Initialize application state - nodes now managed by NodeManager
-        // this.flowlines, this.flowlineCreationMode, this.sourceNodeForFlowline now handled by FlowlineManager
+        this.flowlines = [];
         this.selectedNode = null;
         // this.dragData now handled by NodeManager
+        this.flowlineCreationMode = false;
+        this.sourceNodeForFlowline = null;
         // this.startNode, this.nodes, this.nodeCounter now handled by NodeManager
         this.taskNodes = [];
         this.selectedTaskForAdvance = null;
@@ -36,10 +38,6 @@ class ProcessFlowDesigner {
         // Initialize node modules (Phase 8: Node Management System)
         this.nodeFactory = new NodeFactory(this.configService);
         this.nodeManager = new NodeManager(this);
-        
-        // Initialize flowline modules (Phase 9: Flowline System)
-        this.flowlineRenderer = new FlowlineRenderer(this.configService);
-        this.flowlineManager = new FlowlineManager(this);
         
         this.init();
     }
@@ -182,69 +180,6 @@ class ProcessFlowDesigner {
     }
     
     // ==================== END NODE DELEGATION ====================
-    
-    // ==================== FLOWLINE SYSTEM DELEGATION (Phase 9) ====================
-    
-    // Flowline creation interface preservation - delegates to FlowlineManager
-    startFlowlineCreation(sourceNode = null) {
-        return this.flowlineManager ? this.flowlineManager.startFlowlineCreation(sourceNode) : null;
-    }
-    
-    exitFlowlineCreationMode() {
-        return this.flowlineManager ? this.flowlineManager.exitFlowlineCreationMode() : null;
-    }
-    
-    createFlowline(sourceNode, targetNode, flowlineType = null) {
-        return this.flowlineManager ? this.flowlineManager.createFlowline(sourceNode, targetNode, flowlineType) : null;
-    }
-    
-    updateFlowlines() {
-        return this.flowlineManager ? this.flowlineManager.updateFlowlines() : null;
-    }
-    
-    // Flowline management methods
-    removeFlowline(flowlineOrId) {
-        return this.flowlineManager ? this.flowlineManager.removeFlowline(flowlineOrId) : false;
-    }
-    
-    removeFlowlinesForNode(nodeOrId) {
-        return this.flowlineManager ? this.flowlineManager.removeFlowlinesForNode(nodeOrId) : 0;
-    }
-    
-    getAllFlowlines() {
-        return this.flowlineManager ? this.flowlineManager.getAllFlowlines() : [];
-    }
-    
-    // Flowline state getters that maintain compatibility
-    get flowlines() {
-        return this.flowlineManager ? this.flowlineManager.getAllFlowlines() : [];
-    }
-    
-    get flowlineCreationMode() {
-        return this.flowlineManager ? this.flowlineManager.isInFlowlineCreationMode() : false;
-    }
-    
-    set flowlineCreationMode(value) {
-        // This setter maintains compatibility but delegates to FlowlineManager
-        if (value && !this.flowlineCreationMode) {
-            this.startFlowlineCreation();
-        } else if (!value && this.flowlineCreationMode) {
-            this.exitFlowlineCreationMode();
-        }
-    }
-    
-    get sourceNodeForFlowline() {
-        return this.flowlineManager ? this.flowlineManager.getSourceNodeForFlowline() : null;
-    }
-    
-    set sourceNodeForFlowline(node) {
-        // This setter maintains compatibility but actual management is in FlowlineManager
-        if (this.flowlineManager) {
-            this.flowlineManager.sourceNodeForFlowline = node;
-        }
-    }
-    
-    // ==================== END FLOWLINE DELEGATION ====================
     
     initializeDOMElements() {
         // Get all required DOM elements through DOM service
@@ -405,12 +340,78 @@ class ProcessFlowDesigner {
         this.contextMenuManager.handleTaskContextMenuAction(action);
     }
     
-    // ==================== FLOWLINE SYSTEM METHODS EXTRACTED ====================
-    // Phase 9: Flowline system functionality has been extracted to:
-    // - features/flowline-system/flowline-manager.js (main flowline logic)
-    // - features/flowline-system/flowline-renderer.js (rendering and visual effects)
-    // All original flowline methods now delegate to these modules via the delegation methods above.
-    // ==================== END EXTRACTED SECTION ====================
+    startFlowlineCreation() {
+        this.sourceNodeForFlowline = this.selectedNode;
+        this.flowlineCreationMode = true;
+        this.canvas.style.cursor = 'crosshair';
+        
+        // Add visual indication that we're in flowline creation mode
+        this.sourceNodeForFlowline.style.boxShadow = '0 0 15px rgba(0, 123, 255, 0.8)';
+        
+        // Add click handler to cancel flowline creation if clicking on canvas
+        const cancelHandler = (e) => {
+            if (e.target === this.canvas) {
+                this.exitFlowlineCreationMode();
+                this.canvas.removeEventListener('click', cancelHandler);
+            }
+        };
+        
+        this.canvas.addEventListener('click', cancelHandler);
+    }
+    
+    exitFlowlineCreationMode() {
+        this.flowlineCreationMode = false;
+        this.canvas.style.cursor = 'default';
+        if (this.sourceNodeForFlowline) {
+            this.sourceNodeForFlowline.style.boxShadow = '';
+            this.sourceNodeForFlowline = null;
+        }
+    }
+    
+    createFlowline(sourceNode, targetNode) {
+        const flowlineType = this.flowlineTypeDropdown.value;
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('class', 'flowline-arrow');
+        path.dataset.source = sourceNode.dataset.id;
+        path.dataset.target = targetNode.dataset.id;
+        path.dataset.type = flowlineType;
+        
+        this.svg.appendChild(path);
+        this.flowlines.push({
+            element: path,
+            source: sourceNode,
+            target: targetNode,
+            type: flowlineType
+        });
+        
+        this.updateFlowlines();
+    }
+    
+    updateFlowlines() {
+        this.flowlines.forEach(flowline => {
+            const sourceRect = flowline.source.getBoundingClientRect();
+            const targetRect = flowline.target.getBoundingClientRect();
+            const canvasRect = this.canvas.getBoundingClientRect();
+            
+            const sourceX = sourceRect.left + sourceRect.width / 2 - canvasRect.left;
+            const sourceY = sourceRect.top + sourceRect.height / 2 - canvasRect.top;
+            const targetX = targetRect.left + targetRect.width / 2 - canvasRect.left;
+            const targetY = targetRect.top + targetRect.height / 2 - canvasRect.top;
+            
+            let pathData;
+            
+            if (flowline.type === 'perpendicular') {
+                // Create perpendicular path with right angles
+                const midX = sourceX + (targetX - sourceX) / 2;
+                pathData = `M ${sourceX} ${sourceY} L ${midX} ${sourceY} L ${midX} ${targetY} L ${targetX} ${targetY}`;
+            } else {
+                // Create straight line
+                pathData = `M ${sourceX} ${sourceY} L ${targetX} ${targetY}`;
+            }
+            
+            flowline.element.setAttribute('d', pathData);
+        });
+    }
     
     
     renameNode() {
