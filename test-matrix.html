@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Matrix Test</title>
+    <style>
+        .test-container {
+            width: 800px;
+            height: 600px;
+            border: 1px solid #ccc;
+            position: relative;
+            margin: 20px;
+        }
+        .test-node {
+            position: absolute;
+            width: 100px;
+            height: 50px;
+            background: #007bff;
+            border-radius: 4px;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+        .quadrant-label {
+            position: absolute;
+            font-weight: bold;
+            color: #666;
+            pointer-events: none;
+        }
+        .quadrant-1-label { top: 10px; left: 10px; }
+        .quadrant-2-label { top: 10px; right: 10px; }
+        .quadrant-3-label { bottom: 10px; left: 10px; }
+        .quadrant-4-label { bottom: 10px; right: 10px; }
+        .matrix-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+            border: 2px solid #007bff;
+        }
+        .matrix-overlay::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: #007bff;
+        }
+        .matrix-overlay::after {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: 0;
+            bottom: 0;
+            width: 1px;
+            background: #007bff;
+        }
+    </style>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body>
+    <h1>Matrix Animation Test</h1>
+    <button onclick="testAnimation()">Test Matrix Animation</button>
+    <button onclick="resetNodes()">Reset Nodes</button>
+    
+    <div class="test-container">
+        <div class="matrix-overlay" id="matrixOverlay">
+            <div class="quadrant-label quadrant-1-label">Not Urgent & Important</div>
+            <div class="quadrant-label quadrant-2-label">Urgent & Important</div>
+            <div class="quadrant-label quadrant-3-label">Not Urgent & Not Important</div>
+            <div class="quadrant-label quadrant-4-label">Urgent & Not Important</div>
+        </div>
+        
+        <div class="test-node" style="left: 100px; top: 100px;">Node 1</div>
+        <div class="test-node" style="left: 300px; top: 200px;">Node 2</div>
+        <div class="test-node" style="left: 500px; top: 150px;">Node 3</div>
+    </div>
+
+    <script>
+        function testAnimation() {
+            const nodes = document.querySelectorAll('.test-node');
+            const overlay = document.getElementById('matrixOverlay');
+            
+            console.log('Testing matrix animation...');
+            console.log('Found nodes:', nodes.length);
+            
+            // Show matrix overlay
+            overlay.style.display = 'block';
+            
+            // First, move nodes off-screen to the left
+            d3.selectAll(nodes)
+                .transition()
+                .duration(800)
+                .style('left', (d, i) => {
+                    const node = nodes[i];
+                    const offScreenX = -(node.offsetWidth + 50);
+                    console.log(`Moving node ${i} to x: ${offScreenX}px`);
+                    return `${offScreenX}px`;
+                })
+                .on('end', () => {
+                    console.log('Off-screen animation completed');
+                    
+                    // Then move to matrix positions
+                    setTimeout(() => {
+                        d3.selectAll(nodes)
+                            .transition()
+                            .duration(1000)
+                            .style('left', (d, i) => {
+                                const positions = ['50px', '450px', '50px'];
+                                return positions[i];
+                            })
+                            .style('top', (d, i) => {
+                                const positions = ['50px', '50px', '350px'];
+                                return positions[i];
+                            })
+                            .on('end', () => {
+                                console.log('Matrix positioning completed');
+                            });
+                    }, 500);
+                });
+        }
+        
+        function resetNodes() {
+            const overlay = document.getElementById('matrixOverlay');
+            overlay.style.display = 'none';
+            
+            const nodes = document.querySelectorAll('.test-node');
+            nodes[0].style.left = '100px';
+            nodes[0].style.top = '100px';
+            nodes[1].style.left = '300px';
+            nodes[1].style.top = '200px';
+            nodes[2].style.left = '500px';
+            nodes[2].style.top = '150px';
+        }
+    </script>
+</body>
+</html>

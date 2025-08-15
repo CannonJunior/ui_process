@@ -339,8 +339,7 @@ class ProcessFlowDesigner {
         this.loadWorkflowButton.addEventListener('click', () => this.loadWorkflowInput.click());
         this.loadWorkflowInput.addEventListener('change', (e) => this.loadWorkflow(e));
         
-        // Eisenhower Matrix toggle event listener
-        this.eisenhowerToggle.addEventListener('click', () => this.toggleEisenhowerMatrix());
+        // Eisenhower Matrix toggle event listener is now handled by MatrixController
         
         // Tag modal event listeners are now handled by ModalManager
         // Note: Tag category dropdown change listener is kept here as it's tag logic, not modal management
