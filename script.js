@@ -255,7 +255,8 @@ class ProcessFlowDesigner {
             'loadWorkflowButton', 'loadWorkflowInput', 'tagModal', 'currentTags',
             'tagCategoryDropdown', 'tagOptionDropdown', 'tagDateInput', 'tagDescriptionInput',
             'tagLinkInput', 'tagCompletedInput', 'tagModalCancel', 'tagModalAdd', 'tagModalSave',
-            'tagContextMenu', 'tagAttributeMenu', 'tagDatePicker', 'eisenhowerToggle', 'eisenhowerMatrix'
+            'tagContextMenu', 'tagAttributeMenu', 'tagDatePicker', 'eisenhowerToggle', 'eisenhowerMatrix',
+            'reassignTasksModal', 'reassignTasksList', 'reassignOptions', 'reassignModalCancel', 'reassignModalConfirm'
         ]);
         
         // Assign elements to instance properties for backward compatibility
@@ -448,20 +449,55 @@ class ProcessFlowDesigner {
     }
     
     deleteNode() {
+        if (!this.selectedNode) {
+            console.warn('No node selected for deletion');
+            return;
+        }
+        
+        // Check if this node has associated tasks
+        const associatedTasks = this.getTasksForNode(this.selectedNode.dataset.id);
+        
+        if (associatedTasks.length > 0) {
+            // Node has associated tasks - show reassignment modal
+            console.log(`Node ${this.selectedNode.dataset.id} has ${associatedTasks.length} associated tasks - showing reassignment modal`);
+            this.showReassignTasksModal(this.selectedNode, associatedTasks);
+        } else {
+            // No associated tasks - proceed with direct deletion
+            console.log(`Node ${this.selectedNode.dataset.id} has no associated tasks - proceeding with deletion`);
+            this.proceedWithNodeDeletion(this.selectedNode);
+        }
+    }
+    
+    /**
+     * Proceed with actual node deletion (called after task reassignment or when no tasks exist)
+     * @param {HTMLElement} nodeToDelete - Node to delete
+     */
+    proceedWithNodeDeletion(nodeToDelete) {
+        console.log(`Deleting node ${nodeToDelete.dataset.id}`);
+        
         // Remove flowlines connected to this node
-        this.flowlines = this.flowlines.filter(flowline => {
-            if (flowline.source === this.selectedNode || flowline.target === this.selectedNode) {
-                this.svg.removeChild(flowline.element);
-                return false;
-            }
-            return true;
-        });
+        this.removeFlowlinesForNode(nodeToDelete);
         
-        // Remove node from nodes array
-        this.nodes = this.nodes.filter(node => node !== this.selectedNode);
+        // Remove node using NodeManager delegation
+        this.removeNode(nodeToDelete);
         
-        // Remove node from DOM
-        this.canvas.removeChild(this.selectedNode);
+        console.log(`Node ${nodeToDelete.dataset.id} deleted successfully`);
+    }
+    
+    /**
+     * Show task reassignment modal (delegates to ModalManager)
+     * @param {HTMLElement} nodeToDelete - Node being deleted
+     * @param {Array} associatedTasks - Tasks that need reassignment
+     */
+    showReassignTasksModal(nodeToDelete, associatedTasks) {
+        this.modalManager.showReassignTasksModal(nodeToDelete, associatedTasks);
+    }
+    
+    /**
+     * Hide task reassignment modal (delegates to ModalManager)
+     */
+    hideReassignTasksModal() {
+        this.modalManager.hideReassignTasksModal();
     }
     
     showTaskModal() {

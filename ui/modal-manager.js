@@ -122,6 +122,24 @@ class ModalManager {
             });
         }
         
+        // Reassign Tasks Modal Event Listeners
+        if (this.app.reassignModalCancel) {
+            this.app.reassignModalCancel.addEventListener('click', () => this.hideReassignTasksModal());
+        }
+        
+        if (this.app.reassignModalConfirm) {
+            this.app.reassignModalConfirm.addEventListener('click', () => this.confirmTaskReassignment());
+        }
+        
+        // Reassign modal click outside to close
+        if (this.app.reassignTasksModal) {
+            this.app.reassignTasksModal.addEventListener('click', (e) => {
+                if (e.target === this.app.reassignTasksModal) {
+                    this.hideReassignTasksModal();
+                }
+            });
+        }
+        
         // Global escape key to close modals
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && this.currentModal) {
@@ -337,6 +355,204 @@ class ModalManager {
         return option;
     }
     
+    // ==================== TASK REASSIGNMENT MODAL METHODS ====================
+    
+    /**
+     * Show task reassignment modal when deleting a node with associated tasks
+     * @param {HTMLElement} nodeToDelete - Node being deleted
+     * @param {Array} associatedTasks - Tasks that need reassignment
+     */
+    showReassignTasksModal(nodeToDelete, associatedTasks) {
+        this.nodeBeingDeleted = nodeToDelete;
+        this.tasksToReassign = associatedTasks;
+        this.selectedReassignTarget = null;
+        this.currentModal = 'reassignTasksModal';
+        
+        // Update modal message
+        const nodeText = nodeToDelete.querySelector('.node-text')?.textContent || 'Unknown';
+        const nodeType = nodeToDelete.dataset.type || 'node';
+        const message = `The ${nodeType} "${nodeText}" has ${associatedTasks.length} associated task${associatedTasks.length !== 1 ? 's' : ''}. Select which node to reassign them to:`;
+        
+        const messageElement = this.domService.getElement('reassignTasksMessage');
+        if (messageElement) {
+            messageElement.textContent = message;
+        }
+        
+        // Populate tasks list
+        this.populateTasksList(associatedTasks);
+        
+        // Populate available nodes for reassignment
+        this.populateReassignOptions(nodeToDelete);
+        
+        // Disable confirm button initially
+        const confirmBtn = this.domService.getElement('reassignModalConfirm');
+        if (confirmBtn) {
+            confirmBtn.disabled = true;
+        }
+        
+        this.domService.show('reassignTasksModal', 'block');
+        console.log(`ModalManager: Reassign tasks modal opened for node ${nodeToDelete.dataset.id}`);
+    }
+    
+    /**
+     * Hide task reassignment modal
+     */
+    hideReassignTasksModal() {
+        this.domService.hide('reassignTasksModal');
+        
+        if (this.currentModal === 'reassignTasksModal') {
+            this.currentModal = null;
+        }
+        
+        this.nodeBeingDeleted = null;
+        this.tasksToReassign = null;
+        this.selectedReassignTarget = null;
+        console.log('ModalManager: Reassign tasks modal closed');
+    }
+    
+    /**
+     * Populate the list of tasks that need reassignment
+     * @param {Array} tasks - Tasks to display
+     */
+    populateTasksList(tasks) {
+        const tasksList = this.domService.getElement('reassignTasksList');
+        if (!tasksList) return;
+        
+        tasksList.innerHTML = '';
+        
+        tasks.forEach(task => {
+            const taskItem = document.createElement('div');
+            taskItem.className = 'reassign-task-item';
+            
+            const taskName = task.querySelector('.node-text')?.textContent || 'Unnamed Task';
+            const taskSlot = task.dataset.slot || '0';
+            
+            taskItem.innerHTML = `
+                <span class="task-name">${taskName}</span>
+                <span class="task-meta">Slot ${taskSlot}</span>
+            `;
+            
+            tasksList.appendChild(taskItem);
+        });
+    }
+    
+    /**
+     * Populate available nodes for task reassignment
+     * @param {HTMLElement} excludeNode - Node to exclude from options
+     */
+    populateReassignOptions(excludeNode) {
+        const optionsContainer = this.domService.getElement('reassignOptions');
+        if (!optionsContainer) return;
+        
+        optionsContainer.innerHTML = '';
+        
+        // Get all nodes except the one being deleted
+        const availableNodes = this.app.nodes.filter(node => 
+            node !== excludeNode && node.dataset.type !== 'task'
+        );
+        
+        if (availableNodes.length === 0) {
+            const noOptions = document.createElement('div');
+            noOptions.className = 'reassign-option disabled';
+            noOptions.textContent = 'No available nodes for reassignment';
+            optionsContainer.appendChild(noOptions);
+            return;
+        }
+        
+        availableNodes.forEach(node => {
+            const option = this.createReassignOption(node);
+            optionsContainer.appendChild(option);
+        });
+    }
+    
+    /**
+     * Create reassignment option element
+     * @param {HTMLElement} node - Node to create option for
+     * @returns {HTMLElement} Option element
+     */
+    createReassignOption(node) {
+        const option = document.createElement('div');
+        option.className = 'reassign-option';
+        option.dataset.nodeId = node.dataset.id;
+        
+        const nodeText = node.querySelector('.node-text')?.textContent || 'Unnamed Node';
+        const nodeType = node.dataset.type || 'node';
+        
+        option.innerHTML = `
+            <span class="node-type">${nodeType}</span>
+            <span class="node-name">${nodeText}</span>
+        `;
+        
+        // Add click handler for option selection
+        option.addEventListener('click', () => {
+            this.selectReassignOption(option, node);
+        });
+        
+        return option;
+    }
+    
+    /**
+     * Handle reassignment option selection
+     * @param {HTMLElement} optionElement - Selected option element
+     * @param {HTMLElement} targetNode - Target node for reassignment
+     */
+    selectReassignOption(optionElement, targetNode) {
+        // Remove previous selection
+        const allOptions = this.domService.getElement('reassignOptions')?.querySelectorAll('.reassign-option');
+        allOptions?.forEach(opt => opt.classList.remove('selected'));
+        
+        // Select current option
+        optionElement.classList.add('selected');
+        this.selectedReassignTarget = targetNode;
+        
+        // Enable confirm button
+        const confirmBtn = this.domService.getElement('reassignModalConfirm');
+        if (confirmBtn) {
+            confirmBtn.disabled = false;
+        }
+        
+        console.log(`ModalManager: Selected reassignment target: ${targetNode.dataset.id}`);
+    }
+    
+    /**
+     * Confirm task reassignment and proceed with node deletion
+     */
+    confirmTaskReassignment() {
+        if (!this.selectedReassignTarget || !this.tasksToReassign || !this.nodeBeingDeleted) {
+            console.error('ModalManager: Invalid state for task reassignment');
+            return;
+        }
+        
+        console.log(`ModalManager: Reassigning ${this.tasksToReassign.length} tasks to node ${this.selectedReassignTarget.dataset.id}`);
+        
+        // Reassign all tasks to the selected target node
+        this.tasksToReassign.forEach(task => {
+            this.app.moveTaskToNode(task, this.selectedReassignTarget);
+        });
+        
+        // Hide the modal
+        this.hideReassignTasksModal();
+        
+        // Proceed with actual node deletion
+        this.proceedWithNodeDeletion(this.nodeBeingDeleted);
+    }
+    
+    /**
+     * Proceed with actual node deletion after tasks have been reassigned
+     * @param {HTMLElement} node - Node to delete
+     */
+    proceedWithNodeDeletion(node) {
+        console.log(`ModalManager: Proceeding with deletion of node ${node.dataset.id}`);
+        
+        // Use the app's proceedWithNodeDeletion method to actually delete the node
+        if (typeof this.app.proceedWithNodeDeletion === 'function') {
+            this.app.proceedWithNodeDeletion(node);
+            console.log(`ModalManager: Node ${node.dataset.id} deleted successfully`);
+        } else {
+            console.error('ModalManager: proceedWithNodeDeletion method not available');
+        }
+    }
+    
     // ==================== GENERAL MODAL METHODS ====================
     
     /**
@@ -352,6 +568,9 @@ class ModalManager {
                 break;
             case 'advanceTaskModal':
                 this.hideAdvanceTaskModal();
+                break;
+            case 'reassignTasksModal':
+                this.hideReassignTasksModal();
                 break;
             default:
                 console.log('ModalManager: No modal currently open');

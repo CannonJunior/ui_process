@@ -779,6 +779,95 @@ input.node-input {
     border-color: #007bff;
 }
 
+/* Reassign Tasks Modal */
+.reassign-tasks-list {
+    margin: 15px 0;
+    padding: 10px;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    border: 1px solid #dee2e6;
+}
+
+.reassign-task-item {
+    padding: 8px 12px;
+    margin: 4px 0;
+    background-color: white;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    font-size: 13px;
+    color: #495057;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.reassign-task-item .task-name {
+    font-weight: 500;
+    color: #212529;
+}
+
+.reassign-task-item .task-meta {
+    font-size: 11px;
+    color: #6c757d;
+}
+
+.reassign-options {
+    margin: 15px 0;
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+}
+
+.reassign-option {
+    padding: 12px;
+    border-bottom: 1px solid #dee2e6;
+    cursor: pointer;
+    background-color: #fff;
+    transition: background-color 0.2s;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.reassign-option:last-child {
+    border-bottom: none;
+}
+
+.reassign-option:hover {
+    background-color: #f8f9fa;
+}
+
+.reassign-option.selected {
+    background-color: #007bff;
+    color: white;
+}
+
+.reassign-option .node-type {
+    background-color: #6c757d;
+    color: white;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    text-transform: uppercase;
+}
+
+.reassign-option.selected .node-type {
+    background-color: rgba(255, 255, 255, 0.3);
+}
+
+.modal-button.confirm {
+    background-color: #dc3545;
+    color: white;
+}
+
+.modal-button.confirm:disabled {
+    background-color: #6c757d;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
 /* SVG Flowlines */
 .flowline-arrow {
     stroke: #333;
