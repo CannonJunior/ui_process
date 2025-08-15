@@ -117,6 +117,9 @@ class MatrixController {
         // Use matrix animations to transition nodes back to original positions
         if (this.app.matrixAnimations) {
             this.app.matrixAnimations.transitionNodesToOriginalPositions().then(() => {
+                // After regular nodes are restored, reposition tasks relative to their anchor nodes
+                this.repositionTasksAfterMatrixExit();
+                
                 // After transition completes, hide the matrix overlay
                 if (this.eisenhowerMatrix) {
                     this.eisenhowerMatrix.style.display = 'none';
@@ -125,10 +128,49 @@ class MatrixController {
         } else {
             // Fallback: directly hide matrix without animations
             console.warn('MatrixController: MatrixAnimations not available, using fallback');
+            
+            // Reposition tasks relative to their anchor nodes
+            this.repositionTasksAfterMatrixExit();
+            
             if (this.eisenhowerMatrix) {
                 this.eisenhowerMatrix.style.display = 'none';
             }
         }
+    }
+    
+    /**
+     * Reposition tasks relative to their anchor nodes after matrix exit
+     * Tasks should be positioned using slot-based positioning, not absolute positions
+     */
+    repositionTasksAfterMatrixExit() {
+        console.log('MatrixController: Repositioning tasks after matrix exit');
+        
+        // Get all task nodes from main app
+        const taskNodes = this.app.taskNodes || [];
+        
+        if (taskNodes.length === 0) {
+            console.log('MatrixController: No task nodes to reposition');
+            return;
+        }
+        
+        // Reposition each task using the main app's positionTaskInSlot method
+        taskNodes.forEach(taskNode => {
+            if (taskNode.dataset.type === 'task' && taskNode.dataset.anchoredTo) {
+                try {
+                    // Use the main app's method to position tasks correctly
+                    if (typeof this.app.positionTaskInSlot === 'function') {
+                        this.app.positionTaskInSlot(taskNode);
+                        console.log(`MatrixController: Repositioned task ${taskNode.dataset.id} to anchor ${taskNode.dataset.anchoredTo}`);
+                    } else {
+                        console.warn('MatrixController: positionTaskInSlot method not available');
+                    }
+                } catch (error) {
+                    console.error('MatrixController: Error repositioning task:', error);
+                }
+            }
+        });
+        
+        console.log(`MatrixController: Repositioned ${taskNodes.length} tasks after matrix exit`);
     }
     
     // ==================== POSITION STORAGE AND MANAGEMENT ====================
