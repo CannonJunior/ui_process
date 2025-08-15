@@ -140,10 +140,10 @@ class MatrixController {
     
     /**
      * Reposition tasks relative to their anchor nodes after matrix exit
-     * Tasks should be positioned using slot-based positioning, not absolute positions
+     * Uses D3 transitions for smooth animated repositioning
      */
     repositionTasksAfterMatrixExit() {
-        console.log('MatrixController: Repositioning tasks after matrix exit');
+        console.log('MatrixController: Repositioning tasks after matrix exit with D3 transitions');
         
         // Get all task nodes from main app
         const taskNodes = this.app.taskNodes || [];
@@ -153,24 +153,141 @@ class MatrixController {
             return;
         }
         
-        // Reposition each task using the main app's positionTaskInSlot method
+        // Calculate target positions for all tasks first
+        const taskPositions = [];
+        
         taskNodes.forEach(taskNode => {
             if (taskNode.dataset.type === 'task' && taskNode.dataset.anchoredTo) {
                 try {
-                    // Use the main app's method to position tasks correctly
-                    if (typeof this.app.positionTaskInSlot === 'function') {
-                        this.app.positionTaskInSlot(taskNode);
-                        console.log(`MatrixController: Repositioned task ${taskNode.dataset.id} to anchor ${taskNode.dataset.anchoredTo}`);
-                    } else {
-                        console.warn('MatrixController: positionTaskInSlot method not available');
+                    const targetPosition = this.calculateTaskSlotPosition(taskNode);
+                    if (targetPosition) {
+                        const taskContainer = taskNode.closest('.task-container');
+                        if (taskContainer) {
+                            taskPositions.push({
+                                element: taskContainer,
+                                targetX: targetPosition.x,
+                                targetY: targetPosition.y,
+                                taskNode: taskNode
+                            });
+                        }
                     }
                 } catch (error) {
-                    console.error('MatrixController: Error repositioning task:', error);
+                    console.error('MatrixController: Error calculating task position:', error);
                 }
             }
         });
         
-        console.log(`MatrixController: Repositioned ${taskNodes.length} tasks after matrix exit`);
+        if (taskPositions.length === 0) {
+            console.log('MatrixController: No valid task positions calculated');
+            return;
+        }
+        
+        console.log(`MatrixController: Animating ${taskPositions.length} tasks to anchor positions`);
+        
+        // Use D3 to animate task containers to their proper positions
+        d3.selectAll(taskPositions.map(pos => pos.element))
+            .transition()
+            .duration(800) // Match the duration used in matrix animations
+            .delay((d, i) => i * 100) // Stagger animations for visual appeal
+            .ease(d3.easeCubicOut) // Use the same easing as other matrix animations
+            .style('left', (d, i) => `${taskPositions[i].targetX}px`)
+            .style('top', (d, i) => `${taskPositions[i].targetY}px`)
+            .on('end', (d, i) => {
+                // Also reposition the next-action-slot for this task
+                this.repositionNextActionSlotForTask(taskPositions[i]);
+            });
+        
+        console.log(`MatrixController: Started D3 transition for ${taskPositions.length} tasks`);
+    }
+    
+    /**
+     * Calculate the proper slot position for a task relative to its anchor node
+     * @param {HTMLElement} taskNode - Task node element
+     * @returns {Object|null} Position object with x, y coordinates or null if calculation fails
+     */
+    calculateTaskSlotPosition(taskNode) {
+        const anchorNodeId = taskNode.dataset.anchoredTo;
+        const anchorNode = this.app.nodes ? this.app.nodes.find(node => node.dataset.id === anchorNodeId) : null;
+        
+        if (!anchorNode) {
+            console.warn(`MatrixController: Anchor node ${anchorNodeId} not found for task ${taskNode.dataset.id}`);
+            return null;
+        }
+        
+        const anchorX = parseInt(anchorNode.style.left) || 0;
+        const anchorY = parseInt(anchorNode.style.top) || 0;
+        const slot = parseInt(taskNode.dataset.slot) || 0;
+        
+        // Constants for task positioning (match the main app's constants)
+        const TASK_OFFSET_Y = 80; // Distance below anchor node for first task
+        const MIN_TASK_GAP = 10;   // Minimum gap between tasks
+        
+        // Calculate dynamic Y position based on actual heights of previous tasks
+        let yPosition = anchorY + TASK_OFFSET_Y;
+        
+        if (slot > 0) {
+            // Get all tasks for this anchor node that come before this one
+            const allTasks = this.getTasksForAnchorNode(anchorNodeId);
+            const previousTasks = allTasks.filter(task => {
+                const taskSlot = parseInt(task.dataset.slot) || 0;
+                return taskSlot < slot;
+            }).sort((a, b) => {
+                const slotA = parseInt(a.dataset.slot) || 0;
+                const slotB = parseInt(b.dataset.slot) || 0;
+                return slotA - slotB;
+            });
+            
+            // Add up the heights of all previous tasks and their gaps
+            previousTasks.forEach(prevTask => {
+                const prevContainer = prevTask.closest('.task-container');
+                if (prevContainer) {
+                    const taskHeight = prevContainer.offsetHeight;
+                    yPosition += taskHeight + MIN_TASK_GAP;
+                }
+            });
+        }
+        
+        return {
+            x: anchorX,
+            y: yPosition
+        };
+    }
+    
+    /**
+     * Get all tasks for a specific anchor node
+     * @param {string} anchorNodeId - Anchor node ID
+     * @returns {Array} Array of task elements
+     */
+    getTasksForAnchorNode(anchorNodeId) {
+        const taskNodes = this.app.taskNodes || [];
+        return taskNodes.filter(task => task.dataset.anchoredTo === anchorNodeId);
+    }
+    
+    /**
+     * Reposition next-action-slot for a specific task after task positioning
+     * @param {Object} taskPosition - Task position data with element and taskNode
+     */
+    repositionNextActionSlotForTask(taskPosition) {
+        if (!this.canvas) return;
+        
+        const taskNode = taskPosition.taskNode;
+        const nextActionSlot = this.canvas.querySelector(`.next-action-slot[data-task-id="${taskNode.dataset.id}"]`);
+        
+        if (nextActionSlot) {
+            // Position next-action-slot to the right of the task container
+            const slotX = taskPosition.targetX + 130; // 130px to the right of task
+            const slotY = taskPosition.targetY;
+            
+            // Use D3 to animate the slot positioning as well
+            d3.select(nextActionSlot)
+                .transition()
+                .duration(400) // Shorter duration for slot positioning
+                .ease(d3.easeCubicOut)
+                .style('left', `${slotX}px`)
+                .style('top', `${slotY}px`);
+                
+            console.log(`MatrixController: Repositioned next-action-slot for task ${taskNode.dataset.id}`);
+        }
     }
     
     // ==================== POSITION STORAGE AND MANAGEMENT ====================

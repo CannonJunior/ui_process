@@ -87,17 +87,47 @@ function testMatrixToggle() {
                     console.log('Matrix mode after second toggle:', app.isMatrixMode);
                     console.log('Matrix element display after exit:', matrixElement?.style.display);
                     
-                    // Check task positioning
-                    console.log('Checking task positions after matrix exit...');
-                    const taskNodes = app.taskNodes || [];
-                    taskNodes.forEach(task => {
-                        const anchorId = task.dataset.anchoredTo;
-                        const slot = task.dataset.slot;
-                        const container = task.closest('.task-container');
-                        if (container) {
-                            console.log(`Task ${task.dataset.id}: anchor=${anchorId}, slot=${slot}, position=(${container.style.left}, ${container.style.top})`);
-                        }
-                    });
+                    // Check task positioning after animations should complete
+                    setTimeout(() => {
+                        console.log('Checking task positions after D3 transitions...');
+                        const taskNodes = app.taskNodes || [];
+                        taskNodes.forEach(task => {
+                            const anchorId = task.dataset.anchoredTo;
+                            const slot = task.dataset.slot;
+                            const container = task.closest('.task-container');
+                            const nextActionSlot = document.querySelector(`.next-action-slot[data-task-id="${task.dataset.id}"]`);
+                            
+                            if (container) {
+                                console.log(`Task ${task.dataset.id}: anchor=${anchorId}, slot=${slot}`);
+                                console.log(`  Container position: (${container.style.left}, ${container.style.top})`);
+                                
+                                if (nextActionSlot) {
+                                    console.log(`  Next-action-slot position: (${nextActionSlot.style.left}, ${nextActionSlot.style.top})`);
+                                }
+                                
+                                // Verify task is positioned relative to its anchor node
+                                if (anchorId) {
+                                    const anchorNode = app.nodes?.find(n => n.dataset.id === anchorId);
+                                    if (anchorNode) {
+                                        const anchorX = parseInt(anchorNode.style.left) || 0;
+                                        const anchorY = parseInt(anchorNode.style.top) || 0;
+                                        const taskX = parseInt(container.style.left) || 0;
+                                        const taskY = parseInt(container.style.top) || 0;
+                                        
+                                        console.log(`  Anchor position: (${anchorX}, ${anchorY})`);
+                                        console.log(`  Task relative to anchor: (${taskX - anchorX}, ${taskY - anchorY})`);
+                                        
+                                        // Check if task is positioned correctly (should be below anchor)
+                                        if (taskY > anchorY + 60) { // Should be at least 60px below
+                                            console.log(`  ✅ Task correctly positioned below anchor`);
+                                        } else {
+                                            console.log(`  ⚠️ Task may not be positioned correctly relative to anchor`);
+                                        }
+                                    }
+                                }
+                            }
+                        });
+                    }, 1000); // Wait for D3 transitions to complete
                     
                     console.log('=== TOGGLE TEST COMPLETE ===');
                 }, 2000);
@@ -148,6 +178,71 @@ function testMatrixAnimation() {
     }
 }
 
+function testTaskRepositioning() {
+    console.log('=== TESTING TASK REPOSITIONING WITH D3 ===');
+    
+    if (!window.processFlowDesigner) {
+        console.error('❌ ProcessFlowDesigner not found');
+        return;
+    }
+    
+    const app = window.processFlowDesigner;
+    
+    if (!app.matrixController) {
+        console.error('❌ MatrixController not found');
+        return;
+    }
+    
+    console.log('Task nodes available:', app.taskNodes?.length || 0);
+    
+    if (!app.taskNodes || app.taskNodes.length === 0) {
+        console.warn('⚠️ No task nodes found to test repositioning');
+        return;
+    }
+    
+    try {
+        console.log('Testing task repositioning with D3 transitions...');
+        
+        // Record initial positions
+        const initialPositions = app.taskNodes.map(task => {
+            const container = task.closest('.task-container');
+            return {
+                taskId: task.dataset.id,
+                initialX: container ? parseInt(container.style.left) || 0 : 0,
+                initialY: container ? parseInt(container.style.top) || 0 : 0
+            };
+        });
+        
+        console.log('Initial task positions:', initialPositions);
+        
+        // Call the repositioning function directly
+        app.matrixController.repositionTasksAfterMatrixExit();
+        
+        // Check positions after animation
+        setTimeout(() => {
+            console.log('Task positions after D3 repositioning:');
+            app.taskNodes.forEach(task => {
+                const container = task.closest('.task-container');
+                if (container) {
+                    const finalX = parseInt(container.style.left) || 0;
+                    const finalY = parseInt(container.style.top) || 0;
+                    const initial = initialPositions.find(p => p.taskId === task.dataset.id);
+                    
+                    console.log(`Task ${task.dataset.id}:`);
+                    console.log(`  Initial: (${initial?.initialX}, ${initial?.initialY})`);
+                    console.log(`  Final: (${finalX}, ${finalY})`);
+                    console.log(`  Movement: (${finalX - (initial?.initialX || 0)}, ${finalY - (initial?.initialY || 0)})`);
+                }
+            });
+            
+            console.log('=== TASK REPOSITIONING TEST COMPLETE ===');
+        }, 1200); // Wait for staggered animations to complete
+        
+    } catch (error) {
+        console.error('❌ Error during task repositioning test:', error);
+    }
+}
+
 // Auto-run debug when loaded
 if (typeof window !== 'undefined') {
     // Wait for page to load
@@ -160,4 +255,8 @@ if (typeof window !== 'undefined') {
     }
 }
 
-console.log('Matrix debug functions loaded. Run debugMatrixState(), testMatrixToggle(), or testMatrixAnimation() in console.');
+console.log('Matrix debug functions loaded:');
+console.log('- debugMatrixState() - Check overall matrix state');
+console.log('- testMatrixToggle() - Test full matrix toggle cycle');
+console.log('- testMatrixAnimation() - Test D3 animations');
+console.log('- testTaskRepositioning() - Test task D3 repositioning only');
