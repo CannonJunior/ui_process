@@ -16,7 +16,7 @@ class ProcessFlowDesigner {
         this.successfulDrop = false;
         this.selectedTagForEdit = null;
         this.currentTagData = null;
-        this.isMatrixMode = false;
+        // this.isMatrixMode now handled by MatrixController (getter defined below)
         this.originalNodePositions = new Map(); // Store original positions for ALL nodes before matrix mode
         
         // Initialize services
@@ -30,8 +30,78 @@ class ProcessFlowDesigner {
         this.modalManager = new ModalManager(this);
         this.contextMenuManager = new ContextMenuManager(this);
         
+        // Initialize feature managers
+        this.tagManager = new TagManager(this);
+        
+        // Initialize matrix modules (Phase 7: Eisenhower Matrix Extraction)
+        this.matrixAnimations = new MatrixAnimations(this);
+        this.matrixController = new MatrixController(this);
+        
         this.init();
     }
+    
+    // ==================== MATRIX MODE DELEGATION (Phase 7) ====================
+    
+    /**
+     * Matrix mode getter - delegates to MatrixController
+     */
+    get isMatrixMode() {
+        return this.matrixController ? this.matrixController.getMatrixMode() : false;
+    }
+    
+    /**
+     * Matrix mode setter - delegates to MatrixController
+     */
+    set isMatrixMode(value) {
+        if (this.matrixController) {
+            this.matrixController.setMatrixMode(value);
+        }
+    }
+    
+    // Matrix interface preservation - all methods delegate to MatrixController
+    toggleEisenhowerMatrix() {
+        return this.matrixController ? this.matrixController.toggleEisenhowerMatrix() : null;
+    }
+    
+    enterMatrixMode() {
+        return this.matrixController ? this.matrixController.enterMatrixMode() : null;
+    }
+    
+    exitMatrixMode() {
+        return this.matrixController ? this.matrixController.exitMatrixMode() : null;
+    }
+    
+    storeOriginalNodePositions() {
+        return this.matrixController ? this.matrixController.storeOriginalNodePositions() : null;
+    }
+    
+    positionTasksInMatrix() {
+        return this.matrixController ? this.matrixController.positionTasksInMatrix() : null;
+    }
+    
+    positionSingleTaskInMatrix(taskNode) {
+        return this.matrixController ? this.matrixController.positionSingleTaskInMatrix(taskNode) : null;
+    }
+    
+    analyzeTaskUrgencyImportance(tags) {
+        return this.matrixController ? this.matrixController.analyzeTaskUrgencyImportance(tags) : { isUrgent: false, isImportant: false };
+    }
+    
+    // Animation interface preservation - delegates to MatrixAnimations
+    transitionNodesOffScreen() {
+        return this.matrixAnimations ? this.matrixAnimations.transitionNodesOffScreen() : Promise.resolve();
+    }
+    
+    transitionNodesToOriginalPositions() {
+        return this.matrixAnimations ? this.matrixAnimations.transitionNodesToOriginalPositions() : Promise.resolve();
+    }
+    
+    // Legacy method for backward compatibility - now delegates to matrix modules
+    repositionTaskInMatrix(taskNode) {
+        return this.positionSingleTaskInMatrix(taskNode);
+    }
+    
+    // ==================== END MATRIX DELEGATION ====================
     
     initializeDOMElements() {
         // Get all required DOM elements through DOM service
@@ -142,8 +212,7 @@ class ProcessFlowDesigner {
         // Tag modal event listeners are now handled by ModalManager
         // Note: Tag category dropdown change listener is kept here as it's tag logic, not modal management
         
-        // Tag category dropdown change
-        this.tagCategoryDropdown.addEventListener('change', (e) => this.handleTagCategoryChange(e));
+        // Note: Tag category dropdown change is now handled by TagManager
         
         // Tag modal click outside listener is now handled by ModalManager
         
@@ -826,128 +895,23 @@ class ProcessFlowDesigner {
     }
     
     handleTagCategoryChange(e) {
-        const selectedCategory = e.target.value;
-        
-        if (selectedCategory) {
-            // Populate options dropdown based on selected category using config service
-            const success = this.configService.populateDropdown(this.tagOptionDropdown, `tagSystem.options.${selectedCategory}`);
-            if (success) {
-                this.tagOptionDropdown.disabled = false;
-            }
-        } else {
-            this.tagOptionDropdown.disabled = true;
-            this.tagOptionDropdown.innerHTML = '<option value="">Select category first</option>';
-        }
+        // Delegate to tag manager
+        this.tagManager.handleTagCategoryChange(e);
     }
     
     displayCurrentTags() {
-        if (!this.selectedTaskForTags) return;
-        
-        const tags = this.getTaskTags(this.selectedTaskForTags);
-        this.currentTags.innerHTML = '';
-        
-        tags.forEach((tag, index) => {
-            const tagElement = document.createElement('div');
-            tagElement.className = 'tag';
-            
-            const configService = this.configService;
-            const display = configService.getTagDisplay(tag.category);
-            tagElement.style.color = display.color;
-            tagElement.style.backgroundColor = display.bgColor;
-            
-            const categoryLabel = configService.getTagCategoryLabel(tag.category);
-            const optionLabel = configService.getTagOptionLabel(tag.category, tag.option);
-            const dateText = tag.date ? ` (${this.formatDateForDisplay(tag.date)})` : '';
-            
-            tagElement.innerHTML = `
-                <span>${categoryLabel}: ${optionLabel}${dateText}</span>
-                <button class="tag-remove" data-index="${index}">×</button>
-            `;
-            
-            // Add remove event listener
-            tagElement.querySelector('.tag-remove').addEventListener('click', (e) => {
-                this.removeTag(parseInt(e.target.dataset.index));
-            });
-            
-            this.currentTags.appendChild(tagElement);
-        });
+        // Delegate to tag manager
+        this.tagManager.displayCurrentTags();
     }
     
     addTagToTask() {
-        if (!this.selectedTaskForTags) return;
-        
-        const category = this.tagCategoryDropdown.value;
-        const option = this.tagOptionDropdown.value;
-        const date = this.tagDateInput.value; // Date is optional
-        const description = this.tagDescriptionInput.value.trim(); // Description is optional
-        const link = this.tagLinkInput.value.trim(); // Link is optional
-        const completed = this.tagCompletedInput.checked; // Completed is boolean
-        
-        if (!category || !option) {
-            alert('Please select both a tag category and option.');
-            return;
-        }
-        
-        const tags = this.getTaskTags(this.selectedTaskForTags);
-        
-        // Create tag object with optional fields
-        const tagData = { category, option };
-        if (date) {
-            tagData.date = date;
-        }
-        if (description) {
-            tagData.description = description;
-        }
-        if (link) {
-            tagData.link = link;
-        }
-        if (completed) {
-            tagData.completed = completed;
-        }
-        
-        // Check if this tag category already exists
-        const existingTagIndex = tags.findIndex(tag => tag.category === category);
-        
-        if (existingTagIndex >= 0) {
-            // Update existing tag
-            tags[existingTagIndex] = tagData;
-        } else {
-            // Add new tag
-            tags.push(tagData);
-        }
-        
-        // Update task tags
-        this.setTaskTags(this.selectedTaskForTags, tags);
-        
-        // Refresh display
-        this.displayCurrentTags();
-        this.updateTaskTagsDisplay(this.selectedTaskForTags);
-        
-        // Reposition tasks below this one since height may have changed
-        this.repositionTasksAfterHeightChange(this.selectedTaskForTags);
-        
-        // Reset form
-        this.tagCategoryDropdown.value = '';
-        this.tagOptionDropdown.disabled = true;
-        this.tagOptionDropdown.innerHTML = '<option value="">Select category first</option>';
-        this.tagDateInput.value = '';
-        this.tagDescriptionInput.value = '';
-        this.tagLinkInput.value = '';
-        this.tagCompletedInput.checked = false;
+        // Delegate to tag manager
+        this.tagManager.addTagToTask();
     }
     
     removeTag(index) {
-        if (!this.selectedTaskForTags) return;
-        
-        const tags = this.getTaskTags(this.selectedTaskForTags);
-        tags.splice(index, 1);
-        
-        this.setTaskTags(this.selectedTaskForTags, tags);
-        this.displayCurrentTags();
-        this.updateTaskTagsDisplay(this.selectedTaskForTags);
-        
-        // Reposition tasks below this one since height may have changed
-        this.repositionTasksAfterHeightChange(this.selectedTaskForTags);
+        // Delegate to tag manager
+        this.tagManager.removeTag(index);
     }
     
     saveTaskTags() {
@@ -961,79 +925,18 @@ class ProcessFlowDesigner {
     }
     
     getTaskTags(taskNode) {
-        try {
-            return JSON.parse(taskNode.dataset.tags || '[]');
-        } catch (e) {
-            return [];
-        }
+        // Delegate to tag manager
+        return this.tagManager.getTaskTags(taskNode);
     }
     
     setTaskTags(taskNode, tags) {
-        taskNode.dataset.tags = JSON.stringify(tags);
+        // Delegate to tag manager
+        this.tagManager.setTaskTags(taskNode, tags);
     }
     
     updateTaskTagsDisplay(taskNode) {
-        // Find the task container (parent of the banner)
-        const taskContainer = taskNode.parentNode;
-        if (!taskContainer) return;
-        
-        // Find the tags container within the task-tags-area
-        const tagsContainer = taskContainer.querySelector('.task-tags');
-        if (!tagsContainer) return;
-        
-        const tags = this.getTaskTags(taskNode);
-        
-        // Find the next-action-slot for this task
-        const nextActionSlot = this.canvas.querySelector(`.next-action-slot[data-task-id="${taskNode.dataset.id}"]`);
-        
-        // Get existing tag elements that are in next-action state (in the slot)
-        const existingTagElements = nextActionSlot ? Array.from(nextActionSlot.querySelectorAll('.tag-in-slot[data-task-id="' + taskNode.dataset.id + '"]')) : [];
-        
-        tagsContainer.innerHTML = '';
-        
-        tags.forEach((tag, index) => {
-            // Check if this tag is already positioned in the next-action-slot
-            const existingNextActionTag = existingTagElements.find(el => 
-                parseInt(el.dataset.tagIndex) === index && el.dataset.isInNextAction === 'true'
-            );
-            
-            if (existingNextActionTag) {
-                // Update the existing next-action tag's data but don't recreate it
-                existingNextActionTag.dataset.tagIndex = index;
-                return; // Skip creating a new element
-            }
-            const tagElement = document.createElement('div');
-            tagElement.className = 'tag';
-            tagElement.draggable = true;
-            tagElement.dataset.tagIndex = index;
-            tagElement.dataset.taskId = taskNode.dataset.id;
-            
-            const configService = this.configService;
-            const display = configService.getTagDisplay(tag.category);
-            tagElement.style.color = display.color;
-            tagElement.style.backgroundColor = display.bgColor;
-            
-            const categoryLabel = configService.getTagCategoryLabel(tag.category);
-            const optionLabel = configService.getTagOptionLabel(tag.category, tag.option);
-            const dateText = tag.date ? ` (${this.formatDateForDisplay(tag.date)})` : '';
-            
-            tagElement.textContent = `${categoryLabel}: ${optionLabel}${dateText}`;
-            
-            // Add drag event listeners
-            tagElement.addEventListener('dragstart', (e) => this.handleTagDragStart(e));
-            tagElement.addEventListener('dragend', (e) => this.handleTagDragEnd(e));
-            
-            // Add context menu event listener (simple - no overlap issues)
-            tagElement.addEventListener('contextmenu', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                console.log('Right-click detected on tag:', tagElement);
-                console.log('Tag data:', tags[index]);
-                this.showSimpleTagMenu(e, tagElement, tags[index]);
-            });
-            
-            tagsContainer.appendChild(tagElement);
-        });
+        // Delegate to tag manager
+        this.tagManager.updateTaskTagsDisplay(taskNode);
     }
     
     showAdvanceTaskModal(outboundFlowlines) {
@@ -1423,250 +1326,58 @@ class ProcessFlowDesigner {
     
     // Drag and Drop functionality for task tags
     handleTagDragStart(e) {
-        console.log('Drag start:', e.target);
-        this.successfulDrop = false; // Reset flag for new drag operation
-        
-        this.draggedTag = {
-            element: e.target,
-            taskId: e.target.dataset.taskId,
-            tagIndex: parseInt(e.target.dataset.tagIndex),
-            originalParent: e.target.parentNode,
-            originalPosition: Array.from(e.target.parentNode.children).indexOf(e.target)
-        };
-        
-        console.log('Dragged tag data:', this.draggedTag);
-        
-        e.target.classList.add('dragging');
-        e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/plain', ''); // Required for Firefox
+        // Delegate to tag manager
+        this.tagManager.handleTagDragStart(e);
+        // Sync drag state with main app
+        this.draggedTag = this.tagManager.draggedTag;
+        this.successfulDrop = this.tagManager.successfulDrop;
     }
     
     handleTagDragEnd(e) {
-        console.log('Drag end, successful drop:', this.successfulDrop);
-        e.target.classList.remove('dragging');
-        
-        // If drag ended without a successful drop, snap back
-        if (this.draggedTag && !this.successfulDrop) {
-            console.log('Snapping tag back');
-            this.snapTagBack();
-        } else {
-            console.log('Drop was successful, not snapping back');
-        }
-        
-        // Clean up drag state
-        this.draggedTag = null;
-        // Note: Don't reset successfulDrop here, let it be handled by the next drag operation
+        // Delegate to tag manager
+        this.tagManager.handleTagDragEnd(e);
+        // Sync drag state with main app
+        this.draggedTag = this.tagManager.draggedTag;
+        this.successfulDrop = this.tagManager.successfulDrop;
     }
     
     handleSlotDragOver(e) {
-        // Only allow dragover if it's the same task
-        if (this.draggedTag && e.target.dataset.taskId === this.draggedTag.taskId) {
-            e.preventDefault();
-            e.dataTransfer.dropEffect = 'move';
-            e.target.classList.add('drag-over');
-        } else {
-            e.dataTransfer.dropEffect = 'none';
-        }
+        // Delegate to tag manager
+        this.tagManager.handleSlotDragOver(e);
     }
     
     handleSlotDragLeave(e) {
-        // Only remove drag-over if we're actually leaving the slot
-        if (!e.currentTarget.contains(e.relatedTarget)) {
-            e.target.classList.remove('drag-over');
-        }
+        // Delegate to tag manager
+        this.tagManager.handleSlotDragLeave(e);
     }
     
     handleSlotDrop(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        e.target.classList.remove('drag-over');
-        
-        console.log('Drop event triggered on slot:', e.target);
-        
-        if (!this.draggedTag) {
-            console.log('No dragged tag found');
-            return;
-        }
-        
-        const targetTaskId = e.target.dataset.taskId;
-        const sourceTaskId = this.draggedTag.taskId;
-        
-        console.log('Source task ID:', sourceTaskId, 'Target task ID:', targetTaskId);
-        
-        // Only allow dropping on the same task's next-action-slot
-        if (sourceTaskId !== targetTaskId) {
-            console.log('Cannot drop on different task');
-            return;
-        }
-        
-        // Set successful drop flag
-        this.successfulDrop = true;
-        
-        // Animate the tag to snap to the next-action-slot location
-        this.snapTagToSlot(this.draggedTag.element, e.target);
-        
-        console.log('Tag snapped to next-action-slot');
+        // Delegate to tag manager
+        this.tagManager.handleSlotDrop(e);
+        // Sync drag state with main app
+        this.draggedTag = this.tagManager.draggedTag;
+        this.successfulDrop = this.tagManager.successfulDrop;
     }
     
     snapTagToSlot(tagElement, slotElement) {
-        // Store restoration data on the tag element
-        tagElement.dataset.originalParent = 'task-tags';
-        
-        // Get current and target positions for animation
-        const tagRect = tagElement.getBoundingClientRect();
-        const slotRect = slotElement.getBoundingClientRect();
-        
-        // Calculate animation offset
-        const deltaX = slotRect.left - tagRect.left;
-        const deltaY = slotRect.top - tagRect.top;
-        
-        console.log('Snapping tag to slot - deltaX:', deltaX, 'deltaY:', deltaY);
-        
-        // Add visual styling for the animation
-        tagElement.classList.add('tag-animating-to-slot');
-        tagElement.style.zIndex = '1000';
-        
-        // Animate the tag to the slot position using transform
-        tagElement.style.transition = 'all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
-        tagElement.style.transform = `translate(${deltaX}px, ${deltaY}px) scale(1.05)`;
-        
-        // After animation completes, move the tag to the slot
-        setTimeout(() => {
-            // Remove the tag from its current parent (task-tags container)
-            tagElement.remove();
-            
-            // Reset animation styles
-            tagElement.style.transition = '';
-            tagElement.style.transform = '';
-            tagElement.style.zIndex = '';
-            tagElement.classList.remove('tag-animating-to-slot');
-            
-            // Add the tag as a child of the next-action-slot
-            tagElement.classList.add('tag-in-slot');
-            tagElement.dataset.isInNextAction = 'true';
-            slotElement.appendChild(tagElement);
-            
-            // Context menu event listener is preserved when moving DOM elements
-            
-            // Add temporary glow effect
-            tagElement.classList.add('in-next-action');
-            setTimeout(() => {
-                tagElement.classList.remove('in-next-action');
-            }, 1500);
-            
-            console.log('Tag successfully snapped to next-action slot');
-            
-            // Reposition tasks below this one since height may have changed
-            const taskBanner = this.nodes.find(node => node.dataset.id === slotElement.dataset.taskId);
-            if (taskBanner) {
-                setTimeout(() => {
-                    this.repositionTasksAfterHeightChange(taskBanner);
-                }, 50); // Small delay to allow DOM updates
-            }
-        }, 400);
+        // Delegate to tag manager
+        this.tagManager.snapTagToSlot(tagElement, slotElement);
     }
     
     snapTagBack() {
-        if (!this.draggedTag) return;
-        
-        const tagElement = this.draggedTag.element;
-        tagElement.classList.add('snap-back');
-        
-        // Remove the animation class after animation completes
-        setTimeout(() => {
-            tagElement.classList.remove('snap-back');
-        }, 300);
+        // Delegate to tag manager
+        this.tagManager.snapTagBack();
     }
     
     formatDateForDisplay(dateString) {
-        if (!dateString) return '';
-        
-        try {
-            const date = new Date(dateString);
-            // Format as MM/DD/YYYY
-            return date.toLocaleDateString('en-US', {
-                month: '2-digit',
-                day: '2-digit',
-                year: 'numeric'
-            });
-        } catch (e) {
-            return dateString; // Return original if parsing fails
-        }
+        // Delegate to tag manager
+        return this.tagManager.formatDateForDisplay(dateString);
     }
     
     // Simple Tag Menu Functions
     showSimpleTagMenu(e, tagElement, tagData) {
-        console.log('Showing simple tag menu for:', tagData);
-        
-        // Hide any existing context menus
-        this.hideTagContextMenus();
-        this.hideContextMenu();
-        
-        // Create or update the simple tag menu content
-        const tagMenu = document.getElementById('tagContextMenu');
-        tagMenu.innerHTML = '';
-        
-        // Add tag information
-        const categoryItem = document.createElement('div');
-        categoryItem.className = 'menu-item menu-info';
-        categoryItem.innerHTML = `<strong>Category:</strong> ${tagData.category || 'None'}`;
-        tagMenu.appendChild(categoryItem);
-        
-        if (tagData.option) {
-            const optionItem = document.createElement('div');
-            optionItem.className = 'menu-item menu-info';
-            optionItem.innerHTML = `<strong>Option:</strong> ${tagData.option}`;
-            tagMenu.appendChild(optionItem);
-        }
-        
-        if (tagData.date) {
-            const dateItem = document.createElement('div');
-            dateItem.className = 'menu-item menu-info';
-            dateItem.innerHTML = `<strong>Date:</strong> ${tagData.date}`;
-            tagMenu.appendChild(dateItem);
-        }
-        
-        if (tagData.description) {
-            const descItem = document.createElement('div');
-            descItem.className = 'menu-item menu-info';
-            descItem.innerHTML = `<strong>Description:</strong> ${tagData.description}`;
-            tagMenu.appendChild(descItem);
-        }
-        
-        if (tagData.link) {
-            const linkItem = document.createElement('div');
-            linkItem.className = 'menu-item menu-info';
-            linkItem.innerHTML = `<strong>Link:</strong> <a href="${tagData.link}" target="_blank" rel="noopener">${tagData.link}</a>`;
-            linkItem.style.pointerEvents = 'auto'; // Allow clicking on the link
-            tagMenu.appendChild(linkItem);
-        }
-        
-        if (tagData.completed !== undefined) {
-            const completedItem = document.createElement('div');
-            completedItem.className = 'menu-item menu-info';
-            completedItem.innerHTML = `<strong>Status:</strong> ${tagData.completed ? '✓ Completed' : '○ Not completed'}`;
-            tagMenu.appendChild(completedItem);
-        }
-        
-        // Add separator
-        const separator = document.createElement('div');
-        separator.className = 'menu-separator';
-        tagMenu.appendChild(separator);
-        
-        // Add close option
-        const closeItem = document.createElement('div');
-        closeItem.className = 'menu-item';
-        closeItem.textContent = 'Close';
-        closeItem.addEventListener('click', () => {
-            this.hideTagContextMenus();
-        });
-        tagMenu.appendChild(closeItem);
-        
-        // Position and show menu
-        const canvasRect = this.canvas.getBoundingClientRect();
-        tagMenu.style.left = (e.clientX - canvasRect.left) + 'px';
-        tagMenu.style.top = (e.clientY - canvasRect.top) + 'px';
-        tagMenu.style.display = 'block';
+        // Delegate to tag manager
+        this.tagManager.showSimpleTagMenu(e, tagElement, tagData);
     }
     
     // Tag Context Menu Functions
@@ -1701,43 +1412,8 @@ class ProcessFlowDesigner {
     }
     
     updateTagAttribute(attribute, value) {
-        if (!this.currentTagData || !this.currentTagData.taskNode) return;
-        
-        const tags = this.getTaskTags(this.currentTagData.taskNode);
-        const tagIndex = this.currentTagData.tagIndex;
-        
-        if (tagIndex >= 0 && tagIndex < tags.length) {
-            const tag = tags[tagIndex];
-            
-            if (attribute === 'category') {
-                // When changing category, reset the option to first available
-                tag.category = value;
-                const options = AppConfig.tagSystem.options[value];
-                if (options && options.length > 0) {
-                    const firstValidOption = options.find(opt => opt.value && !opt.disabled);
-                    if (firstValidOption) {
-                        tag.option = firstValidOption.value;
-                    }
-                }
-            } else if (attribute === 'option') {
-                tag.option = value;
-            } else if (attribute === 'date') {
-                if (value) {
-                    tag.date = value;
-                } else {
-                    delete tag.date;
-                }
-            }
-            
-            // Update the tag data
-            this.setTaskTags(this.currentTagData.taskNode, tags);
-            
-            // Refresh displays
-            this.updateTaskTagsDisplay(this.currentTagData.taskNode);
-            if (this.selectedTaskForTags === this.currentTagData.taskNode) {
-                this.displayCurrentTags();
-            }
-        }
+        // Delegate to tag manager
+        this.tagManager.updateTagAttribute(attribute, value);
     }
     
     deleteSelectedTag() {
@@ -1808,366 +1484,12 @@ class ProcessFlowDesigner {
         this.contextMenuManager.hideTagContextMenus();
     }
     
-    // Eisenhower Matrix Methods
-    toggleEisenhowerMatrix() {
-        this.isMatrixMode = !this.isMatrixMode;
-        
-        if (this.isMatrixMode) {
-            this.enterMatrixMode();
-        } else {
-            this.exitMatrixMode();
-        }
-        
-        // Update button text
-        this.eisenhowerToggle.textContent = this.isMatrixMode ? '📊 Exit Matrix' : '📊 Matrix';
-    }
-    
-    enterMatrixMode() {
-        console.log('Entering Eisenhower Matrix mode');
-        
-        // Store original positions of all nodes
-        this.storeOriginalNodePositions();
-        
-        // Show the matrix overlay
-        this.eisenhowerMatrix.style.display = 'grid';
-        
-        // Use D3 to transition all nodes off-screen to the left
-        this.transitionNodesOffScreen().then(() => {
-            // After nodes are off-screen, position tasks in matrix quadrants
-            this.positionTasksInMatrix();
-        });
-    }
-    
-    exitMatrixMode() {
-        console.log('Exiting Eisenhower Matrix mode');
-        
-        // Use D3 to transition all nodes back to original positions
-        this.transitionNodesToOriginalPositions().then(() => {
-            // After transition completes, hide the matrix overlay
-            this.eisenhowerMatrix.style.display = 'none';
-        });
-    }
-    
-    storeOriginalNodePositions() {
-        this.originalNodePositions.clear();
-        
-        // Store positions for all regular nodes
-        this.nodes.forEach(node => {
-            if (node.dataset.type === 'task') {
-                // For task nodes, store the task container position
-                const taskContainer = node.closest('.task-container');
-                if (taskContainer) {
-                    this.originalNodePositions.set(node.dataset.id, {
-                        element: taskContainer,
-                        x: taskContainer.offsetLeft,
-                        y: taskContainer.offsetTop,
-                        type: 'task-container'
-                    });
-                }
-            } else {
-                // For regular nodes (process, decision, terminal)
-                this.originalNodePositions.set(node.dataset.id, {
-                    element: node,
-                    x: node.offsetLeft,
-                    y: node.offsetTop,
-                    type: 'node'
-                });
-            }
-        });
-        
-        // Store positions for next-action-slots
-        const nextActionSlots = this.canvas.querySelectorAll('.next-action-slot');
-        nextActionSlots.forEach(slot => {
-            this.originalNodePositions.set(`slot-${slot.dataset.taskId}`, {
-                element: slot,
-                x: slot.offsetLeft,
-                y: slot.offsetTop,
-                type: 'next-action-slot'
-            });
-        });
-        
-        console.log('Stored original positions for', this.originalNodePositions.size, 'elements');
-    }
-    
-    transitionNodesOffScreen() {
-        return new Promise((resolve) => {
-            const elementsToAnimate = Array.from(this.originalNodePositions.values());
-            
-            if (elementsToAnimate.length === 0) {
-                resolve();
-                return;
-            }
-            
-            // Use D3 to select and animate elements
-            d3.selectAll(elementsToAnimate.map(item => item.element))
-                .transition()
-                .duration(800)
-                .ease(d3.easeCubicOut)
-                .style('left', (d, i) => {
-                    const item = elementsToAnimate[i];
-                    // Move off-screen to the left (negative x value)
-                    return `-${item.element.offsetWidth + 50}px`;
-                })
-                .on('end', () => {
-                    resolve();
-                });
-        });
-    }
-    
-    transitionNodesToOriginalPositions() {
-        return new Promise((resolve) => {
-            const elementsToAnimate = Array.from(this.originalNodePositions.values());
-            
-            if (elementsToAnimate.length === 0) {
-                resolve();
-                return;
-            }
-            
-            // Use D3 to select and animate elements back to original positions
-            d3.selectAll(elementsToAnimate.map(item => item.element))
-                .transition()
-                .duration(800)
-                .ease(d3.easeCubicOut)
-                .style('left', (d, i) => {
-                    const item = elementsToAnimate[i];
-                    return `${item.x}px`;
-                })
-                .style('top', (d, i) => {
-                    const item = elementsToAnimate[i];
-                    return `${item.y}px`;
-                })
-                .on('end', () => {
-                    resolve();
-                });
-        });
-    }
-    
-    positionTasksInMatrix() {
-        const canvasRect = this.canvas.getBoundingClientRect();
-        const quadrantWidth = canvasRect.width / 2;
-        const quadrantHeight = canvasRect.height / 2;
-        
-        // Define quadrant positions (with padding from edges and labels)
-        const quadrants = {
-            1: { x: 20, y: 40 }, // Not Urgent & Important (top-left)
-            2: { x: quadrantWidth + 20, y: 40 }, // Urgent & Important (top-right) 
-            3: { x: 20, y: quadrantHeight + 40 }, // Not Urgent & Not Important (bottom-left)
-            4: { x: quadrantWidth + 20, y: quadrantHeight + 40 } // Urgent & Not Important (bottom-right)
-        };
-        
-        // Prepare task containers for animation based on their urgency/importance tags
-        const taskContainersData = [];
-        const quadrantCounts = { 1: 0, 2: 0, 3: 0, 4: 0 }; // Track tasks per quadrant for positioning
-        
-        this.taskNodes.forEach((taskNode, index) => {
-            const taskContainer = taskNode.closest('.task-container');
-            if (!taskContainer) return;
-            
-            // Parse task tags to determine urgency and importance
-            const tags = this.getTaskTags(taskNode);
-            const { isUrgent, isImportant } = this.analyzeTaskUrgencyImportance(tags);
-            
-            // Determine quadrant based on urgency/importance
-            let quadrantNum;
-            if (isImportant && !isUrgent) {
-                quadrantNum = 1; // Not Urgent & Important (top-left)
-            } else if (isImportant && isUrgent) {
-                quadrantNum = 2; // Urgent & Important (top-right)
-            } else if (!isImportant && !isUrgent) {
-                quadrantNum = 3; // Not Urgent & Not Important (bottom-left)
-            } else if (!isImportant && isUrgent) {
-                quadrantNum = 4; // Urgent & Not Important (bottom-right)
-            } else {
-                // Default to quadrant 3 if no clear classification
-                quadrantNum = 3;
-            }
-            
-            const quadrant = quadrants[quadrantNum];
-            
-            // Calculate position within quadrant to prevent overlapping
-            const tasksInQuadrant = quadrantCounts[quadrantNum];
-            const offsetX = (tasksInQuadrant % 2) * 180; // 2 columns per quadrant
-            const offsetY = Math.floor(tasksInQuadrant / 2) * 80; // Stack vertically
-            
-            // Ensure we don't exceed quadrant boundaries
-            const maxOffsetX = quadrantWidth - 220;
-            const maxOffsetY = quadrantHeight - 120;
-            const clampedOffsetX = Math.min(offsetX, maxOffsetX);
-            const clampedOffsetY = Math.min(offsetY, maxOffsetY);
-            
-            taskContainersData.push({
-                element: taskContainer,
-                targetX: quadrant.x + clampedOffsetX,
-                targetY: quadrant.y + clampedOffsetY,
-                quadrant: quadrantNum,
-                taskNode: taskNode
-            });
-            
-            quadrantCounts[quadrantNum]++;
-        });
-        
-        // Use D3 to animate task containers into matrix positions
-        if (taskContainersData.length > 0) {
-            d3.selectAll(taskContainersData.map(item => item.element))
-                .transition()
-                .duration(1000)
-                .delay((d, i) => i * 50) // Stagger animations
-                .ease(d3.easeCubicOut)
-                .style('left', (d, i) => `${taskContainersData[i].targetX}px`)
-                .style('top', (d, i) => `${taskContainersData[i].targetY}px`);
-        }
-        
-        // Also animate next-action-slots to positions relative to their tasks
-        taskContainersData.forEach((taskData, index) => {
-            const nextActionSlot = this.canvas.querySelector(`.next-action-slot[data-task-id="${taskData.taskNode.dataset.id}"]`);
-            
-            if (nextActionSlot) {
-                // Position next-action-slot to the right of its task container
-                const slotX = taskData.targetX + 130; // 130px to the right
-                const slotY = taskData.targetY;
-                
-                d3.select(nextActionSlot)
-                    .transition()
-                    .duration(1000)
-                    .delay(index * 50) // Stagger with tasks
-                    .ease(d3.easeCubicOut)
-                    .style('left', `${slotX}px`)
-                    .style('top', `${slotY}px`);
-            }
-        });
-        
-        console.log('Positioned', this.taskNodes.length, 'tasks in matrix quadrants with D3 transitions');
-    }
-    
-    analyzeTaskUrgencyImportance(tags) {
-        let isUrgent = false;
-        let isImportant = false;
-        
-        // Analyze tags to determine urgency and importance
-        tags.forEach(tag => {
-            if (tag.category === 'urgency') {
-                if (tag.option === 'urgent') {
-                    isUrgent = true;
-                } else if (tag.option === 'not-urgent') {
-                    isUrgent = false;
-                }
-            } else if (tag.category === 'importance') {
-                if (tag.option === 'important') {
-                    isImportant = true;
-                } else if (tag.option === 'not-important') {
-                    isImportant = false;
-                }
-            }
-        });
-        
-        return { isUrgent, isImportant };
-    }
-    
-    positionSingleTaskInMatrix(taskNode) {
-        if (!this.isMatrixMode) return;
-        
-        const taskContainer = taskNode.closest('.task-container');
-        const nextActionSlot = this.canvas.querySelector(`.next-action-slot[data-task-id="${taskNode.dataset.id}"]`);
-        
-        if (!taskContainer) return;
-        
-        // Get canvas dimensions for quadrant calculations
-        const canvasRect = this.canvas.getBoundingClientRect();
-        const quadrantWidth = canvasRect.width / 2;
-        const quadrantHeight = canvasRect.height / 2;
-        
-        // Define quadrant positions (same as in positionTasksInMatrix)
-        const quadrants = {
-            1: { x: 20, y: 40 }, // Not Urgent & Important (top-left)
-            2: { x: quadrantWidth + 20, y: 40 }, // Urgent & Important (top-right) 
-            3: { x: 20, y: quadrantHeight + 40 }, // Not Urgent & Not Important (bottom-left)
-            4: { x: quadrantWidth + 20, y: quadrantHeight + 40 } // Urgent & Not Important (bottom-right)
-        };
-        
-        // Parse task tags to determine urgency and importance
-        const tags = this.getTaskTags(taskNode);
-        const { isUrgent, isImportant } = this.analyzeTaskUrgencyImportance(tags);
-        
-        // Determine quadrant based on urgency/importance
-        let quadrantNum;
-        if (isImportant && !isUrgent) {
-            quadrantNum = 1; // Not Urgent & Important (top-left)
-        } else if (isImportant && isUrgent) {
-            quadrantNum = 2; // Urgent & Important (top-right)
-        } else if (!isImportant && !isUrgent) {
-            quadrantNum = 3; // Not Urgent & Not Important (bottom-left)
-        } else if (!isImportant && isUrgent) {
-            quadrantNum = 4; // Urgent & Not Important (bottom-right)
-        } else {
-            // Default to quadrant 3 if no clear classification
-            quadrantNum = 3;
-        }
-        
-        const quadrant = quadrants[quadrantNum];
-        
-        // Count existing tasks in this quadrant to calculate position
-        let tasksInQuadrant = 0;
-        this.taskNodes.forEach(existingTaskNode => {
-            if (existingTaskNode === taskNode) return; // Don't count the current task
-            
-            const existingTags = this.getTaskTags(existingTaskNode);
-            const { isUrgent: existingUrgent, isImportant: existingImportant } = this.analyzeTaskUrgencyImportance(existingTags);
-            
-            // Determine existing task's quadrant
-            let existingQuadrant;
-            if (existingImportant && !existingUrgent) {
-                existingQuadrant = 1;
-            } else if (existingImportant && existingUrgent) {
-                existingQuadrant = 2;
-            } else if (!existingImportant && !existingUrgent) {
-                existingQuadrant = 3;
-            } else if (!existingImportant && existingUrgent) {
-                existingQuadrant = 4;
-            } else {
-                existingQuadrant = 3;
-            }
-            
-            if (existingQuadrant === quadrantNum) {
-                tasksInQuadrant++;
-            }
-        });
-        
-        // Calculate position within quadrant
-        const offsetX = (tasksInQuadrant % 2) * 180; // 2 columns per quadrant
-        const offsetY = Math.floor(tasksInQuadrant / 2) * 80; // Stack vertically
-        
-        // Ensure we don't exceed quadrant boundaries
-        const maxOffsetX = quadrantWidth - 220;
-        const maxOffsetY = quadrantHeight - 120;
-        const clampedOffsetX = Math.min(offsetX, maxOffsetX);
-        const clampedOffsetY = Math.min(offsetY, maxOffsetY);
-        
-        const targetX = quadrant.x + clampedOffsetX;
-        const targetY = quadrant.y + clampedOffsetY;
-        
-        // Use D3 to animate task container into position
-        d3.select(taskContainer)
-            .transition()
-            .duration(1000)
-            .ease(d3.easeCubicOut)
-            .style('left', `${targetX}px`)
-            .style('top', `${targetY}px`);
-        
-        // Also animate next-action-slot if it exists
-        if (nextActionSlot) {
-            const slotX = targetX + 130; // 130px to the right of task
-            const slotY = targetY;
-            
-            d3.select(nextActionSlot)
-                .transition()
-                .duration(1000)
-                .ease(d3.easeCubicOut)
-                .style('left', `${slotX}px`)
-                .style('top', `${slotY}px`);
-        }
-        
-        console.log(`Positioned new task "${taskNode.querySelector('.node-text').textContent}" in quadrant ${quadrantNum} using D3 transitions`);
-    }
+    // ==================== EISENHOWER MATRIX METHODS EXTRACTED ====================
+    // Phase 7: Eisenhower Matrix functionality has been extracted to:
+    // - features/eisenhower-matrix/matrix-controller.js (main logic)
+    // - features/eisenhower-matrix/matrix-animations.js (D3 animations)
+    // All original matrix methods now delegate to these modules via the delegation methods above.
+    // ==================== END EXTRACTED SECTION ====================
     
     calculateTaskSlotPosition(taskNode) {
         // Delegate to GeometryUtils with interface preservation
