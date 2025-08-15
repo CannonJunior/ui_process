@@ -1,14 +1,12 @@
 class ProcessFlowDesigner {
     constructor() {
-        // Initialize application state
-        this.nodes = [];
-        this.nodeCounter = 0;
+        // Initialize application state - nodes now managed by NodeManager
         this.flowlines = [];
         this.selectedNode = null;
-        this.dragData = { isDragging: false, offset: { x: 0, y: 0 } };
+        // this.dragData now handled by NodeManager
         this.flowlineCreationMode = false;
         this.sourceNodeForFlowline = null;
-        this.startNode = null;
+        // this.startNode, this.nodes, this.nodeCounter now handled by NodeManager
         this.taskNodes = [];
         this.selectedTaskForAdvance = null;
         this.selectedTaskForTags = null;
@@ -36,6 +34,10 @@ class ProcessFlowDesigner {
         // Initialize matrix modules (Phase 7: Eisenhower Matrix Extraction)
         this.matrixAnimations = new MatrixAnimations(this);
         this.matrixController = new MatrixController(this);
+        
+        // Initialize node modules (Phase 8: Node Management System)
+        this.nodeFactory = new NodeFactory(this.configService);
+        this.nodeManager = new NodeManager(this);
         
         this.init();
     }
@@ -103,6 +105,82 @@ class ProcessFlowDesigner {
     
     // ==================== END MATRIX DELEGATION ====================
     
+    // ==================== NODE MANAGEMENT DELEGATION (Phase 8) ====================
+    
+    // Node creation interface preservation - delegates to NodeManager
+    createNode(type) {
+        return this.nodeManager ? this.nodeManager.createNode(type) : null;
+    }
+    
+    createDefaultStartNode() {
+        return this.nodeManager ? this.nodeManager.createDefaultStartNode() : null;
+    }
+    
+    createNodeFromData(nodeData) {
+        return this.nodeManager ? this.nodeManager.createNodeFromData(nodeData) : null;
+    }
+    
+    // Node interaction interface preservation
+    handleMouseDown(e, node) {
+        return this.nodeManager ? this.nodeManager.handleMouseDown(e, node) : null;
+    }
+    
+    handleMouseMove(e) {
+        return this.nodeManager ? this.nodeManager.handleMouseMove(e) : null;
+    }
+    
+    handleMouseUp(e) {
+        return this.nodeManager ? this.nodeManager.handleMouseUp(e) : null;
+    }
+    
+    handleContextMenu(e, node) {
+        return this.nodeManager ? this.nodeManager.handleContextMenu(e, node) : null;
+    }
+    
+    handleDoubleClick(e, node) {
+        return this.nodeManager ? this.nodeManager.handleDoubleClick(e, node) : null;
+    }
+    
+    // Node management utility methods
+    getAllNodes() {
+        return this.nodeManager ? this.nodeManager.getAllNodes() : [];
+    }
+    
+    getNodeById(id) {
+        return this.nodeManager ? this.nodeManager.getNodeById(id) : null;
+    }
+    
+    removeNode(nodeOrId) {
+        return this.nodeManager ? this.nodeManager.removeNode(nodeOrId) : false;
+    }
+    
+    // Node state getters that maintain compatibility
+    get nodes() {
+        return this.nodeManager ? this.nodeManager.getAllNodes() : [];
+    }
+    
+    get nodeCounter() {
+        return this.nodeManager ? this.nodeManager.getNodeCounter() : 0;
+    }
+    
+    set nodeCounter(value) {
+        if (this.nodeManager) {
+            this.nodeManager.setNodeCounter(value);
+        }
+    }
+    
+    get startNode() {
+        return this.nodeManager ? this.nodeManager.startNode : null;
+    }
+    
+    set startNode(node) {
+        if (this.nodeManager) {
+            this.nodeManager.startNode = node;
+        }
+    }
+    
+    // ==================== END NODE DELEGATION ====================
+    
     initializeDOMElements() {
         // Get all required DOM elements through DOM service
         const elements = this.domService.getElements([
@@ -151,14 +229,7 @@ class ProcessFlowDesigner {
     }
     
     setupEventListeners() {
-        // Dropdown change event
-        this.nodeTypeDropdown.addEventListener('change', (e) => {
-            if (e.target.value) {
-                this.createNode(e.target.value);
-                e.target.value = '';
-            }
-        });
-        
+        // Note: Node type dropdown change event now handled by NodeManager
         // Note: Canvas click to hide context menu is now handled by ContextMenuManager
         
         // Prevent dragging tags to invalid locations
@@ -187,10 +258,7 @@ class ProcessFlowDesigner {
         });
         
         // Note: Context menu click handling is now handled by ContextMenuManager
-        
-        // Global mouse events for dragging
-        document.addEventListener('mousemove', (e) => this.handleMouseMove(e));
-        document.addEventListener('mouseup', (e) => this.handleMouseUp(e));
+        // Note: Global mouse events for dragging now handled by NodeManager
         
         // Prevent context menu on canvas, but allow on tags
         this.canvas.addEventListener('contextmenu', (e) => {
@@ -250,111 +318,12 @@ class ProcessFlowDesigner {
         this.svg = svg;
     }
     
-    createDefaultStartNode() {
-        const node = document.createElement('div');
-        node.className = 'node terminal';
-        node.dataset.type = 'terminal';
-        node.dataset.id = ++this.nodeCounter;
-        
-        const text = document.createElement('div');
-        text.className = 'node-text';
-        text.textContent = 'Start';
-        node.appendChild(text);
-        
-        // Position the Start node in the top-left area of the canvas
-        node.style.left = '50px';
-        node.style.top = '100px';
-        
-        // Add event listeners
-        node.addEventListener('mousedown', (e) => this.handleMouseDown(e, node));
-        node.addEventListener('contextmenu', (e) => this.handleContextMenu(e, node));
-        node.addEventListener('dblclick', (e) => this.handleDoubleClick(e, node));
-        
-        this.canvas.appendChild(node);
-        this.nodes.push(node);
-        this.startNode = node;
-    }
-    
-    createNode(type) {
-        const node = document.createElement('div');
-        node.className = `node ${type}`;
-        node.dataset.type = type;
-        node.dataset.id = ++this.nodeCounter;
-        
-        const text = document.createElement('div');
-        text.className = 'node-text';
-        text.textContent = `${type.charAt(0).toUpperCase() + type.slice(1)} ${this.nodeCounter}`;
-        node.appendChild(text);
-        
-        // Position node randomly on canvas using GeometryUtils
-        const position = GeometryUtils.calculateRandomPosition(this.canvas, 150, 150, 100);
-        DOMUtils.setPosition(node, position.x, position.y);
-        
-        // Add event listeners
-        node.addEventListener('mousedown', (e) => this.handleMouseDown(e, node));
-        node.addEventListener('contextmenu', (e) => this.handleContextMenu(e, node));
-        node.addEventListener('dblclick', (e) => this.handleDoubleClick(e, node));
-        
-        this.canvas.appendChild(node);
-        this.nodes.push(node);
-    }
-    
-    handleMouseDown(e, node) {
-        if (e.button === 0) { // Left click
-            // Prevent dragging for task nodes
-            if (node.dataset.type === 'task') {
-                return;
-            }
-            
-            e.preventDefault();
-            this.dragData.isDragging = true;
-            this.dragData.node = node;
-            
-            const rect = node.getBoundingClientRect();
-            this.dragData.offset.x = e.clientX - rect.left;
-            this.dragData.offset.y = e.clientY - rect.top;
-            
-            node.classList.add('dragging');
-        }
-    }
-    
-    handleMouseMove(e) {
-        if (this.dragData.isDragging && this.dragData.node) {
-            const canvasRect = this.canvas.getBoundingClientRect();
-            const newX = e.clientX - canvasRect.left - this.dragData.offset.x;
-            const newY = e.clientY - canvasRect.top - this.dragData.offset.y;
-            
-            // Calculate the movement delta
-            const currentX = parseInt(this.dragData.node.style.left) || 0;
-            const currentY = parseInt(this.dragData.node.style.top) || 0;
-            const deltaX = newX - currentX;
-            const deltaY = newY - currentY;
-            
-            // Move the main node using GeometryUtils constraint
-            const constrainedPosition = GeometryUtils.constrainToCanvas(newX, newY, this.canvas, this.dragData.node);
-            DOMUtils.setPosition(this.dragData.node, constrainedPosition.x, constrainedPosition.y);
-            
-            // Move anchored task nodes if this is not a task node itself
-            if (this.dragData.node.dataset.type !== 'task') {
-                this.moveAnchoredTaskNodes(this.dragData.node.dataset.id, deltaX, deltaY);
-            }
-            
-            this.updateFlowlines();
-        }
-    }
-    
-    handleMouseUp(e) {
-        if (this.dragData.isDragging) {
-            this.dragData.node.classList.remove('dragging');
-            this.dragData.isDragging = false;
-            this.dragData.node = null;
-        }
-    }
-    
-    handleContextMenu(e, node) {
-        // Delegate to context menu manager
-        this.contextMenuManager.handleContextMenu(e, node);
-    }
+    // ==================== NODE MANAGEMENT METHODS EXTRACTED ====================
+    // Phase 8: Node management functionality has been extracted to:
+    // - features/node-management/node-manager.js (main node logic)
+    // - features/node-management/node-factory.js (node creation)
+    // All original node methods now delegate to these modules via the delegation methods above.
+    // ==================== END EXTRACTED SECTION ====================
     
     hideContextMenu() {
         // Delegate to context menu manager
@@ -369,13 +338,6 @@ class ProcessFlowDesigner {
     handleTaskContextMenuAction(action) {
         // Delegate to context menu manager
         this.contextMenuManager.handleTaskContextMenuAction(action);
-    }
-    
-    handleDoubleClick(e, node) {
-        if (this.flowlineCreationMode && this.sourceNodeForFlowline && node !== this.sourceNodeForFlowline) {
-            this.createFlowline(this.sourceNodeForFlowline, node);
-            this.exitFlowlineCreationMode();
-        }
     }
     
     startFlowlineCreation() {
