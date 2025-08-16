@@ -1,11 +1,15 @@
 class ChatInterface {
     constructor() {
         this.ollamaBaseUrl = 'http://localhost:11434';
-        this.modelName = 'qwen2.5:3b';
+        this.modelName = 'smollm2:135m';
+        this.availableModels = [];
         this.isOpen = false;
         this.isConnected = false;
         this.documents = new Map(); // Store processed documents
         this.conversationHistory = [];
+        
+        // Note-taking system
+        this.noteManager = null;
         
         // UI Elements
         this.chatSidebar = document.getElementById('chatSidebar');
@@ -16,6 +20,8 @@ class ChatInterface {
         this.sendButton = document.getElementById('sendChatButton');
         this.statusIndicator = document.getElementById('statusIndicator');
         this.statusText = document.getElementById('statusText');
+        this.retryButton = document.getElementById('retryConnectionButton');
+        this.modelSelect = document.getElementById('modelSelect');
         this.charCount = document.getElementById('charCount');
         this.sendButtonText = document.getElementById('sendButtonText');
         this.sendButtonLoader = document.getElementById('sendButtonLoader');
@@ -25,10 +31,37 @@ class ChatInterface {
     }
     
     async init() {
+        console.log('ChatInterface: Starting initialization...');
         this.setupEventListeners();
         await this.loadDocuments();
-        await this.checkOllamaConnection();
+        await this.initializeNoteManager();
+        
+        // Load available models and setup model selector
+        await this.loadAvailableModels();
+        
+        // Don't await connection check to avoid blocking initialization
+        this.checkOllamaConnection().catch(error => {
+            console.error('ChatInterface: Connection check failed during init:', error);
+        });
+        
         this.updateUI();
+        console.log('ChatInterface: Initialization complete');
+    }
+    
+    /**
+     * Initialize the note-taking system
+     */
+    async initializeNoteManager() {
+        try {
+            // Check if we have access to the main app instance for context
+            const mainApp = window.app || window.processFlowApp;
+            this.noteManager = new NoteManager(mainApp);
+            await this.noteManager.initialize();
+            console.log('ChatInterface: Note manager initialized');
+        } catch (error) {
+            console.error('ChatInterface: Failed to initialize note manager:', error);
+            // Continue without note-taking functionality
+        }
     }
     
     setupEventListeners() {
@@ -50,6 +83,16 @@ class ChatInterface {
         
         // Auto-resize input
         this.chatInput.addEventListener('input', () => this.autoResizeInput());
+        
+        // Retry connection button
+        if (this.retryButton) {
+            this.retryButton.addEventListener('click', () => this.retryConnection());
+        }
+        
+        // Model selector
+        if (this.modelSelect) {
+            this.modelSelect.addEventListener('change', (e) => this.changeModel(e.target.value));
+        }
     }
     
     async loadDocuments() {
@@ -83,38 +126,200 @@ class ChatInterface {
         }
     }
     
-    async checkOllamaConnection() {
+    /**
+     * Load available Ollama models and populate the selector
+     */
+    async loadAvailableModels() {
         try {
-            this.updateStatus('connecting', 'Connecting to Ollama...');
+            console.log('ChatInterface: Loading available models...');
             
-            // Check if Ollama is running
-            const response = await fetch(`${this.ollamaBaseUrl}/api/tags`, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            });
-            
+            const response = await fetch(`${this.ollamaBaseUrl}/api/tags`);
             if (response.ok) {
                 const data = await response.json();
-                const hasModel = data.models && data.models.some(model => 
-                    model.name.includes(this.modelName.split(':')[0])
-                );
+                this.availableModels = data.models || [];
                 
-                if (hasModel) {
-                    this.isConnected = true;
-                    this.updateStatus('connected', `Connected to ${this.modelName}`);
-                } else {
-                    this.isConnected = false;
-                    this.updateStatus('error', `Model ${this.modelName} not found. Run: ollama pull ${this.modelName}`);
+                console.log('ChatInterface: Available models:', this.availableModels.map(m => m.name));
+                
+                // Update model selector
+                if (this.modelSelect && this.availableModels.length > 0) {
+                    this.updateModelSelector();
                 }
             } else {
-                throw new Error('Ollama not responding');
+                console.warn('ChatInterface: Could not load models, using default');
+                this.availableModels = [{ name: this.modelName, details: { parameter_size: 'Unknown' } }];
             }
         } catch (error) {
+            console.error('ChatInterface: Error loading models:', error);
+            this.availableModels = [{ name: this.modelName, details: { parameter_size: 'Unknown' } }];
+        }
+    }
+    
+    /**
+     * Update the model selector dropdown with available models
+     */
+    updateModelSelector() {
+        if (!this.modelSelect) return;
+        
+        // Clear existing options
+        this.modelSelect.innerHTML = '';
+        
+        // Filter out embedding models and other non-text generation models
+        const textModels = this.availableModels.filter(model => {
+            const name = model.name.toLowerCase();
+            return !name.includes('embed') && !name.includes('nomic');
+        });
+        
+        // Sort models by parameter size (smallest first)
+        textModels.sort((a, b) => {
+            const getSizeValue = (model) => {
+                const paramSize = model.details?.parameter_size || '0';
+                const numMatch = paramSize.match(/(\d+(?:\.\d+)?)/);
+                return numMatch ? parseFloat(numMatch[1]) : 0;
+            };
+            return getSizeValue(a) - getSizeValue(b);
+        });
+        
+        // Add options
+        textModels.forEach(model => {
+            const option = document.createElement('option');
+            option.value = model.name;
+            
+            // Format the display name with size info
+            const paramSize = model.details?.parameter_size || 'Unknown size';
+            const familyInfo = model.details?.family ? ` (${model.details.family})` : '';
+            option.textContent = `${model.name} - ${paramSize}${familyInfo}`;
+            
+            // Set selected if this is the current model
+            if (model.name === this.modelName) {
+                option.selected = true;
+            }
+            
+            this.modelSelect.appendChild(option);
+        });
+        
+        console.log('ChatInterface: Model selector updated with', textModels.length, 'models');
+    }
+    
+    /**
+     * Change the active model
+     * @param {string} modelName - New model name
+     */
+    async changeModel(modelName) {
+        if (modelName === this.modelName) return;
+        
+        console.log('ChatInterface: Changing model from', this.modelName, 'to', modelName);
+        
+        const oldModel = this.modelName;
+        this.modelName = modelName;
+        
+        // Update status to show we're switching models
+        this.updateStatus('connecting', `Switching to ${modelName}...`);
+        
+        // Check connection with new model
+        try {
+            await this.checkOllamaConnection();
+            console.log('ChatInterface: Successfully switched to model:', modelName);
+        } catch (error) {
+            console.error('ChatInterface: Failed to switch to model:', modelName, error);
+            // Revert to old model on failure
+            this.modelName = oldModel;
+            this.modelSelect.value = oldModel;
+            this.updateStatus('error', `Failed to switch to ${modelName}`);
+        }
+    }
+    
+    async checkOllamaConnection() {
+        console.log('ChatInterface: checkOllamaConnection started');
+        try {
+            console.log('ChatInterface: Updating status to connecting...');
+            this.updateStatus('connecting', 'Connecting to Ollama...');
+            
+            // Create an AbortController for timeout handling
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => {
+                controller.abort();
+            }, 10000); // 10 second timeout
+            
+            try {
+                console.log('ChatInterface: Starting fetch to Ollama...');
+                // Check if Ollama is running with timeout
+                const response = await fetch(`${this.ollamaBaseUrl}/api/tags`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    signal: controller.signal
+                });
+                
+                clearTimeout(timeoutId);
+                console.log('ChatInterface: Fetch completed, response received');
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    const hasModel = data.models && data.models.some(model => 
+                        model.name.includes(this.modelName.split(':')[0])
+                    );
+                    
+                    if (hasModel) {
+                        this.isConnected = true;
+                        this.updateStatus('connected', `Connected to ${this.modelName}`);
+                        console.log(`ChatInterface: Successfully connected to Ollama with model ${this.modelName}`);
+                    } else {
+                        this.isConnected = false;
+                        this.updateStatus('error', `Model ${this.modelName} not found. Run: ollama pull ${this.modelName}`);
+                        console.warn(`ChatInterface: Model ${this.modelName} not available. Available models:`, 
+                                   data.models?.map(m => m.name) || []);
+                    }
+                } else {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+            } catch (fetchError) {
+                clearTimeout(timeoutId);
+                console.log('ChatInterface: Fetch error occurred:', fetchError);
+                
+                if (fetchError.name === 'AbortError') {
+                    throw new Error('Connection timeout - Ollama may not be running');
+                } else if (fetchError.message.includes('NetworkError') || 
+                          fetchError.message.includes('Failed to fetch')) {
+                    throw new Error('Network error - Check if Ollama is running on port 11434');
+                } else {
+                    throw fetchError;
+                }
+            }
+            
+        } catch (error) {
+            console.log('ChatInterface: Connection check caught error:', error);
             this.isConnected = false;
-            this.updateStatus('error', 'Ollama not running. Start Ollama service.');
-            console.error('Ollama connection error:', error);
+            
+            // Provide specific error messages based on error type
+            let errorMessage = 'Connection failed';
+            let troubleshootingTip = '';
+            
+            if (error.message.includes('timeout')) {
+                errorMessage = 'Connection timeout';
+                troubleshootingTip = 'Start Ollama: ollama serve';
+            } else if (error.message.includes('Network error')) {
+                errorMessage = 'Ollama not accessible';
+                troubleshootingTip = 'Check if Ollama is running';
+            } else if (error.message.includes('CORS')) {
+                errorMessage = 'CORS error';
+                troubleshootingTip = 'Browser security restriction';
+            } else {
+                errorMessage = 'Ollama connection failed';
+                troubleshootingTip = 'Check Ollama installation';
+            }
+            
+            this.updateStatus('error', `${errorMessage} - ${troubleshootingTip}`);
+            console.error('ChatInterface: Ollama connection error:', error.message);
+            
+            // Attempt retry after a delay
+            setTimeout(() => {
+                if (!this.isConnected) {
+                    console.log('ChatInterface: Attempting automatic reconnection...');
+                    this.checkOllamaConnection();
+                }
+            }, 15000); // Retry after 15 seconds
         }
     }
     
@@ -126,16 +331,28 @@ class ChatInterface {
         switch (status) {
             case 'connected':
                 this.statusIndicator.textContent = '●';
+                if (this.retryButton) this.retryButton.style.display = 'none';
                 break;
             case 'error':
                 this.statusIndicator.textContent = '●';
+                if (this.retryButton) this.retryButton.style.display = 'inline-block';
                 break;
             case 'connecting':
                 this.statusIndicator.textContent = '●';
+                if (this.retryButton) this.retryButton.style.display = 'none';
                 break;
             default:
                 this.statusIndicator.textContent = '○';
+                if (this.retryButton) this.retryButton.style.display = 'none';
         }
+    }
+    
+    /**
+     * Retry Ollama connection manually
+     */
+    async retryConnection() {
+        console.log('ChatInterface: Manual connection retry requested');
+        await this.checkOllamaConnection();
     }
     
     toggleChat() {
@@ -191,7 +408,14 @@ class ChatInterface {
     }
     
     async sendMessage() {
-        if (!this.isConnected || this.sendButton.disabled) return;
+        console.log('ChatInterface: sendMessage called');
+        console.log('ChatInterface: isConnected:', this.isConnected);
+        console.log('ChatInterface: sendButton.disabled:', this.sendButton.disabled);
+        
+        if (!this.isConnected || this.sendButton.disabled) {
+            console.log('ChatInterface: Cannot send message - not connected or button disabled');
+            return;
+        }
         
         const message = this.chatInput.value.trim();
         if (!message) return;
@@ -204,7 +428,13 @@ class ChatInterface {
         // Add user message to chat
         this.addMessage('user', message);
         
-        // Show loading state
+        // Check if this is a note command
+        if (this.noteManager && this.noteManager.isNoteCommand(message)) {
+            await this.handleNoteCommand(message);
+            return;
+        }
+        
+        // Show loading state for LLM processing
         this.setLoading(true);
         
         try {
@@ -235,38 +465,80 @@ class ChatInterface {
             }
             
         } catch (error) {
-            console.error('Error sending message:', error);
-            this.addMessage('error', 'Sorry, I encountered an error. Please make sure Ollama is running and try again.');
+            console.error('ChatInterface: Error sending message:', error);
+            console.error('ChatInterface: Error details:', {
+                name: error.name,
+                message: error.message,
+                stack: error.stack
+            });
+            
+            let errorMessage = 'Sorry, I encountered an error. ';
+            
+            if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+                errorMessage += 'Cannot connect to Ollama. Please make sure Ollama is running.';
+            } else if (error.message.includes('CORS')) {
+                errorMessage += 'Browser security is blocking the request. Consider using a proxy server.';
+            } else if (error.message.includes('Ollama API error')) {
+                errorMessage += `Ollama API returned an error: ${error.message}`;
+            } else {
+                errorMessage += `Error details: ${error.message}`;
+            }
+            
+            this.addMessage('error', errorMessage);
         } finally {
             this.setLoading(false);
         }
     }
     
     async callOllama(prompt) {
-        const response = await fetch(`${this.ollamaBaseUrl}/api/generate`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                model: this.modelName,
-                prompt: prompt,
-                stream: false,
-                options: {
-                    temperature: 0.7,
-                    top_p: 0.9,
-                    max_tokens: 500,
-                    stop: ['User:', 'Human:', '\\n\\n']
-                }
-            })
-        });
+        console.log('ChatInterface: Calling Ollama API...');
+        console.log('ChatInterface: URL:', `${this.ollamaBaseUrl}/api/generate`);
+        console.log('ChatInterface: Model:', this.modelName);
         
-        if (!response.ok) {
-            throw new Error(`Ollama API error: ${response.status}`);
+        try {
+            const response = await fetch(`${this.ollamaBaseUrl}/api/generate`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    model: this.modelName,
+                    prompt: prompt,
+                    stream: false,
+                    options: {
+                        temperature: 0.7,
+                        top_p: 0.9,
+                        max_tokens: 500,
+                        stop: ['User:', 'Human:', '\\n\\n']
+                    }
+                })
+            });
+            
+            console.log('ChatInterface: Response received:', {
+                ok: response.ok,
+                status: response.status,
+                statusText: response.statusText
+            });
+            
+            if (!response.ok) {
+                const errorText = await response.text().catch(() => 'Unknown error');
+                throw new Error(`Ollama API error: ${response.status} ${response.statusText} - ${errorText}`);
+            }
+            
+            const data = await response.json();
+            console.log('ChatInterface: Response data received:', {
+                hasResponse: !!data.response,
+                responseLength: data.response?.length || 0,
+                model: data.model,
+                done: data.done
+            });
+            
+            return data.response || 'Sorry, I could not generate a response.';
+            
+        } catch (fetchError) {
+            console.error('ChatInterface: Fetch error in callOllama:', fetchError);
+            throw fetchError;
         }
-        
-        const data = await response.json();
-        return data.response || 'Sorry, I could not generate a response.';
     }
     
     getApplicationContext() {
@@ -389,13 +661,11 @@ class ChatInterface {
         
         messageDiv.appendChild(contentDiv);
         
-        // Add timestamp for non-error messages
-        if (type !== 'error') {
-            const timestamp = document.createElement('div');
-            timestamp.className = 'message-timestamp';
-            timestamp.textContent = new Date().toLocaleTimeString();
-            messageDiv.appendChild(timestamp);
-        }
+        // Add timestamp for all messages including errors
+        const timestamp = document.createElement('div');
+        timestamp.className = 'message-timestamp';
+        timestamp.textContent = new Date().toLocaleTimeString();
+        messageDiv.appendChild(timestamp);
         
         this.chatMessages.appendChild(messageDiv);
         
@@ -415,6 +685,132 @@ class ChatInterface {
         }
         
         this.updateCharCounter(); // Refresh send button state
+    }
+
+    /**
+     * Handle note command processing
+     */
+    async handleNoteCommand(message) {
+        try {
+            // Update note manager context if we have access to main app
+            if (this.noteManager && window.app) {
+                this.updateNoteManagerContext();
+            }
+
+            // Process the note command
+            const response = await this.noteManager.processCommand(message);
+            
+            // Add note response to chat
+            this.addNoteResponse(response);
+            
+        } catch (error) {
+            console.error('ChatInterface: Note command failed:', error);
+            this.addMessage('assistant', `❌ Note command failed: ${error.message}`);
+        }
+    }
+
+    /**
+     * Update note manager with current application context
+     */
+    updateNoteManagerContext() {
+        if (!window.app || !this.noteManager) return;
+
+        const context = {};
+
+        // Get current opportunity (if implemented)
+        if (window.app.currentOpportunity) {
+            context.opportunity = window.app.currentOpportunity;
+        }
+
+        // Get current workflow/task context
+        if (window.app.selectedNode) {
+            const selectedNode = window.app.selectedNode;
+            
+            if (selectedNode.dataset.type === 'task') {
+                context.task = {
+                    id: selectedNode.dataset.id,
+                    name: selectedNode.querySelector('.node-text')?.textContent,
+                    anchoredTo: selectedNode.dataset.anchoredTo
+                };
+                
+                // If task is anchored to something, that might be our workflow context
+                if (selectedNode.dataset.anchoredTo) {
+                    const anchorNode = window.app.nodes?.find(n => n.dataset.id === selectedNode.dataset.anchoredTo);
+                    if (anchorNode) {
+                        context.workflow = {
+                            id: anchorNode.dataset.id,
+                            name: anchorNode.querySelector('.node-text')?.textContent,
+                            type: anchorNode.dataset.type
+                        };
+                    }
+                }
+            } else {
+                // Selected node might be a workflow node
+                context.workflow = {
+                    id: selectedNode.dataset.id,
+                    name: selectedNode.querySelector('.node-text')?.textContent,
+                    type: selectedNode.dataset.type
+                };
+            }
+        }
+
+        this.noteManager.setContext(context);
+    }
+
+    /**
+     * Add note response to chat interface
+     */
+    addNoteResponse(response) {
+        let messageClass = 'note-response';
+        let icon = '📝';
+
+        switch (response.status) {
+            case 'success':
+                messageClass += ' note-success';
+                icon = '✅';
+                break;
+            case 'error':
+                messageClass += ' note-error';
+                icon = '❌';
+                break;
+            case 'info':
+                messageClass += ' note-info';
+                icon = 'ℹ️';
+                break;
+        }
+
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message assistant ${messageClass}`;
+        
+        const messageContent = document.createElement('div');
+        messageContent.className = 'message-content';
+        messageContent.innerHTML = `${icon} ${this.formatMarkdown(response.message)}`;
+        
+        messageDiv.appendChild(messageContent);
+        
+        // Add timestamp for note responses
+        const timestamp = document.createElement('div');
+        timestamp.className = 'message-timestamp';
+        timestamp.textContent = new Date().toLocaleTimeString();
+        messageDiv.appendChild(timestamp);
+        
+        this.chatMessages.appendChild(messageDiv);
+        
+        // Scroll to bottom
+        this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
+    }
+
+    /**
+     * Basic markdown formatting for messages
+     */
+    formatMarkdown(text) {
+        return text
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.*?)\*/g, '<em>$1</em>')
+            .replace(/`(.*?)`/g, '<code>$1</code>')
+            .replace(/^• (.+)$/gm, '<li>$1</li>')
+            .replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>')
+            .replace(/\n/g, '<br>');
     }
 }
 

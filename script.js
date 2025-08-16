@@ -297,31 +297,7 @@ class ProcessFlowDesigner {
     setupEventListeners() {
         // Note: Node type dropdown change event now handled by NodeManager
         // Note: Canvas click to hide context menu is now handled by ContextMenuManager
-        
-        // Prevent dragging tags to invalid locations
-        this.canvas.addEventListener('dragover', (e) => {
-            // Only allow dropping on next-action-slots for the same task
-            if (!e.target.classList.contains('next-action-slot')) {
-                e.preventDefault();
-                e.dataTransfer.dropEffect = 'none';
-            } else if (this.draggedTag && e.target.dataset.taskId !== this.draggedTag.taskId) {
-                // Prevent dropping on other tasks' next-action-slots
-                e.preventDefault();
-                e.dataTransfer.dropEffect = 'none';
-            } else {
-                // Allow dropping on same task's next-action-slot
-                e.preventDefault();
-                e.dataTransfer.dropEffect = 'move';
-            }
-        });
-        
-        this.canvas.addEventListener('drop', (e) => {
-            // Prevent drops on invalid locations
-            if (!e.target.classList.contains('next-action-slot') || 
-                (this.draggedTag && e.target.dataset.taskId !== this.draggedTag.taskId)) {
-                e.preventDefault();
-            }
-        });
+        // Note: Tag drag and drop events now handled by TagManager
         
         // Note: Context menu click handling is now handled by ContextMenuManager
         // Note: Global mouse events for dragging now handled by NodeManager
@@ -799,8 +775,10 @@ class ProcessFlowDesigner {
         // Remove from task nodes array
         this.taskNodes = this.taskNodes.filter(node => node !== this.selectedNode);
         
-        // Remove from general nodes array
-        this.nodes = this.nodes.filter(node => node !== this.selectedNode);
+        // Remove from general nodes array using nodeManager
+        if (this.nodeManager) {
+            this.nodeManager.removeNode(this.selectedNode.dataset.id);
+        }
         
         // Remove the associated next-action-slot
         const nextActionSlot = this.canvas.querySelector(`.next-action-slot[data-task-id="${this.selectedNode.dataset.id}"]`);
@@ -1052,11 +1030,26 @@ class ProcessFlowDesigner {
         reader.onload = (e) => {
             try {
                 const workflow = JSON.parse(e.target.result);
+                
+                // Validate basic structure
+                if (!workflow || typeof workflow !== 'object') {
+                    throw new Error('Invalid workflow file structure');
+                }
+                
+                // Handle different workflow versions
+                let workflowData = workflow;
+                if (workflow.version === '2.0' && workflow.data) {
+                    // Convert version 2.0 format to version 1.1 format for compatibility
+                    workflowData = this.convertV2ToV1(workflow);
+                } else if (!workflow.version || !workflow.nodes) {
+                    throw new Error('Missing required workflow fields (version, nodes)');
+                }
+                
                 this.clearWorkflow();
-                this.deserializeWorkflow(workflow);
+                this.deserializeWorkflow(workflowData);
                 console.log('Workflow loaded successfully');
             } catch (error) {
-                alert('Error loading workflow: Invalid file format');
+                alert(`Error loading workflow: ${error.message}`);
                 console.error('Error loading workflow:', error);
             }
         };
@@ -1064,6 +1057,48 @@ class ProcessFlowDesigner {
         
         // Reset the input so the same file can be loaded again
         event.target.value = '';
+    }
+    
+    convertV2ToV1(v2Workflow) {
+        // Convert version 2.0 format to version 1.1 format for compatibility
+        const v1Workflow = {
+            version: "1.1",
+            timestamp: v2Workflow.timestamp,
+            nodeCounter: v2Workflow.metadata?.nodeCount || 0,
+            nodes: [],
+            flowlines: v2Workflow.data?.flowlines || [],
+            settings: {
+                flowlineType: 'straight' // Default fallback
+            }
+        };
+        
+        // Combine nodes and tasks into single nodes array (v1.1 format)
+        if (v2Workflow.data?.nodes) {
+            v1Workflow.nodes.push(...v2Workflow.data.nodes);
+        }
+        
+        if (v2Workflow.data?.tasks) {
+            // Convert task format from v2.0 to v1.1
+            const convertedTasks = v2Workflow.data.tasks.map(task => ({
+                id: task.id,
+                type: 'task',
+                text: task.name || task.text,
+                left: task.position?.x || 0,
+                top: task.position?.y || 0,
+                anchoredTo: task.anchoredTo,
+                previousAnchor: task.previousAnchor,
+                slot: task.slot,
+                tags: task.tags || [],
+                isTaskNode: true,
+                className: task.className || 'task-banner',
+                width: task.dimensions?.width || 200,
+                height: task.dimensions?.height || 60,
+                computedStyles: task.styles || {}
+            }));
+            v1Workflow.nodes.push(...convertedTasks);
+        }
+        
+        return v1Workflow;
     }
     
     clearWorkflow() {
@@ -1097,9 +1132,13 @@ class ProcessFlowDesigner {
             }
         });
         
-        // Clear arrays
-        this.nodes = [];
-        this.flowlines = [];
+        // Clear arrays using proper methods
+        if (this.nodeManager) {
+            this.nodeManager.clearAllNodes();
+        }
+        if (this.flowlineManager) {
+            this.flowlineManager.clearAllFlowlines();
+        }
         this.taskNodes = [];
         this.selectedNode = null;
         this.startNode = null;
@@ -1259,7 +1298,9 @@ class ProcessFlowDesigner {
             }
             
             // Add to arrays
-            this.nodes.push(taskBanner);
+            if (this.nodeManager) {
+                this.nodeManager.addNode(taskBanner);
+            }
             this.taskNodes.push(taskBanner);
             
             return taskBanner;
@@ -1302,7 +1343,9 @@ class ProcessFlowDesigner {
             
             // Add to canvas and arrays
             this.canvas.appendChild(node);
-            this.nodes.push(node);
+            if (this.nodeManager) {
+                this.nodeManager.addNode(node);
+            }
             
             return node;
         }
@@ -1430,11 +1473,17 @@ class ProcessFlowDesigner {
         }
     }
     
-    resetTagFromNextAction() {
-        if (!this.selectedTagForEdit || !this.currentTagData) return;
+    resetTagFromNextAction(tagElement = null, tagData = null) {
+        // Use provided parameters or fall back to instance variables
+        const selectedTag = tagElement || this.selectedTagForEdit;
+        const currentTagData = tagData || this.currentTagData;
         
-        const tagElement = this.selectedTagForEdit;
-        const taskNode = this.currentTagData.taskNode;
+        if (!selectedTag || !currentTagData) {
+            console.error('ResetTagFromNextAction: Missing tag element or tag data');
+            return;
+        }
+        
+        const taskNode = currentTagData.taskNode;
         
         // Find the task container (parent of the banner)
         const taskContainer = taskNode.parentNode;
@@ -1451,23 +1500,43 @@ class ProcessFlowDesigner {
         }
         
         // Remove the tag from its current parent (next-action-slot or canvas)
-        tagElement.remove();
+        selectedTag.remove();
         
         // Reset tag styling to normal
-        tagElement.style.position = '';
-        tagElement.style.left = '';
-        tagElement.style.top = '';
-        tagElement.style.zIndex = '';
-        tagElement.style.transform = '';
-        tagElement.style.transition = '';
+        selectedTag.style.position = '';
+        selectedTag.style.left = '';
+        selectedTag.style.top = '';
+        selectedTag.style.zIndex = '';
+        selectedTag.style.transform = '';
+        selectedTag.style.transition = '';
         
         // Remove next-action state and classes
-        delete tagElement.dataset.isInNextAction;
-        delete tagElement.dataset.originalParent;
-        tagElement.classList.remove('in-next-action', 'tag-animating-to-slot', 'tag-in-slot');
+        delete selectedTag.dataset.isInNextAction;
+        delete selectedTag.dataset.originalParent;
+        selectedTag.classList.remove('in-next-action', 'tag-animating-to-slot', 'tag-in-slot');
         
-        // Add the tag back to the task's tags container
-        tagsContainer.appendChild(tagElement);
+        // Get the tag data from the dataset to properly reintegrate it
+        const tagIndex = currentTagData.tagIndex;
+        const tags = this.getTaskTags(taskNode);
+        
+        if (tagIndex >= 0 && tagIndex < tags.length) {
+            // Mark the tag as no longer in next action in the data
+            tags[tagIndex].isInNextAction = false;
+            
+            // Update the task's tags data
+            taskNode.dataset.tags = JSON.stringify(tags);
+            
+            // Use tag manager to properly update the display
+            if (this.tagManager && typeof this.tagManager.updateTaskTagDisplay === 'function') {
+                this.tagManager.updateTaskTagDisplay(taskNode);
+            } else {
+                // Fallback: Add the tag back to the task's tags container
+                tagsContainer.appendChild(selectedTag);
+            }
+        } else {
+            // Fallback: Add the tag back to the task's tags container
+            tagsContainer.appendChild(selectedTag);
+        }
         
         console.log('Tag reset from next-action state and returned to task');
         

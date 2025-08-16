@@ -155,10 +155,7 @@ class NodeManager {
         }
         this.nodes.push(node);
         
-        // Update main app nodes array
-        if (this.app.nodes) {
-            this.app.nodes.push(node);
-        }
+        // Note: this.app.nodes is a getter-only property that returns this.nodes
         
         console.log(`NodeManager: Created ${type} node with ID ${this.nodeCounter}`);
         return node;
@@ -200,10 +197,7 @@ class NodeManager {
         }
         this.nodes.push(node);
         
-        // Update main app nodes array
-        if (this.app.nodes) {
-            this.app.nodes.push(node);
-        }
+        // Note: this.app.nodes is a getter-only property that returns this.nodes
         
         // Set as start node if it's a terminal type and no start node exists
         if (nodeData.type === 'terminal' && !this.startNode) {
@@ -428,6 +422,23 @@ class NodeManager {
     }
     
     /**
+     * Add an existing node to the manager
+     * @param {HTMLElement} node - Node element to add
+     */
+    addNode(node) {
+        if (!node) {
+            console.warn('NodeManager: Cannot add null/undefined node');
+            return;
+        }
+        
+        // Avoid duplicates
+        if (!this.nodes.includes(node)) {
+            this.nodes.push(node);
+            console.log(`NodeManager: Added existing node ${node.dataset.id || 'unknown'}`);
+        }
+    }
+    
+    /**
      * Remove a node from the manager
      * @param {HTMLElement|string} nodeOrId - Node element or node ID
      * @returns {boolean} True if node was removed, false otherwise
@@ -487,9 +498,7 @@ class NodeManager {
         
         // Clear arrays
         this.nodes = [];
-        if (this.app.nodes) {
-            this.app.nodes = [];
-        }
+        // Note: this.app.nodes is a getter-only property, no need to clear it
         
         // Clear references
         this.startNode = null;

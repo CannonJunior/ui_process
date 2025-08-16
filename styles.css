@@ -1049,9 +1049,64 @@ input.node-input {
     animation: pulse 1.5s infinite;
 }
 
+.retry-connection-btn {
+    background: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-size: 11px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.retry-connection-btn:hover {
+    background: #0056b3;
+}
+
+.retry-connection-btn:active {
+    background: #004085;
+}
+
+.model-selector {
+    margin-top: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+}
+
+.model-selector label {
+    color: #666;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.model-select {
+    flex: 1;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 11px;
+    color: #333;
+    cursor: pointer;
+    transition: border-color 0.2s ease;
+}
+
+.model-select:hover {
+    border-color: #007bff;
+}
+
+.model-select:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
 @keyframes pulse {
     0%, 100% { opacity: 1; }
-    50% { opacity: 0.4; }
+    50% { opacity: 0.5; }
 }
 
 .chat-messages {
@@ -1318,4 +1373,138 @@ input.node-input {
         box-shadow: none;
         border-width: 1px;
     }
+}
+
+/* Note-Taking System Styles */
+.note-response {
+    border-left: 4px solid #007bff;
+    background-color: rgba(0, 123, 255, 0.05);
+    margin: 8px 0;
+    padding: 12px;
+    border-radius: 0 8px 8px 0;
+}
+
+.note-success {
+    border-left-color: #28a745;
+    background-color: rgba(40, 167, 69, 0.05);
+}
+
+.note-error {
+    border-left-color: #dc3545;
+    background-color: rgba(220, 53, 69, 0.05);
+}
+
+.note-info {
+    border-left-color: #17a2b8;
+    background-color: rgba(23, 162, 184, 0.05);
+}
+
+.note-response .message-content {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.5;
+}
+
+.note-response .message-content code {
+    background-color: rgba(0, 0, 0, 0.1);
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.9em;
+}
+
+.note-response .message-content strong {
+    font-weight: 600;
+    color: #333;
+}
+
+.note-response .message-content ul {
+    margin: 8px 0;
+    padding-left: 20px;
+}
+
+.note-response .message-content li {
+    margin: 4px 0;
+}
+
+/* Chat input indicator for note mode */
+.chat-input-wrapper.note-mode {
+    border: 2px solid #007bff;
+    border-radius: 8px;
+}
+
+.chat-input-wrapper.note-mode::before {
+    content: "📝 Note Mode";
+    position: absolute;
+    top: -20px;
+    left: 8px;
+    font-size: 12px;
+    color: #007bff;
+    background: white;
+    padding: 0 4px;
+    font-weight: 500;
+}
+
+/* Note command help styling */
+.note-help {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.9em;
+    white-space: pre-line;
+}
+
+/* Note preview styling */
+.note-preview {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin: 4px 0;
+    font-size: 0.95em;
+}
+
+.note-preview .note-id {
+    color: #6c757d;
+    font-weight: bold;
+    font-size: 0.85em;
+}
+
+.note-preview .note-content {
+    margin: 4px 0;
+}
+
+.note-preview .note-tags {
+    color: #007bff;
+    font-size: 0.85em;
+}
+
+.note-preview .note-date {
+    color: #6c757d;
+    font-size: 0.8em;
+    font-style: italic;
+}
+
+/* Note context indicators */
+.note-context {
+    display: inline-block;
+    background-color: #e9ecef;
+    color: #495057;
+    padding: 2px 6px;
+    border-radius: 12px;
+    font-size: 0.75em;
+    margin: 2px 4px 2px 0;
+    font-weight: 500;
+}
+
+.note-context.opportunity {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+.note-context.workflow {
+    background-color: #d1ecf1;
+    color: #0c5460;
+}
+
+.note-context.task {
+    background-color: #fff3cd;
+    color: #856404;
 }

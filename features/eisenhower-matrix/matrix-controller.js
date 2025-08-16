@@ -21,6 +21,7 @@ class MatrixController {
         // Matrix state
         this.isMatrixMode = false;
         this.originalNodePositions = new Map();
+        this.originalFlowlineVisibility = new Map(); // Track flowlines that should be hidden/shown
         
         // Initialize event listeners
         this.setupMatrixEventListeners();
@@ -87,13 +88,17 @@ class MatrixController {
     enterMatrixMode() {
         console.log('MatrixController: Entering Eisenhower Matrix mode');
         
-        // Store original positions of all nodes
+        // Store original positions of all nodes and flowline states
         this.storeOriginalNodePositions();
+        this.storeOriginalFlowlineStates();
         
         // Show the matrix overlay
         if (this.eisenhowerMatrix) {
             this.eisenhowerMatrix.style.display = 'grid';
         }
+        
+        // Hide flowlines and transition nodes off-screen
+        this.hideFlowlines();
         
         // Use matrix animations to transition nodes off-screen and then position in matrix
         if (this.app.matrixAnimations) {
@@ -120,6 +125,9 @@ class MatrixController {
                 // After regular nodes are restored, reposition tasks relative to their anchor nodes
                 this.repositionTasksAfterMatrixExit();
                 
+                // Show flowlines again and update their positions
+                this.showFlowlines();
+                
                 // After transition completes, hide the matrix overlay
                 if (this.eisenhowerMatrix) {
                     this.eisenhowerMatrix.style.display = 'none';
@@ -131,6 +139,9 @@ class MatrixController {
             
             // Reposition tasks relative to their anchor nodes
             this.repositionTasksAfterMatrixExit();
+            
+            // Show flowlines again
+            this.showFlowlines();
             
             if (this.eisenhowerMatrix) {
                 this.eisenhowerMatrix.style.display = 'none';
@@ -339,6 +350,121 @@ class MatrixController {
         }
         
         console.log('MatrixController: Stored original positions for', this.originalNodePositions.size, 'elements');
+    }
+    
+    /**
+     * Store original flowline visibility states before matrix mode
+     */
+    storeOriginalFlowlineStates() {
+        this.originalFlowlineVisibility.clear();
+        
+        // Get flowlines from flowline manager
+        const flowlines = this.app.flowlines || [];
+        
+        flowlines.forEach(flowline => {
+            if (flowline.element) {
+                // Store current visibility state and opacity
+                const currentStyle = window.getComputedStyle(flowline.element);
+                this.originalFlowlineVisibility.set(flowline.id, {
+                    element: flowline.element,
+                    display: currentStyle.display,
+                    opacity: currentStyle.opacity,
+                    visibility: currentStyle.visibility,
+                    originallyVisible: currentStyle.display !== 'none' && currentStyle.visibility !== 'hidden'
+                });
+            }
+        });
+        
+        console.log('MatrixController: Stored original states for', this.originalFlowlineVisibility.size, 'flowlines');
+    }
+    
+    /**
+     * Hide all flowlines with smooth transition animation
+     */
+    hideFlowlines() {
+        const flowlines = this.app.flowlines || [];
+        
+        if (flowlines.length === 0) {
+            console.log('MatrixController: No flowlines to hide');
+            return;
+        }
+        
+        console.log(`MatrixController: Hiding ${flowlines.length} flowlines with transition`);
+        
+        // Use D3 to animate flowlines fading out
+        const flowlineElements = flowlines.map(f => f.element).filter(el => el);
+        
+        d3.selectAll(flowlineElements)
+            .transition()
+            .duration(600) // Slightly faster than node transition
+            .ease(d3.easeCubicOut)
+            .style('opacity', 0)
+            .style('visibility', 'hidden')
+            .on('end', function() {
+                // After transition, set display to none to remove from layout
+                this.style.display = 'none';
+            });
+    }
+    
+    /**
+     * Show all flowlines with smooth transition animation and update their paths
+     */
+    showFlowlines() {
+        const storedStates = Array.from(this.originalFlowlineVisibility.values());
+        
+        if (storedStates.length === 0) {
+            console.log('MatrixController: No flowlines to restore');
+            return;
+        }
+        
+        console.log(`MatrixController: Showing ${storedStates.length} flowlines with transition`);
+        
+        // Filter to only originally visible flowlines
+        const visibleFlowlines = storedStates.filter(state => state.originallyVisible);
+        
+        if (visibleFlowlines.length === 0) {
+            console.log('MatrixController: No originally visible flowlines to restore');
+            return;
+        }
+        
+        // First, restore display and update flowline paths
+        visibleFlowlines.forEach(state => {
+            if (state.element) {
+                // Restore display first (but keep invisible)
+                state.element.style.display = state.display || '';
+                state.element.style.visibility = state.visibility || 'visible';
+                state.element.style.opacity = '0'; // Start invisible for animation
+            }
+        });
+        
+        // Update all flowline paths to reflect new node positions
+        if (this.app.flowlineManager && typeof this.app.flowlineManager.updateFlowlines === 'function') {
+            this.app.flowlineManager.updateFlowlines();
+        }
+        
+        // Add a small delay to ensure DOM updates are processed
+        setTimeout(() => {
+            // Animate flowlines fading back in
+            const elements = visibleFlowlines.map(state => state.element).filter(el => el);
+            
+            d3.selectAll(elements)
+                .transition()
+                .duration(800) // Match the task repositioning duration
+                .delay(200) // Small delay after nodes are repositioned
+                .ease(d3.easeCubicOut)
+                .style('opacity', d => {
+                    // Restore original opacity or default to 1
+                    const originalState = visibleFlowlines.find(state => state.element === d);
+                    return originalState ? (originalState.opacity || '1') : '1';
+                })
+                .on('end', function() {
+                    // Ensure final state is fully restored
+                    const originalState = visibleFlowlines.find(state => state.element === this);
+                    if (originalState) {
+                        this.style.visibility = originalState.visibility || 'visible';
+                    }
+                });
+        }, 100);
     }
     
     /**
@@ -656,13 +782,39 @@ class MatrixController {
         return {
             isMatrixMode: this.isMatrixMode,
             originalPositionsStored: this.originalNodePositions.size,
+            originalFlowlineStatesStored: this.originalFlowlineVisibility.size,
+            currentFlowlines: this.app.flowlines ? this.app.flowlines.length : 0,
+            visibleFlowlines: this.countCurrentlyVisibleFlowlines(),
             elementsLoaded: {
                 eisenhowerToggle: !!this.eisenhowerToggle,
                 eisenhowerMatrix: !!this.eisenhowerMatrix,
                 canvas: !!this.canvas
             },
-            matrixAnimationsAvailable: !!this.app.matrixAnimations
+            matrixAnimationsAvailable: !!this.app.matrixAnimations,
+            flowlineManagerAvailable: !!this.app.flowlineManager
         };
+    }
+    
+    /**
+     * Count currently visible flowlines (for debugging)
+     * @returns {number} Number of visible flowlines
+     */
+    countCurrentlyVisibleFlowlines() {
+        if (!this.app.flowlines) return 0;
+        
+        let visibleCount = 0;
+        this.app.flowlines.forEach(flowline => {
+            if (flowline.element) {
+                const style = window.getComputedStyle(flowline.element);
+                if (style.display !== 'none' && 
+                    style.visibility !== 'hidden' && 
+                    parseFloat(style.opacity) > 0.1) {
+                    visibleCount++;
+                }
+            }
+        });
+        
+        return visibleCount;
     }
     
     /**

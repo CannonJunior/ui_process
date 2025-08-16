@@ -69,6 +69,13 @@
                 <div id="chatConnectionStatus" class="connection-status">
                     <span class="status-indicator" id="statusIndicator">○</span>
                     <span id="statusText">Connecting to Ollama...</span>
+                    <button id="retryConnectionButton" class="retry-connection-btn" style="display: none;">Retry</button>
+                </div>
+                <div class="model-selector">
+                    <label for="modelSelect">Model:</label>
+                    <select id="modelSelect" class="model-select">
+                        <option value="smollm2:135m">smollm2:135m (loading...)</option>
+                    </select>
                 </div>
             </div>
             
@@ -121,12 +128,7 @@
     
     <!-- Tag Context Menu -->
     <div id="tagContextMenu" class="context-menu tag-context-menu">
-        <div class="menu-item" data-attribute="category">Category</div>
-        <div class="menu-item" data-attribute="option">Option</div>
-        <div class="menu-item" data-attribute="date">Date</div>
-        <div class="menu-separator"></div>
-        <div class="menu-item" data-action="reset-next-action" style="display: none;">Move Back to Task</div>
-        <div class="menu-item" data-action="delete">Delete Tag</div>
+        <!-- Content will be dynamically populated by ContextMenuManager -->
     </div>
     
     <!-- Tag Attribute Options Menu -->
@@ -252,25 +254,12 @@
     <script src="features/flowline-system/flowline-renderer.js"></script>
     <script src="features/flowline-system/flowline-manager.js"></script>
     
+    <!-- Feature Modules (Phase 10: Note-Taking System) -->
+    <script src="features/note-taking/command-parser.js"></script>
+    <script src="features/note-taking/note-storage.js"></script>
+    <script src="features/note-taking/note-manager.js"></script>
+    
     <script src="chat-interface.js"></script>
     <script src="script.js"></script>
-    
-    <!-- Phase 5 Context Menu Verification -->
-    <script src="tests/phase5-context-menu-verification.js"></script>
-    
-    <!-- Phase 6 Tag System Verification -->
-    <script src="tests/phase6-tag-system-verification.js"></script>
-    
-    <!-- Phase 7 Eisenhower Matrix Verification -->
-    <script src="tests/phase7-matrix-verification.js"></script>
-    
-    <!-- Phase 8 Node Management Verification -->
-    <script src="tests/phase8-node-verification.js"></script>
-    
-    <!-- Phase 9 Flowline System Verification -->
-    <script src="tests/phase9-flowline-verification.js"></script>
-    
-    <!-- Matrix Debug Script -->
-    <script src="debug-matrix.js"></script>
 </body>
 </html>

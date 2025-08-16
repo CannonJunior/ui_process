@@ -194,10 +194,7 @@ class FlowlineManager {
         // Add to flowlines array
         this.flowlines.push(flowline);
         
-        // Update main app flowlines reference
-        if (this.app.flowlines) {
-            this.app.flowlines.push(flowline);
-        }
+        // Note: this.app.flowlines is a getter-only property that returns this.flowlines
         
         // Update flowline path
         this.updateSingleFlowline(flowline);
@@ -316,13 +313,8 @@ class FlowlineManager {
             this.flowlines.splice(index, 1);
         }
         
-        // Remove from main app flowlines array
-        if (this.app.flowlines) {
-            const appIndex = this.app.flowlines.indexOf(flowline);
-            if (appIndex > -1) {
-                this.app.flowlines.splice(appIndex, 1);
-            }
-        }
+        // Note: this.app.flowlines is a getter-only property that returns this.flowlines
+        // No need to manipulate it directly since removing from this.flowlines is sufficient
         
         console.log(`FlowlineManager: Removed flowline ${flowline.id || 'unknown'}`);
         return true;
@@ -359,9 +351,7 @@ class FlowlineManager {
         
         // Clear arrays
         this.flowlines = [];
-        if (this.app.flowlines) {
-            this.app.flowlines = [];
-        }
+        // Note: this.app.flowlines is a getter-only property, no need to clear it
         
         console.log('FlowlineManager: Cleared all flowlines');
     }

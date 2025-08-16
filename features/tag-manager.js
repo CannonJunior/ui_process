@@ -68,7 +68,7 @@ class TagManager {
         if (this.canvas) {
             // Prevent dragging tags to invalid locations
             this.canvas.addEventListener('dragover', (e) => {
-                // Only allow dropping on next-action-slots for the same task
+                // Only prevent invalid drops, let valid slot events bubble through
                 if (!e.target.classList.contains('next-action-slot')) {
                     e.preventDefault();
                     e.dataTransfer.dropEffect = 'none';
@@ -76,11 +76,8 @@ class TagManager {
                     // Prevent dropping on other tasks' next-action-slots
                     e.preventDefault();
                     e.dataTransfer.dropEffect = 'none';
-                } else {
-                    // Allow dropping on same task's next-action-slot
-                    e.preventDefault();
-                    e.dataTransfer.dropEffect = 'move';
                 }
+                // For valid next-action-slots, let the slot's own dragover handler manage the event
             });
             
             this.canvas.addEventListener('drop', (e) => {
@@ -417,6 +414,13 @@ class TagManager {
             this.showSimpleTagMenu(e, tagElement, tag);
         });
         
+        // Add double-click event listener for link opening
+        tagElement.addEventListener('dblclick', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            this.handleTagDoubleClick(e, tagElement, tag);
+        });
+        
         return tagElement;
     }
     
@@ -529,6 +533,18 @@ class TagManager {
                 }
             });
             
+            // Add double-click event listener to slot tag
+            slotTag.addEventListener('dblclick', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const tagIndex = parseInt(slotTag.dataset.tagIndex);
+                const taskNode = this.app.canvas.querySelector(`[data-id="${slotTag.dataset.taskId}"]`);
+                if (taskNode) {
+                    const tags = this.getTaskTags(taskNode);
+                    this.handleTagDoubleClick(e, slotTag, tags[tagIndex]);
+                }
+            });
+            
             slotElement.appendChild(slotTag);
             
             // Hide the original tag
@@ -587,6 +603,118 @@ class TagManager {
         }
         
         console.log(`TagManager: Category changed to ${selectedCategory}`);
+    }
+    
+    /**
+     * Handle tag double-click for link opening
+     * @param {Event} e - Double-click event
+     * @param {HTMLElement} tagElement - Tag element
+     * @param {Object} tagData - Tag data object
+     */
+    handleTagDoubleClick(e, tagElement, tagData) {
+        console.log('TagManager: Double-click detected on tag:', tagData);
+        
+        // Check if tag has a link
+        if (tagData && tagData.link && tagData.link.trim()) {
+            const link = tagData.link.trim();
+            
+            // Validate that it's a proper URL
+            if (this.isValidUrl(link)) {
+                console.log(`TagManager: Opening link in new tab: ${link}`);
+                
+                // Add visual feedback
+                this.showLinkOpeningFeedback(tagElement);
+                
+                // Open link in new tab
+                window.open(link, '_blank', 'noopener,noreferrer');
+            } else {
+                console.warn('TagManager: Invalid URL format:', link);
+                this.showLinkErrorFeedback(tagElement, 'Invalid URL format');
+            }
+        } else {
+            console.log('TagManager: No link associated with this tag');
+            this.showNoLinkFeedback(tagElement);
+        }
+    }
+    
+    /**
+     * Validate URL format
+     * @param {string} url - URL to validate
+     * @returns {boolean} True if valid URL
+     */
+    isValidUrl(url) {
+        try {
+            const urlObj = new URL(url);
+            return urlObj.protocol === 'http:' || urlObj.protocol === 'https:';
+        } catch (e) {
+            return false;
+        }
+    }
+    
+    /**
+     * Show visual feedback when opening a link
+     * @param {HTMLElement} tagElement - Tag element
+     */
+    showLinkOpeningFeedback(tagElement) {
+        // Add temporary visual feedback
+        const originalOpacity = tagElement.style.opacity;
+        const originalTransform = tagElement.style.transform;
+        
+        tagElement.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
+        tagElement.style.opacity = '0.7';
+        tagElement.style.transform = 'scale(0.95)';
+        
+        // Reset after animation
+        setTimeout(() => {
+            tagElement.style.opacity = originalOpacity;
+            tagElement.style.transform = originalTransform;
+            
+            // Remove transition after reset
+            setTimeout(() => {
+                tagElement.style.transition = '';
+            }, 200);
+        }, 200);
+    }
+    
+    /**
+     * Show visual feedback when no link is available
+     * @param {HTMLElement} tagElement - Tag element
+     */
+    showNoLinkFeedback(tagElement) {
+        // Briefly highlight the tag to indicate no link
+        const originalBoxShadow = tagElement.style.boxShadow;
+        
+        tagElement.style.transition = 'box-shadow 0.3s ease';
+        tagElement.style.boxShadow = '0 0 8px rgba(255, 193, 7, 0.6)'; // Amber glow
+        
+        setTimeout(() => {
+            tagElement.style.boxShadow = originalBoxShadow;
+            setTimeout(() => {
+                tagElement.style.transition = '';
+            }, 300);
+        }, 600);
+    }
+    
+    /**
+     * Show visual feedback when link is invalid
+     * @param {HTMLElement} tagElement - Tag element
+     * @param {string} message - Error message
+     */
+    showLinkErrorFeedback(tagElement, message) {
+        // Show red glow for error
+        const originalBoxShadow = tagElement.style.boxShadow;
+        
+        tagElement.style.transition = 'box-shadow 0.3s ease';
+        tagElement.style.boxShadow = '0 0 8px rgba(220, 53, 69, 0.6)'; // Red glow
+        
+        setTimeout(() => {
+            tagElement.style.boxShadow = originalBoxShadow;
+            setTimeout(() => {
+                tagElement.style.transition = '';
+            }, 300);
+        }, 800);
+        
+        console.error('TagManager: Link error:', message);
     }
     
     /**
@@ -753,6 +881,72 @@ class TagManager {
         });
         
         return result;
+    }
+    
+    // ==================== SLOT DRAG EVENT HANDLERS ====================
+    
+    /**
+     * Handle dragover event on next-action-slot
+     * @param {Event} e - Dragover event
+     */
+    handleSlotDragOver(e) {
+        e.preventDefault();
+        
+        // Only handle if we have a dragged tag
+        if (!this.draggedTag) {
+            e.dataTransfer.dropEffect = 'none';
+            return;
+        }
+        
+        const slot = e.currentTarget;
+        const slotTaskId = slot.dataset.taskId;
+        
+        // Only allow dropping on the same task's next-action-slot
+        if (this.draggedTag.taskId === slotTaskId) {
+            e.dataTransfer.dropEffect = 'move';
+            slot.classList.add('drag-over');
+            console.log('TagManager: Valid drop target, showing green border');
+        } else {
+            e.dataTransfer.dropEffect = 'none';
+            console.log('TagManager: Invalid drop target for different task');
+        }
+    }
+    
+    /**
+     * Handle dragleave event on next-action-slot
+     * @param {Event} e - Dragleave event
+     */
+    handleSlotDragLeave(e) {
+        const slot = e.currentTarget;
+        slot.classList.remove('drag-over');
+        console.log('TagManager: Removed drag-over styling');
+    }
+    
+    /**
+     * Handle drop event on next-action-slot
+     * @param {Event} e - Drop event
+     */
+    handleSlotDrop(e) {
+        e.preventDefault();
+        const slot = e.currentTarget;
+        slot.classList.remove('drag-over');
+        
+        // Only handle if we have a dragged tag
+        if (!this.draggedTag) {
+            console.log('TagManager: No dragged tag for slot drop');
+            return;
+        }
+        
+        const slotTaskId = slot.dataset.taskId;
+        
+        // Only allow dropping on the same task's next-action-slot
+        if (this.draggedTag.taskId === slotTaskId) {
+            console.log('TagManager: Valid drop on next-action-slot');
+            this.snapTagToSlot(this.draggedTag.element, slot);
+            this.successfulDrop = true;
+        } else {
+            console.log('TagManager: Invalid drop - task ID mismatch');
+        }
     }
 }
 

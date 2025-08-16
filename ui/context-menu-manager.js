@@ -89,18 +89,21 @@ class ContextMenuManager {
         // Tag context menu handling
         if (this.tagContextMenu) {
             this.tagContextMenu.addEventListener('click', (e) => {
-                const attribute = e.target.dataset.attribute;
+                console.log('ContextMenuManager: Tag context menu clicked');
                 const action = e.target.dataset.action;
+                const attribute = e.target.dataset.attribute;
                 
-                if (attribute && this.selectedTagForEdit) {
+                if (action) {
+                    console.log('ContextMenuManager: Tag action:', action);
+                    this.handleTagContextMenuAction(action);
+                } else if (attribute) {
+                    console.log('ContextMenuManager: Tag attribute:', attribute);
                     this.handleTagAttributeClick(attribute, e);
-                } else if (action === 'delete') {
-                    this.deleteSelectedTag();
-                    this.hideTagContextMenus();
-                } else if (action === 'reset-next-action') {
-                    this.resetTagFromNextAction();
-                    this.hideTagContextMenus();
+                } else {
+                    console.log('ContextMenuManager: No action or attribute found');
                 }
+                
+                this.hideTagContextMenus();
             });
         }
         
@@ -292,6 +295,28 @@ class ContextMenuManager {
         }
     }
     
+    /**
+     * Handle tag context menu action selection
+     * @param {string} action - Selected action
+     */
+    handleTagContextMenuAction(action) {
+        console.log(`ContextMenuManager: Tag context action: ${action}`);
+        
+        switch (action) {
+            case 'delete':
+                this.deleteSelectedTag();
+                break;
+            case 'reset-next-action':
+                this.resetTagFromNextAction();
+                break;
+            case 'close':
+                // Just hide the menu, no additional action needed
+                break;
+            default:
+                console.warn(`ContextMenuManager: Unknown tag action: ${action}`);
+        }
+    }
+    
     // ==================== TAG CONTEXT MENU METHODS ====================
     
     /**
@@ -300,6 +325,7 @@ class ContextMenuManager {
      * @param {Event} e - Context menu event
      */
     showTagContextMenu(tagElement, e) {
+        console.log('ContextMenuManager: showTagContextMenu called with:', tagElement);
         this.selectedTagForEdit = tagElement;
         
         // Parse tag data
@@ -312,8 +338,23 @@ class ContextMenuManager {
             tagElement: tagElement
         };
         
-        this.hideTagContextMenus();
+        console.log('ContextMenuManager: Tag context menu state set:');
+        console.log('  selectedTagForEdit:', this.selectedTagForEdit);
+        console.log('  currentTagData:', this.currentTagData);
+        
+        // Hide other menus first, but preserve the tag state we just set
         this.hideContextMenu();
+        
+        // Hide tag context menu elements but preserve state
+        if (this.tagContextMenu) {
+            this.tagContextMenu.style.display = 'none';
+        }
+        if (this.tagAttributeMenu) {
+            this.tagAttributeMenu.style.display = 'none';
+        }
+        if (this.tagDatePicker) {
+            this.tagDatePicker.style.display = 'none';
+        }
         
         // Create tag context menu content
         this.createTagContextMenuContent(tagElement);
@@ -345,12 +386,6 @@ class ContextMenuManager {
         // Clear existing content
         this.tagContextMenu.innerHTML = '';
         
-        // Add tag information display
-        const tagInfo = document.createElement('div');
-        tagInfo.className = 'tag-info';
-        tagInfo.textContent = tagElement.textContent;
-        this.tagContextMenu.appendChild(tagInfo);
-        
         // Add edit options
         const editOptions = [
             { text: 'Edit Category', attribute: 'category' },
@@ -362,7 +397,7 @@ class ContextMenuManager {
         
         editOptions.forEach(option => {
             const item = document.createElement('div');
-            item.className = 'context-menu-item';
+            item.className = 'menu-item';
             item.textContent = option.text;
             item.dataset.attribute = option.attribute;
             this.tagContextMenu.appendChild(item);
@@ -370,19 +405,19 @@ class ContextMenuManager {
         
         // Add separator
         const separator = document.createElement('div');
-        separator.className = 'context-menu-separator';
+        separator.className = 'menu-separator';
         this.tagContextMenu.appendChild(separator);
         
         // Add action options
         const deleteItem = document.createElement('div');
-        deleteItem.className = 'context-menu-item delete';
+        deleteItem.className = 'menu-item delete';
         deleteItem.textContent = 'Delete Tag';
         deleteItem.dataset.action = 'delete';
         this.tagContextMenu.appendChild(deleteItem);
         
         // Add reset next action option (conditional)
         const resetItem = document.createElement('div');
-        resetItem.className = 'context-menu-item';
+        resetItem.className = 'menu-item';
         resetItem.textContent = 'Reset from Next Action';
         resetItem.dataset.action = 'reset-next-action';
         resetItem.style.display = tagElement.dataset.isInNextAction === 'true' ? 'block' : 'none';
@@ -390,11 +425,9 @@ class ContextMenuManager {
         
         // Add close option
         const closeItem = document.createElement('div');
-        closeItem.className = 'context-menu-item';
+        closeItem.className = 'menu-item';
         closeItem.textContent = 'Close';
-        closeItem.addEventListener('click', () => {
-            this.hideTagContextMenus();
-        });
+        closeItem.dataset.action = 'close';
         this.tagContextMenu.appendChild(closeItem);
     }
     
@@ -448,7 +481,7 @@ class ContextMenuManager {
             categories.forEach(category => {
                 if (category.value) { // Skip disabled placeholder options
                     const option = document.createElement('div');
-                    option.className = 'context-menu-item';
+                    option.className = 'menu-item';
                     option.textContent = category.label;
                     option.dataset.value = category.value;
                     this.tagAttributeMenu.appendChild(option);
@@ -461,7 +494,7 @@ class ContextMenuManager {
                 options.forEach(option => {
                     if (option.value) { // Skip disabled placeholder options
                         const menuItem = document.createElement('div');
-                        menuItem.className = 'context-menu-item';
+                        menuItem.className = 'menu-item';
                         menuItem.textContent = option.label;
                         menuItem.dataset.value = option.value;
                         this.tagAttributeMenu.appendChild(menuItem);
@@ -535,17 +568,49 @@ class ContextMenuManager {
      * @param {string} value - New value
      */
     updateTagAttribute(attribute, value) {
-        // Delegate to main app for tag update logic
-        this.app.updateTagAttribute(attribute, value);
+        if (!this.currentTagData || !this.currentTagData.taskNode) {
+            console.error('ContextMenuManager: No tag data available for update');
+            return;
+        }
+        
+        console.log(`ContextMenuManager: Updating tag attribute ${attribute} to ${value}`);
+        
+        // Delegate to tag manager for tag update logic
+        if (this.app.tagManager && typeof this.app.tagManager.updateTagAttribute === 'function') {
+            this.app.tagManager.updateTagAttribute(attribute, value);
+        } else {
+            // Fallback to main app method
+            this.app.updateTagAttribute(attribute, value);
+        }
+        
+        console.log('ContextMenuManager: Tag attribute updated successfully');
     }
     
     /**
      * Delete selected tag
      */
     deleteSelectedTag() {
-        if (this.currentTagData) {
-            // Delegate to main app for tag deletion logic
-            this.app.removeTag(this.currentTagData.tagIndex);
+        if (this.currentTagData && this.currentTagData.taskNode) {
+            // Set the selected task for tag manager operations
+            const originalSelectedTask = this.app.selectedTaskForTags;
+            this.app.selectedTaskForTags = this.currentTagData.taskNode;
+            
+            try {
+                // Delegate to tag manager for tag deletion logic
+                if (this.app.tagManager && typeof this.app.tagManager.removeTag === 'function') {
+                    this.app.tagManager.removeTag(this.currentTagData.tagIndex);
+                } else {
+                    // Fallback to main app method
+                    this.app.removeTag(this.currentTagData.tagIndex);
+                }
+            } finally {
+                // Restore original selected task
+                this.app.selectedTaskForTags = originalSelectedTask;
+            }
+            
+            console.log('ContextMenuManager: Tag deleted successfully');
+        } else {
+            console.error('ContextMenuManager: No tag data available for deletion');
         }
     }
     
@@ -553,8 +618,12 @@ class ContextMenuManager {
      * Reset tag from next action
      */
     resetTagFromNextAction() {
-        // Delegate to main app for reset logic
-        this.app.resetTagFromNextAction();
+        // Pass the tag data to main app for reset logic
+        if (this.selectedTagForEdit && this.currentTagData) {
+            this.app.resetTagFromNextAction(this.selectedTagForEdit, this.currentTagData);
+        } else {
+            console.error('ContextMenuManager: No tag selected for reset operation');
+        }
     }
     
     /**
