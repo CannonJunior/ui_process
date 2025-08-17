@@ -64,8 +64,7 @@ class MatrixController {
     toggleEisenhowerMatrix() {
         this.isMatrixMode = !this.isMatrixMode;
         
-        // Update main app state
-        this.app.isMatrixMode = this.isMatrixMode;
+        // Note: app.isMatrixMode is a getter that returns this.matrixController.isMatrixMode, no need to sync
         
         if (this.isMatrixMode) {
             this.enterMatrixMode();
@@ -120,6 +119,9 @@ class MatrixController {
                 // After regular nodes are restored, reposition tasks relative to their anchor nodes
                 this.repositionTasksAfterMatrixExit();
                 
+                // Restore flowlines to original positions
+                this.restoreOriginalFlowlinePositions();
+                
                 // After transition completes, hide the matrix overlay
                 if (this.eisenhowerMatrix) {
                     this.eisenhowerMatrix.style.display = 'none';
@@ -131,6 +133,9 @@ class MatrixController {
             
             // Reposition tasks relative to their anchor nodes
             this.repositionTasksAfterMatrixExit();
+            
+            // Restore flowlines to original positions
+            this.restoreOriginalFlowlinePositions();
             
             if (this.eisenhowerMatrix) {
                 this.eisenhowerMatrix.style.display = 'none';
@@ -338,9 +343,37 @@ class MatrixController {
             });
         }
         
+        // Store flowline positions
+        this.storeOriginalFlowlinePositions();
+        
         console.log('MatrixController: Stored original positions for', this.originalNodePositions.size, 'elements');
     }
     
+    /**
+     * Store original positions of flowlines before matrix mode
+     */
+    storeOriginalFlowlinePositions() {
+        // Get flowlines from flowline manager
+        const flowlines = this.app.flowlineManager ? this.app.flowlineManager.getAllFlowlines() : [];
+        
+        flowlines.forEach(flowline => {
+            if (flowline.element && flowline.source && flowline.target) {
+                // Store flowline path data by storing the source and target positions
+                this.originalNodePositions.set(`flowline-${flowline.id}`, {
+                    element: flowline.element,
+                    sourceId: flowline.source.dataset.id,
+                    targetId: flowline.target.dataset.id,
+                    type: 'flowline',
+                    flowlineType: flowline.type,
+                    // Store current path attribute for restoration
+                    originalPath: flowline.element.getAttribute('d')
+                });
+            }
+        });
+        
+        console.log('MatrixController: Stored original positions for', flowlines.length, 'flowlines');
+    }
+
     /**
      * Get stored original positions for animations
      * @returns {Map} Original positions map
@@ -427,6 +460,9 @@ class MatrixController {
             });
         }
         
+        // Update flowlines after positioning tasks
+        this.updateFlowlinesInMatrix();
+        
         console.log('MatrixController: Positioned', taskNodes.length, 'tasks in matrix quadrants');
     }
     
@@ -495,6 +531,9 @@ class MatrixController {
             taskContainer.style.top = `${targetY}px`;
             this.positionNextActionSlot(taskData);
         }
+        
+        // Update flowlines for this task
+        this.updateFlowlinesForTask(taskNode);
         
         const taskText = taskNode.querySelector('.node-text')?.textContent || 'Unknown';
         console.log(`MatrixController: Positioned task "${taskText}" in quadrant ${quadrantNum}`);
@@ -691,6 +730,62 @@ class MatrixController {
         }
         
         return result;
+    }
+    
+    // ==================== FLOWLINE MANAGEMENT METHODS ====================
+    
+    /**
+     * Update all flowlines during matrix mode
+     */
+    updateFlowlinesInMatrix() {
+        if (!this.app.flowlineManager) {
+            console.warn('MatrixController: FlowlineManager not available');
+            return;
+        }
+        
+        // Update all flowlines to reflect new node positions
+        this.app.flowlineManager.updateFlowlines();
+        console.log('MatrixController: Updated all flowlines for matrix mode');
+    }
+    
+    /**
+     * Update flowlines connected to a specific task
+     * @param {HTMLElement} taskNode - Task node element
+     */
+    updateFlowlinesForTask(taskNode) {
+        if (!this.app.flowlineManager || !taskNode) {
+            return;
+        }
+        
+        const taskId = taskNode.dataset.id;
+        if (!taskId) return;
+        
+        // Get flowlines connected to this task
+        const flowlines = this.app.flowlineManager.getAllFlowlines();
+        const connectedFlowlines = flowlines.filter(flowline => 
+            flowline.source.dataset.id === taskId || flowline.target.dataset.id === taskId
+        );
+        
+        // Update each connected flowline
+        connectedFlowlines.forEach(flowline => {
+            this.app.flowlineManager.updateSingleFlowline(flowline);
+        });
+        
+        console.log(`MatrixController: Updated ${connectedFlowlines.length} flowlines for task ${taskId}`);
+    }
+    
+    /**
+     * Restore flowlines to original positions after exiting matrix mode
+     */
+    restoreOriginalFlowlinePositions() {
+        if (!this.app.flowlineManager) {
+            console.warn('MatrixController: FlowlineManager not available');
+            return;
+        }
+        
+        // Update all flowlines to reflect restored node positions
+        this.app.flowlineManager.updateFlowlines();
+        console.log('MatrixController: Restored flowlines to original positions');
     }
 }
 

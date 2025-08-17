@@ -244,6 +244,21 @@ export class WorkflowPersistence {
      * @private
      */
     deserializeWorkflow(workflowData) {
+        // Handle both old format (v1.1) and new format (v2.0)
+        if (workflowData.version === '1.1') {
+            // Delegate to legacy script.js deserializeWorkflow method
+            console.log('WorkflowPersistence: Loading v1.1 format using legacy deserializer');
+            
+            // Check if app instance exists and has the old deserializeWorkflow method
+            if (window.app && typeof window.app.deserializeWorkflow === 'function') {
+                window.app.deserializeWorkflow(workflowData);
+                return;
+            } else {
+                throw new Error('Legacy workflow loader not available for v1.1 format');
+            }
+        }
+        
+        // New format (v2.0)
         const { nodes, tasks, flowlines, tags, matrix, canvas } = workflowData.data;
         
         // Restore canvas state first
@@ -483,9 +498,24 @@ export class WorkflowPersistence {
             try {
                 const workflowData = JSON.parse(e.target.result);
                 this.loadWorkflow(workflowData);
+                console.log('Workflow imported successfully');
             } catch (error) {
                 console.error('Error parsing workflow file:', error);
-                this.eventBus.emit('workflow.import.error', { error: error.message });
+                
+                // Provide better error messages
+                let errorMessage = error.message;
+                if (error.message.includes('JSON')) {
+                    errorMessage = 'Invalid JSON file format';
+                } else if (error.message.includes('Legacy workflow')) {
+                    errorMessage = 'Legacy workflow format detected but loader not available';
+                } else if (error.message.includes('Unsupported workflow format')) {
+                    errorMessage = 'Unsupported workflow version - please use a workflow saved from this application';
+                }
+                
+                this.eventBus.emit('workflow.import.error', { error: errorMessage });
+                
+                // Also show alert for immediate user feedback
+                alert(`Error loading workflow: ${errorMessage}`);
             }
         };
         reader.readAsText(file);
@@ -509,23 +539,39 @@ export class WorkflowPersistence {
             errors.push('Missing workflow version');
         }
         
-        if (!workflowData.data) {
-            errors.push('Missing workflow data section');
+        // Handle both old format (v1.1) and new format (v2.0)
+        const isOldFormat = workflowData.version === '1.1' && workflowData.nodes;
+        const isNewFormat = workflowData.version === '2.0' && workflowData.data;
+        
+        if (!isOldFormat && !isNewFormat) {
+            errors.push('Unsupported workflow format - must be version 1.1 or 2.0');
             return { valid: false, errors };
         }
         
-        const { data } = workflowData;
-        
-        if (!Array.isArray(data.nodes)) {
-            errors.push('Invalid nodes data');
-        }
-        
-        if (!Array.isArray(data.tasks)) {
-            errors.push('Invalid tasks data');
-        }
-        
-        if (!Array.isArray(data.flowlines)) {
-            errors.push('Invalid flowlines data');
+        if (isOldFormat) {
+            // Validate old format (v1.1)
+            if (!Array.isArray(workflowData.nodes)) {
+                errors.push('Invalid nodes data');
+            }
+            
+            if (!Array.isArray(workflowData.flowlines)) {
+                errors.push('Invalid flowlines data');
+            }
+        } else {
+            // Validate new format (v2.0)
+            const { data } = workflowData;
+            
+            if (!Array.isArray(data.nodes)) {
+                errors.push('Invalid nodes data');
+            }
+            
+            if (!Array.isArray(data.tasks)) {
+                errors.push('Invalid tasks data');
+            }
+            
+            if (!Array.isArray(data.flowlines)) {
+                errors.push('Invalid flowlines data');
+            }
         }
         
         return {

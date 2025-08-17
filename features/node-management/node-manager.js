@@ -188,9 +188,9 @@ class NodeManager {
         text.textContent = nodeData.text || `${nodeData.type} ${nodeData.id}`;
         node.appendChild(text);
         
-        // Set position
-        node.style.left = `${nodeData.x || 100}px`;
-        node.style.top = `${nodeData.y || 100}px`;
+        // Set position (handle both old and new position formats)
+        node.style.left = `${nodeData.left || nodeData.x || 100}px`;
+        node.style.top = `${nodeData.top || nodeData.y || 100}px`;
         
         // Add event listeners
         this.addNodeEventListeners(node);
@@ -332,12 +332,17 @@ class NodeManager {
      * @param {Event} e - Double click event
      */
     handleDoubleClick(e, node) {
+        console.log(`NodeManager: Double click on node ${node.dataset.id}`);
+        console.log(`NodeManager: flowlineCreationMode = ${this.app.flowlineCreationMode}`);
+        console.log(`NodeManager: sourceNodeForFlowline = ${this.app.sourceNodeForFlowline ? this.app.sourceNodeForFlowline.dataset.id : 'null'}`);
+        
         // Check if we're in flowline creation mode
         if (this.app.flowlineCreationMode && this.app.sourceNodeForFlowline && node !== this.app.sourceNodeForFlowline) {
+            console.log(`NodeManager: Creating flowline from ${this.app.sourceNodeForFlowline.dataset.id} to ${node.dataset.id}`);
             this.createFlowline(this.app.sourceNodeForFlowline, node);
             this.exitFlowlineCreationMode();
         } else {
-            console.log(`NodeManager: Double clicked node ${node.dataset.id}`);
+            console.log(`NodeManager: Double clicked node ${node.dataset.id} - not in flowline creation mode or no source node`);
         }
     }
     
@@ -487,9 +492,7 @@ class NodeManager {
         
         // Clear arrays
         this.nodes = [];
-        if (this.app.nodes) {
-            this.app.nodes = [];
-        }
+        // Note: app.nodes is a getter-only property, no need to clear it
         
         // Clear references
         this.startNode = null;

@@ -1,11 +1,13 @@
 class ChatInterface {
     constructor() {
         this.ollamaBaseUrl = 'http://localhost:11434';
-        this.modelName = 'qwen2.5:3b';
+        this.modelName = 'smollm2:135m';
         this.isOpen = false;
         this.isConnected = false;
         this.documents = new Map(); // Store processed documents
         this.conversationHistory = [];
+        this.maxDocuments = 50; // Limit stored documents
+        this.maxConversationHistory = 100; // Limit conversation history
         
         // UI Elements
         this.chatSidebar = document.getElementById('chatSidebar');
@@ -65,6 +67,12 @@ class ChatInterface {
                     const response = await fetch(filePath);
                     if (response.ok) {
                         const content = await response.text();
+                        // Limit documents storage
+                        if (this.documents.size >= this.maxDocuments) {
+                            const firstKey = this.documents.keys().next().value;
+                            this.documents.delete(firstKey);
+                        }
+                        
                         this.documents.set(filePath, {
                             content: content,
                             name: filePath.split('/').pop(),
@@ -230,8 +238,8 @@ class ChatInterface {
             );
             
             // Keep conversation history manageable
-            if (this.conversationHistory.length > 20) {
-                this.conversationHistory = this.conversationHistory.slice(-20);
+            if (this.conversationHistory.length > this.maxConversationHistory) {
+                this.conversationHistory = this.conversationHistory.slice(-this.maxConversationHistory);
             }
             
         } catch (error) {
@@ -389,13 +397,11 @@ class ChatInterface {
         
         messageDiv.appendChild(contentDiv);
         
-        // Add timestamp for non-error messages
-        if (type !== 'error') {
-            const timestamp = document.createElement('div');
-            timestamp.className = 'message-timestamp';
-            timestamp.textContent = new Date().toLocaleTimeString();
-            messageDiv.appendChild(timestamp);
-        }
+        // Add timestamp to all messages including errors
+        const timestamp = document.createElement('div');
+        timestamp.className = 'message-timestamp';
+        timestamp.textContent = new Date().toLocaleTimeString();
+        messageDiv.appendChild(timestamp);
         
         this.chatMessages.appendChild(messageDiv);
         

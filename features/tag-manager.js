@@ -68,6 +68,11 @@ class TagManager {
         if (this.canvas) {
             // Prevent dragging tags to invalid locations
             this.canvas.addEventListener('dragover', (e) => {
+                // Clear all drag-over classes first
+                document.querySelectorAll('.next-action-slot.drag-over').forEach(slot => {
+                    slot.classList.remove('drag-over');
+                });
+                
                 // Only allow dropping on next-action-slots for the same task
                 if (!e.target.classList.contains('next-action-slot')) {
                     e.preventDefault();
@@ -76,17 +81,38 @@ class TagManager {
                     // Prevent dropping on other tasks' next-action-slots
                     e.preventDefault();
                     e.dataTransfer.dropEffect = 'none';
-                } else {
+                } else if (this.draggedTag && e.target.dataset.taskId === this.draggedTag.taskId) {
                     // Allow dropping on same task's next-action-slot
                     e.preventDefault();
                     e.dataTransfer.dropEffect = 'move';
+                    e.target.classList.add('drag-over');
+                } else {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'none';
+                }
+            });
+            
+            this.canvas.addEventListener('dragleave', (e) => {
+                // Remove drag-over class when leaving a drop zone
+                if (e.target.classList.contains('next-action-slot')) {
+                    e.target.classList.remove('drag-over');
                 }
             });
             
             this.canvas.addEventListener('drop', (e) => {
-                // Prevent drops on invalid locations
-                if (!e.target.classList.contains('next-action-slot') || 
-                    (this.draggedTag && e.target.dataset.taskId !== this.draggedTag.taskId)) {
+                // Clear all drag-over classes
+                document.querySelectorAll('.next-action-slot.drag-over').forEach(slot => {
+                    slot.classList.remove('drag-over');
+                });
+                
+                // Handle valid drops
+                if (e.target.classList.contains('next-action-slot') && 
+                    this.draggedTag && e.target.dataset.taskId === this.draggedTag.taskId) {
+                    e.preventDefault();
+                    this.successfulDrop = true;
+                    this.snapTagToSlot(this.draggedTag.element, e.target);
+                } else {
+                    // Prevent drops on invalid locations
                     e.preventDefault();
                 }
             });
@@ -390,6 +416,7 @@ class TagManager {
         const tagElement = document.createElement('div');
         tagElement.className = 'tag';
         tagElement.draggable = true;
+        tagElement.dataset.type = 'tag';  // Add type for context menu system
         tagElement.dataset.tagIndex = index;
         tagElement.dataset.taskId = taskNode.dataset.id;
         
@@ -405,19 +432,62 @@ class TagManager {
         
         tagElement.textContent = `${categoryLabel}: ${optionLabel}${dateText}`;
         
+        // Add visual indicator if tag has a link
+        if (tag.link && tag.link.trim()) {
+            tagElement.dataset.hasLink = 'true';
+            tagElement.title = `Double-click to open: ${tag.link}`;
+        }
+        
         // Add drag event listeners
         tagElement.addEventListener('dragstart', (e) => this.handleTagDragStart(e));
         tagElement.addEventListener('dragend', (e) => this.handleTagDragEnd(e));
         
-        // Add context menu event listener
-        tagElement.addEventListener('contextmenu', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            console.log('TagManager: Right-click detected on tag:', tagElement);
-            this.showSimpleTagMenu(e, tagElement, tag);
-        });
+        // Add context menu event listener - same pattern as tasks
+        tagElement.addEventListener('contextmenu', (e) => this.app.handleContextMenu(e, tagElement));
+        
+        // Add double-click event listener to open links
+        tagElement.addEventListener('dblclick', (e) => this.handleTagDoubleClick(e, tagElement, tag));
         
         return tagElement;
+    }
+    
+    /**
+     * Handle tag double-click to open links
+     * @param {Event} e - Double-click event
+     * @param {HTMLElement} tagElement - Tag element
+     * @param {Object} tag - Tag data object
+     */
+    handleTagDoubleClick(e, tagElement, tag) {
+        console.log('TagManager: Tag double-clicked:', tag);
+        
+        // Prevent event bubbling
+        e.preventDefault();
+        e.stopPropagation();
+        
+        // Check if tag has a link
+        if (tag.link && tag.link.trim()) {
+            const link = tag.link.trim();
+            console.log('TagManager: Opening tag link:', link);
+            
+            try {
+                // Validate URL format
+                let url = link;
+                if (!link.startsWith('http://') && !link.startsWith('https://')) {
+                    url = 'https://' + link;
+                }
+                
+                // Open link in new tab
+                window.open(url, '_blank', 'noopener,noreferrer');
+                console.log('TagManager: Link opened successfully');
+            } catch (error) {
+                console.error('TagManager: Error opening link:', error);
+                alert(`Unable to open link: ${link}`);
+            }
+        } else {
+            console.log('TagManager: Tag has no link to open');
+            // Optional: Show a subtle indication that there's no link
+            // Could flash the tag or show a tooltip
+        }
     }
     
     // ==================== TAG DRAG AND DROP METHODS ====================
@@ -452,6 +522,11 @@ class TagManager {
     handleTagDragEnd(e) {
         console.log('TagManager: Drag end, successful drop:', this.successfulDrop);
         e.target.classList.remove('dragging');
+        
+        // Clear all drag-over classes
+        document.querySelectorAll('.next-action-slot.drag-over').forEach(slot => {
+            slot.classList.remove('drag-over');
+        });
         
         // If drag ended without a successful drop, snap back
         if (this.draggedTag && !this.successfulDrop) {
@@ -511,23 +586,27 @@ class TagManager {
             // Create a new tag in the slot
             const slotTag = tagElement.cloneNode(true);
             slotTag.classList.add('tag-in-slot');
+            slotTag.dataset.type = 'tag';  // Ensure type is set for context menu
             slotTag.dataset.isInNextAction = 'true';
             slotTag.style.position = 'relative';
             slotTag.style.left = 'auto';
             slotTag.style.top = 'auto';
             slotTag.style.zIndex = 'auto';
             
-            // Add event listeners to the slot tag
-            slotTag.addEventListener('contextmenu', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                const tagIndex = parseInt(slotTag.dataset.tagIndex);
-                const taskNode = this.app.canvas.querySelector(`[data-id="${slotTag.dataset.taskId}"]`);
-                if (taskNode) {
-                    const tags = this.getTaskTags(taskNode);
-                    this.showSimpleTagMenu(e, slotTag, tags[tagIndex]);
+            // Add context menu event listener - same pattern as tasks
+            slotTag.addEventListener('contextmenu', (e) => this.app.handleContextMenu(e, slotTag));
+            
+            // Add double-click event listener to open links (need to get tag data)
+            const taskNode = this.draggedTag.element.closest('.task-banner') || 
+                            this.draggedTag.element.closest('[data-type="task"]') ||
+                            document.querySelector(`.task-banner[data-id="${this.draggedTag.taskId}"]`);
+            if (taskNode) {
+                const tags = this.getTaskTags(taskNode);
+                const tagData = tags[this.draggedTag.tagIndex];
+                if (tagData) {
+                    slotTag.addEventListener('dblclick', (e) => this.handleTagDoubleClick(e, slotTag, tagData));
                 }
-            });
+            }
             
             slotElement.appendChild(slotTag);
             
@@ -589,77 +668,7 @@ class TagManager {
         console.log(`TagManager: Category changed to ${selectedCategory}`);
     }
     
-    /**
-     * Show simple tag context menu
-     * @param {Event} e - Context menu event
-     * @param {HTMLElement} tagElement - Tag element
-     * @param {Object} tagData - Tag data object
-     */
-    showSimpleTagMenu(e, tagElement, tagData) {
-        console.log('TagManager: Showing simple tag menu for:', tagData);
-        
-        // Delegate to context menu manager if available
-        if (this.app.contextMenuManager && typeof this.app.contextMenuManager.showTagContextMenu === 'function') {
-            this.app.contextMenuManager.showTagContextMenu(tagElement, e);
-        } else {
-            // Fallback simple menu
-            console.log('TagManager: Context menu manager not available, using simple menu');
-            
-            // Simple context menu implementation
-            const menu = document.createElement('div');
-            menu.className = 'simple-tag-menu';
-            menu.style.position = 'absolute';
-            menu.style.left = e.clientX + 'px';
-            menu.style.top = e.clientY + 'px';
-            menu.style.backgroundColor = 'white';
-            menu.style.border = '1px solid #ccc';
-            menu.style.padding = '5px';
-            menu.style.zIndex = '10000';
-            
-            const deleteOption = document.createElement('div');
-            deleteOption.textContent = 'Delete Tag';
-            deleteOption.style.padding = '5px 10px';
-            deleteOption.style.cursor = 'pointer';
-            deleteOption.addEventListener('click', () => {
-                this.handleSimpleTagDelete(tagElement);
-                document.body.removeChild(menu);
-            });
-            
-            menu.appendChild(deleteOption);
-            document.body.appendChild(menu);
-            
-            // Remove menu on click outside
-            setTimeout(() => {
-                document.addEventListener('click', function removeMenu() {
-                    if (menu.parentNode) {
-                        document.body.removeChild(menu);
-                    }
-                    document.removeEventListener('click', removeMenu);
-                }, 10);
-            });
-        }
-    }
     
-    /**
-     * Handle simple tag delete from context menu
-     * @param {HTMLElement} tagElement - Tag element
-     */
-    handleSimpleTagDelete(tagElement) {
-        const tagIndex = parseInt(tagElement.dataset.tagIndex);
-        const taskId = tagElement.dataset.taskId;
-        
-        // Find the task node
-        const taskNode = this.app.canvas.querySelector(`[data-id="${taskId}"]`);
-        if (taskNode) {
-            // Set the selected task and remove the tag
-            const oldSelected = this.app.selectedTaskForTags;
-            this.app.selectedTaskForTags = taskNode;
-            this.removeTag(tagIndex);
-            this.app.selectedTaskForTags = oldSelected;
-            
-            console.log(`TagManager: Deleted tag at index ${tagIndex} from task ${taskId}`);
-        }
-    }
     
     // ==================== UTILITY METHODS ====================
     

@@ -83,6 +83,19 @@ class FlowlineManager {
         return svg;
     }
     
+    /**
+     * Ensure SVG element is properly attached to canvas
+     * Call this after canvas operations that might remove the SVG
+     */
+    ensureSVGAttached() {
+        // Check if current SVG is still attached to the DOM
+        if (!this.svg || !this.svg.parentNode) {
+            console.log('FlowlineManager: SVG not attached, recreating...');
+            this.svg = this.findOrCreateSVGElement();
+        }
+        return this.svg;
+    }
+    
     // ==================== FLOWLINE CREATION METHODS ====================
     
     /**
@@ -177,9 +190,18 @@ class FlowlineManager {
         path.dataset.target = targetNode.dataset.id;
         path.dataset.type = type;
         
+        // Ensure SVG is attached to canvas before adding path
+        this.ensureSVGAttached();
+        
         // Add path to SVG
+        console.log(`FlowlineManager: SVG element exists: ${!!this.svg}`);
         if (this.svg) {
+            console.log(`FlowlineManager: Adding path to SVG, SVG has ${this.svg.children.length} children before`);
             this.svg.appendChild(path);
+            console.log(`FlowlineManager: SVG now has ${this.svg.children.length} children after adding path`);
+            console.log(`FlowlineManager: SVG parent is:`, this.svg.parentNode ? this.svg.parentNode.tagName : 'no parent');
+        } else {
+            console.error(`FlowlineManager: No SVG element available to add flowline path!`);
         }
         
         // Create flowline object
@@ -194,12 +216,10 @@ class FlowlineManager {
         // Add to flowlines array
         this.flowlines.push(flowline);
         
-        // Update main app flowlines reference
-        if (this.app.flowlines) {
-            this.app.flowlines.push(flowline);
-        }
+        // Note: app.flowlines is a getter that returns this manager's flowlines, no need to update it
         
         // Update flowline path
+        console.log(`FlowlineManager: Updating flowline path for ${sourceNode.dataset.id} to ${targetNode.dataset.id}`);
         this.updateSingleFlowline(flowline);
         
         console.log(`FlowlineManager: Created ${type} flowline from ${sourceNode.dataset.id} to ${targetNode.dataset.id}`);
@@ -248,9 +268,12 @@ class FlowlineManager {
             
             // Generate path data based on flowline type
             const pathData = this.generatePathData(sourceX, sourceY, targetX, targetY, flowline.type);
+            console.log(`FlowlineManager: Generated path data for ${flowline.id}: ${pathData}`);
+            console.log(`FlowlineManager: Source position: (${sourceX}, ${sourceY}), Target position: (${targetX}, ${targetY})`);
             
             // Update path element
             flowline.element.setAttribute('d', pathData);
+            console.log(`FlowlineManager: Set path 'd' attribute on element:`, flowline.element);
             
         } catch (error) {
             console.error('FlowlineManager: Error updating flowline:', error);
@@ -317,12 +340,7 @@ class FlowlineManager {
         }
         
         // Remove from main app flowlines array
-        if (this.app.flowlines) {
-            const appIndex = this.app.flowlines.indexOf(flowline);
-            if (appIndex > -1) {
-                this.app.flowlines.splice(appIndex, 1);
-            }
-        }
+        // Note: app.flowlines is a getter that returns this manager's flowlines, no need to update it
         
         console.log(`FlowlineManager: Removed flowline ${flowline.id || 'unknown'}`);
         return true;
@@ -359,9 +377,7 @@ class FlowlineManager {
         
         // Clear arrays
         this.flowlines = [];
-        if (this.app.flowlines) {
-            this.app.flowlines = [];
-        }
+        // Note: app.flowlines is a getter-only property, no need to clear it
         
         console.log('FlowlineManager: Cleared all flowlines');
     }

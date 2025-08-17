@@ -71,7 +71,7 @@ const server = http.createServer((req, res) => {
 });
 
 // Server configuration
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8000;
 const HOST = process.env.HOST || 'localhost';
 
 server.listen(PORT, HOST, () => {

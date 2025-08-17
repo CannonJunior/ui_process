@@ -181,6 +181,15 @@ class ProcessFlowDesigner {
         }
     }
     
+    // Flowline creation mode properties - delegate to FlowlineManager
+    get flowlineCreationMode() {
+        return this.flowlineManager ? this.flowlineManager.flowlineCreationMode : false;
+    }
+    
+    get sourceNodeForFlowline() {
+        return this.flowlineManager ? this.flowlineManager.sourceNodeForFlowline : null;
+    }
+    
     // ==================== END NODE DELEGATION ====================
     
     // ==================== FLOWLINE SYSTEM DELEGATION (Phase 9) ====================
@@ -315,13 +324,14 @@ class ProcessFlowDesigner {
             }
         });
         
-        this.canvas.addEventListener('drop', (e) => {
-            // Prevent drops on invalid locations
-            if (!e.target.classList.contains('next-action-slot') || 
-                (this.draggedTag && e.target.dataset.taskId !== this.draggedTag.taskId)) {
-                e.preventDefault();
-            }
-        });
+        // Drop handling is now handled by TagManager
+        // this.canvas.addEventListener('drop', (e) => {
+        //     // Prevent drops on invalid locations
+        //     if (!e.target.classList.contains('next-action-slot') || 
+        //         (this.draggedTag && e.target.dataset.taskId !== this.draggedTag.taskId)) {
+        //         e.preventDefault();
+        //     }
+        // });
         
         // Note: Context menu click handling is now handled by ContextMenuManager
         // Note: Global mouse events for dragging now handled by NodeManager
@@ -610,7 +620,8 @@ class ProcessFlowDesigner {
         
         // Add drop event listeners to the Next Action slot
         nextActionSlot.addEventListener('dragover', (e) => this.handleSlotDragOver(e));
-        nextActionSlot.addEventListener('drop', (e) => this.handleSlotDrop(e));
+        // Drop handling is now handled by TagManager canvas listener
+        // nextActionSlot.addEventListener('drop', (e) => this.handleSlotDrop(e));
         nextActionSlot.addEventListener('dragleave', (e) => this.handleSlotDragLeave(e));
         
         // Add ResizeObserver to monitor task container size changes
@@ -682,9 +693,17 @@ class ProcessFlowDesigner {
     
     positionTaskInSlot(taskNode) {
         const anchorNodeId = taskNode.dataset.anchoredTo;
+        console.log(`Debug: positionTaskInSlot for task ${taskNode.dataset.id}, looking for anchor ${anchorNodeId}`);
+        console.log(`Debug: Available nodes:`, this.nodes.map(n => ({id: n.dataset.id, type: n.dataset.type})));
+        
         const anchorNode = this.nodes.find(node => node.dataset.id === anchorNodeId);
         
-        if (!anchorNode) return;
+        if (!anchorNode) {
+            console.log(`Debug: Anchor node ${anchorNodeId} not found!`);
+            return;
+        }
+        
+        console.log(`Debug: Found anchor node ${anchorNodeId}`);
         
         const anchorX = parseInt(anchorNode.style.left) || 0;
         const anchorY = parseInt(anchorNode.style.top) || 0;
@@ -800,7 +819,10 @@ class ProcessFlowDesigner {
         this.taskNodes = this.taskNodes.filter(node => node !== this.selectedNode);
         
         // Remove from general nodes array
-        this.nodes = this.nodes.filter(node => node !== this.selectedNode);
+        // Remove node using NodeManager
+        if (this.nodeManager && this.selectedNode) {
+            this.nodeManager.removeNode(this.selectedNode);
+        }
         
         // Remove the associated next-action-slot
         const nextActionSlot = this.canvas.querySelector(`.next-action-slot[data-task-id="${this.selectedNode.dataset.id}"]`);
@@ -972,11 +994,14 @@ class ProcessFlowDesigner {
     }
     
     saveWorkflow() {
+        console.log(`Debug: Saving workflow. this.nodes has ${this.nodes.length} elements:`, this.nodes.map(n => ({ id: n.dataset.id, type: n.dataset.type })));
+        console.log(`Debug: this.taskNodes has ${this.taskNodes.length} elements:`, this.taskNodes.map(n => ({ id: n.dataset.id, type: n.dataset.type })));
+        
         const workflow = {
             version: "1.1",
             timestamp: new Date().toISOString(),
             nodeCounter: this.nodeCounter,
-            nodes: this.nodes.map(node => {
+            nodes: [...new Set([...this.nodes, ...this.taskNodes])].map(node => {
                 const nodeData = {
                     id: node.dataset.id,
                     type: node.dataset.type,
@@ -1022,13 +1047,77 @@ class ProcessFlowDesigner {
                 
                 return nodeData;
             }),
-            flowlines: this.flowlines.map(flowline => ({
+            flowlines: this.getAllFlowlines().map(flowline => ({
                 sourceId: flowline.source.dataset.id,
                 targetId: flowline.target.dataset.id,
                 type: flowline.type || 'straight'
             })),
             settings: {
                 flowlineType: this.flowlineTypeDropdown.value
+            },
+            // Structured sections for easier access and analysis
+            structured: {
+                tasks: this.taskNodes.map(node => ({
+                    id: node.dataset.id,
+                    text: node.querySelector('.node-text').textContent,
+                    tags: node.dataset.tags ? JSON.parse(node.dataset.tags) : [],
+                    position: {
+                        left: parseInt(node.style.left) || 0,
+                        top: parseInt(node.style.top) || 0
+                    },
+                    anchoredTo: node.dataset.anchoredTo || null,
+                    slot: node.dataset.slot ? parseInt(node.dataset.slot) : null,
+                    containerPosition: (() => {
+                        const taskContainer = node.closest('.task-container');
+                        return taskContainer ? {
+                            left: taskContainer.offsetLeft,
+                            top: taskContainer.offsetTop
+                        } : null;
+                    })(),
+                    nextActionSlotPosition: (() => {
+                        const nextActionSlot = this.canvas.querySelector(`.next-action-slot[data-task-id="${node.dataset.id}"]`);
+                        return nextActionSlot ? {
+                            left: nextActionSlot.offsetLeft,
+                            top: nextActionSlot.offsetTop
+                        } : null;
+                    })()
+                })),
+                tags: (() => {
+                    const allTags = [];
+                    this.taskNodes.forEach(node => {
+                        const tags = node.dataset.tags ? JSON.parse(node.dataset.tags) : [];
+                        if (tags.length > 0) {
+                            allTags.push({
+                                taskId: node.dataset.id,
+                                taskText: node.querySelector('.node-text').textContent,
+                                taskType: node.dataset.type,
+                                tags: tags,
+                                tagCount: tags.length
+                            });
+                        }
+                    });
+                    return allTags;
+                })(),
+                regularNodes: this.nodes.filter(node => node.dataset.type !== 'task').map(node => ({
+                    id: node.dataset.id,
+                    type: node.dataset.type,
+                    text: node.querySelector('.node-text').textContent,
+                    position: {
+                        left: parseInt(node.style.left) || 0,
+                        top: parseInt(node.style.top) || 0
+                    }
+                })),
+                summary: {
+                    totalNodes: this.nodes.length,
+                    taskCount: this.taskNodes.length,
+                    regularNodeCount: this.nodes.length - this.taskNodes.length,
+                    flowlineCount: this.getAllFlowlines().length,
+                    totalTagCount: this.taskNodes.reduce((count, node) => {
+                        const tags = node.dataset.tags ? JSON.parse(node.dataset.tags) : [];
+                        console.log(`Debug: Task ${node.dataset.id} has ${tags.length} tags:`, tags);
+                        return count + tags.length;
+                    }, 0)
+                }
             }
         };
         
@@ -1042,6 +1131,18 @@ class ProcessFlowDesigner {
         link.click();
         
         URL.revokeObjectURL(url);
+        
+        // Provide detailed save information
+        const summary = workflow.structured.summary;
+        console.log('Workflow saved successfully (v1.1 format)');
+        console.log(`Debug: this.nodes.length = ${this.nodes.length}, this.taskNodes.length = ${this.taskNodes.length}`);
+        console.log(`Debug: taskNodes array:`, this.taskNodes.map(n => ({ id: n.dataset.id, type: n.dataset.type })));
+        console.log(`Saved: ${summary.totalNodes} nodes, ${summary.taskCount} tasks, ${summary.totalTagCount} tags, ${summary.flowlineCount} flowlines`);
+        
+        // Provide user feedback
+        setTimeout(() => {
+            alert(`Workflow saved successfully!\n${summary.totalNodes} nodes, ${summary.taskCount} tasks, ${summary.totalTagCount} tags, ${summary.flowlineCount} flowlines`);
+        }, 100);
     }
     
     loadWorkflow(event) {
@@ -1052,11 +1153,37 @@ class ProcessFlowDesigner {
         reader.onload = (e) => {
             try {
                 const workflow = JSON.parse(e.target.result);
+                
+                // Check if this is a supported workflow format
+                if (!workflow.version) {
+                    throw new Error('Missing workflow version');
+                }
+                
+                if (workflow.version === '2.0') {
+                    throw new Error('Version 2.0 workflows require the new module system (not yet loaded)');
+                }
+                
+                if (workflow.version !== '1.1') {
+                    throw new Error(`Unsupported workflow version: ${workflow.version}`);
+                }
+                
                 this.clearWorkflow();
                 this.deserializeWorkflow(workflow);
-                console.log('Workflow loaded successfully');
+                
+                // Provide detailed loading information
+                const nodeCount = workflow.nodes ? workflow.nodes.length : 0;
+                const taskCount = workflow.structured ? workflow.structured.summary.taskCount : 
+                    (workflow.nodes ? workflow.nodes.filter(n => n.type === 'task').length : 0);
+                const tagCount = workflow.structured ? workflow.structured.summary.totalTagCount : 
+                    (workflow.nodes ? workflow.nodes.reduce((count, node) => count + (node.tags ? node.tags.length : 0), 0) : 0);
+                const flowlineCount = workflow.flowlines ? workflow.flowlines.length : 0;
+                
+                console.log('Workflow loaded successfully (v1.1 format)');
+                console.log(`Loaded: ${nodeCount} nodes, ${taskCount} tasks, ${tagCount} tags, ${flowlineCount} flowlines`);
+                alert(`Workflow loaded successfully!\n${nodeCount} nodes, ${taskCount} tasks, ${tagCount} tags, ${flowlineCount} flowlines`);
             } catch (error) {
-                alert('Error loading workflow: Invalid file format');
+                let errorMessage = error.message || 'Invalid file format';
+                alert(`Error loading workflow: ${errorMessage}`);
                 console.error('Error loading workflow:', error);
             }
         };
@@ -1067,43 +1194,96 @@ class ProcessFlowDesigner {
     }
     
     clearWorkflow() {
-        // Remove all nodes from DOM (handle both regular nodes and task containers)
-        this.nodes.forEach(node => {
+        console.log('Debug: Starting clearWorkflow...');
+        console.log(`Current state - this.nodes: ${this.nodes.length} elements`, this.nodes.map(n => ({id: n.dataset.id, type: n.dataset.type})));
+        console.log(`Current state - this.taskNodes: ${this.taskNodes.length} elements`, this.taskNodes.map(n => ({id: n.dataset.id, type: n.dataset.type})));
+        
+        // First, clear managers if they exist (this should handle regular nodes)
+        if (this.nodeManager) {
+            console.log('Debug: Clearing NodeManager...');
+            this.nodeManager.clearAllNodes();
+        }
+        
+        if (this.flowlineManager) {
+            console.log('Debug: Clearing FlowlineManager...');
+            this.flowlineManager.clearAllFlowlines();
+        }
+        
+        // Clear task nodes manually since they might not be managed by NodeManager
+        console.log('Debug: Manually clearing task nodes...');
+        this.taskNodes.forEach((node, index) => {
+            console.log(`Debug: Clearing task node ${index}: ${node.dataset.id}`);
             if (node.parentNode) {
                 // For task nodes, remove the container instead of just the node
                 if (node.dataset.type === 'task' && node.parentNode.classList.contains('task-container')) {
                     const container = node.parentNode;
+                    console.log(`Debug: Removing task container for ${node.dataset.id}`);
                     if (container.parentNode) {
                         container.parentNode.removeChild(container);
                     }
                 } else {
+                    console.log(`Debug: Removing task node directly: ${node.dataset.id}`);
                     node.parentNode.removeChild(node);
                 }
             }
         });
         
-        // Remove all next-action-slots (they are positioned separately from task containers)
+        // Brute force: Remove ALL elements from canvas that might be left over
+        console.log('Debug: Performing brute force cleanup of canvas...');
+        
+        // Remove all task containers
+        const taskContainers = this.canvas.querySelectorAll('.task-container');
+        console.log(`Debug: Found ${taskContainers.length} task containers to remove`);
+        taskContainers.forEach((container, index) => {
+            console.log(`Debug: Removing task container ${index}`);
+            if (container.parentNode) {
+                container.parentNode.removeChild(container);
+            }
+        });
+        
+        // Remove all next-action-slots
         const nextActionSlots = this.canvas.querySelectorAll('.next-action-slot');
-        nextActionSlots.forEach(slot => {
+        console.log(`Debug: Found ${nextActionSlots.length} next-action-slots to remove`);
+        nextActionSlots.forEach((slot, index) => {
+            console.log(`Debug: Removing next-action-slot ${index}`);
             if (slot.parentNode) {
                 slot.parentNode.removeChild(slot);
             }
         });
         
-        // Remove all SVG flowlines
-        this.flowlines.forEach(flowline => {
-            if (flowline.element && flowline.element.parentNode) {
-                flowline.element.parentNode.removeChild(flowline.element);
+        // Remove all regular nodes
+        const regularNodes = this.canvas.querySelectorAll('.node');
+        console.log(`Debug: Found ${regularNodes.length} regular nodes to remove`);
+        regularNodes.forEach((node, index) => {
+            console.log(`Debug: Removing regular node ${index}: ${node.dataset.id}`);
+            if (node.parentNode) {
+                node.parentNode.removeChild(node);
             }
         });
         
-        // Clear arrays
-        this.nodes = [];
-        this.flowlines = [];
+        // Remove all SVG elements
+        const svgElements = this.canvas.querySelectorAll('svg');
+        console.log(`Debug: Found ${svgElements.length} SVG elements to remove`);
+        svgElements.forEach((svg, index) => {
+            console.log(`Debug: Removing SVG element ${index}`);
+            if (svg.parentNode) {
+                svg.parentNode.removeChild(svg);
+            }
+        });
+        
+        // Clear our task nodes array
         this.taskNodes = [];
         this.selectedNode = null;
         this.startNode = null;
-        this.nodeCounter = 0;
+        
+        // Verify canvas is empty
+        const remainingElements = this.canvas.children.length;
+        console.log(`Debug: Canvas cleanup complete. Remaining elements: ${remainingElements}`);
+        if (remainingElements > 0) {
+            console.log('Debug: Remaining elements:', Array.from(this.canvas.children).map(el => el.className));
+        }
+        
+        console.log('Debug: clearWorkflow complete');
     }
     
     deserializeWorkflow(workflow) {
@@ -1118,11 +1298,17 @@ class ProcessFlowDesigner {
         // Create nodes first
         const nodeMap = new Map();
         workflow.nodes.forEach(nodeData => {
+            console.log(`Debug: Creating node from data:`, nodeData);
             const node = this.createNodeFromData(nodeData);
             nodeMap.set(nodeData.id, node);
             
             if (nodeData.type === 'terminal' && nodeData.text === 'Start') {
                 this.startNode = node;
+            }
+            
+            if (nodeData.type === 'task') {
+                console.log(`Debug: Created task node with ID ${nodeData.id}, tags:`, nodeData.tags);
+                console.log(`Debug: Task node dataset.tags:`, node.dataset.tags);
             }
         });
         
@@ -1136,12 +1322,23 @@ class ProcessFlowDesigner {
             }
         });
         
-        // Reposition all task nodes according to their slots after everything is loaded
+        // Reposition all task nodes according to their anchoring after everything is loaded
+        console.log(`Debug: After loading, taskNodes array has ${this.taskNodes.length} elements:`, this.taskNodes.map(n => ({ id: n.dataset.id, type: n.dataset.type })));
         this.taskNodes.forEach(taskNode => {
-            if (taskNode.dataset.slot !== undefined) {
+            console.log(`Debug: Processing task ${taskNode.dataset.id}:`);
+            console.log(`  - anchoredTo: ${taskNode.dataset.anchoredTo}`);
+            console.log(`  - slot: ${taskNode.dataset.slot}`);
+            
+            // Always reposition task nodes relative to their anchor nodes (ignore saved positions)
+            if (taskNode.dataset.anchoredTo) {
+                console.log(`Debug: Repositioning task ${taskNode.dataset.id} to anchor ${taskNode.dataset.anchoredTo}`);
                 this.positionTaskInSlot(taskNode);
+            } else {
+                console.log(`Debug: Task ${taskNode.dataset.id} has no anchor, keeping saved position`);
             }
+            
             // Update tags display for loaded task nodes
+            console.log(`Debug: Updating tags display for task ${taskNode.dataset.id}, tags:`, taskNode.dataset.tags);
             this.updateTaskTagsDisplay(taskNode);
         });
         
@@ -1149,6 +1346,16 @@ class ProcessFlowDesigner {
     }
     
     createNodeFromData(nodeData) {
+        console.log(`Debug: createNodeFromData called for ${nodeData.type} node ${nodeData.id}`);
+        
+        // For regular nodes, delegate to NodeManager if available
+        if (nodeData.type !== 'task' && this.nodeManager) {
+            console.log(`Debug: Delegating regular node creation to NodeManager`);
+            const node = this.nodeManager.createNodeFromData(nodeData);
+            console.log(`Debug: NodeManager created node:`, node ? node.dataset.id : 'null');
+            return node;
+        }
+        
         // Handle task nodes with container structure
         if (nodeData.type === 'task') {
             const taskContainer = document.createElement('div');
@@ -1237,7 +1444,8 @@ class ProcessFlowDesigner {
             
             // Add drop event listeners to the Next Action slot
             nextActionSlot.addEventListener('dragover', (e) => this.handleSlotDragOver(e));
-            nextActionSlot.addEventListener('drop', (e) => this.handleSlotDrop(e));
+            // Drop handling is now handled by TagManager canvas listener
+        // nextActionSlot.addEventListener('drop', (e) => this.handleSlotDrop(e));
             nextActionSlot.addEventListener('dragleave', (e) => this.handleSlotDragLeave(e));
             
             // Add ResizeObserver to monitor task container size changes
@@ -1258,66 +1466,30 @@ class ProcessFlowDesigner {
                 taskContainer._resizeObserver = resizeObserver;
             }
             
-            // Add to arrays
-            this.nodes.push(taskBanner);
+            // Add to taskNodes array (this.nodes is handled by NodeManager)
             this.taskNodes.push(taskBanner);
             
             return taskBanner;
-        } else {
-            // Handle regular nodes (process, decision, terminal)
-            const node = document.createElement('div');
-            
-            // Use saved className if available (preserves exact CSS classes), otherwise construct from type
-            if (nodeData.className) {
-                node.className = nodeData.className;
-            } else {
-                node.className = `node ${nodeData.type}`;
-            }
-            
-            node.dataset.type = nodeData.type;
-            node.dataset.id = nodeData.id;
-            
-            // Create node content
-            const nodeText = document.createElement('div');
-            nodeText.className = 'node-text';
-            nodeText.textContent = nodeData.text;
-            node.appendChild(nodeText);
-            
-            // Position node
-            node.style.left = nodeData.left + 'px';
-            node.style.top = nodeData.top + 'px';
-            
-            // Restore visual properties if saved
-            if (nodeData.computedStyles) {
-                // Restore any custom box shadow (from flowline creation mode, etc.)
-                if (nodeData.computedStyles.boxShadow) {
-                    node.style.boxShadow = nodeData.computedStyles.boxShadow;
-                }
-            }
-            
-            // Add event listeners
-            node.addEventListener('mousedown', (e) => this.handleMouseDown(e, node));
-            node.addEventListener('contextmenu', (e) => this.handleContextMenu(e, node));
-            node.addEventListener('dblclick', (e) => this.handleDoubleClick(e, node));
-            
-            // Add to canvas and arrays
-            this.canvas.appendChild(node);
-            this.nodes.push(node);
-            
-            return node;
         }
+        
+        // Fallback for cases where NodeManager is not available
+        console.warn(`Debug: NodeManager not available for node ${nodeData.id}, creating manually`);
+        return null;
     }
     
     createFlowlineBetweenNodes(sourceNode, targetNode, flowlineType = 'straight') {
-        // Temporarily set the flowline type for this creation
-        const originalType = this.flowlineTypeDropdown.value;
-        this.flowlineTypeDropdown.value = flowlineType;
+        console.log(`Debug: Creating flowline between ${sourceNode.dataset.id} and ${targetNode.dataset.id}`);
         
-        // Use the existing createFlowline method
-        this.createFlowline(sourceNode, targetNode);
+        // Delegate to FlowlineManager if available
+        if (this.flowlineManager) {
+            console.log(`Debug: Delegating flowline creation to FlowlineManager`);
+            const flowline = this.flowlineManager.createFlowline(sourceNode, targetNode, flowlineType);
+            console.log(`Debug: FlowlineManager created flowline:`, flowline ? flowline.id : 'null');
+            return flowline;
+        }
         
-        // Restore the original flowline type
-        this.flowlineTypeDropdown.value = originalType;
+        console.warn(`Debug: FlowlineManager not available, cannot create flowline`);
+        return null;
     }
     
     // Drag and Drop functionality for task tags
@@ -1347,13 +1519,14 @@ class ProcessFlowDesigner {
         this.tagManager.handleSlotDragLeave(e);
     }
     
-    handleSlotDrop(e) {
-        // Delegate to tag manager
-        this.tagManager.handleSlotDrop(e);
-        // Sync drag state with main app
-        this.draggedTag = this.tagManager.draggedTag;
-        this.successfulDrop = this.tagManager.successfulDrop;
-    }
+    // handleSlotDrop is now handled by TagManager canvas listener
+    // handleSlotDrop(e) {
+    //     // Delegate to tag manager
+    //     this.tagManager.handleSlotDrop(e);
+    //     // Sync drag state with main app
+    //     this.draggedTag = this.tagManager.draggedTag;
+    //     this.successfulDrop = this.tagManager.successfulDrop;
+    // }
     
     snapTagToSlot(tagElement, slotElement) {
         // Delegate to tag manager

@@ -514,6 +514,129 @@ input.node-input {
     padding: 8px;
 }
 
+/* Tag link modal styles */
+.tag-link-form {
+    margin: 15px 0;
+}
+
+.tag-link-form label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: #333;
+}
+
+.tag-link-input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 2px solid #ddd;
+    border-radius: 6px;
+    font-size: 14px;
+    font-family: inherit;
+    transition: border-color 0.2s ease;
+    box-sizing: border-box;
+}
+
+.tag-link-input:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+.tag-link-input:invalid {
+    border-color: #dc3545;
+}
+
+.tag-link-input:invalid:focus {
+    border-color: #dc3545;
+    box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.1);
+}
+
+/* Tag description modal styles */
+.tag-description-form {
+    margin: 15px 0;
+}
+
+.tag-description-form label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: #333;
+}
+
+.tag-description-input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 2px solid #ddd;
+    border-radius: 6px;
+    font-size: 14px;
+    font-family: inherit;
+    transition: border-color 0.2s ease;
+    box-sizing: border-box;
+    resize: vertical;
+    min-height: 80px;
+}
+
+.tag-description-input:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+/* Tag date modal styles */
+.tag-date-form {
+    margin: 15px 0;
+}
+
+.tag-date-form label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: #333;
+}
+
+.tag-date-calendar-container {
+    width: 100%;
+    min-height: 200px;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 10px 0;
+}
+
+/* Secondary button styling for Clear Date */
+.modal-button.secondary {
+    background-color: #6c757d;
+    color: white;
+    border: 1px solid #6c757d;
+}
+
+.modal-button.secondary:hover {
+    background-color: #5a6268;
+    border-color: #545b62;
+}
+
+/* Tag with link visual indicators */
+.tag[data-has-link="true"] {
+    cursor: pointer;
+    position: relative;
+}
+
+.tag[data-has-link="true"]:hover {
+    opacity: 0.8;
+    transform: translateY(-1px);
+    transition: all 0.2s ease;
+}
+
+.tag[data-has-link="true"]::after {
+    content: '🔗';
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    font-size: 10px;
+    opacity: 0.7;
+}
+
 /* PrimeReact Calendar customization */
 .p-calendar {
     width: 100%;

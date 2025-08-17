@@ -4,9 +4,9 @@
   "description": "A web-based process flow designer with Eisenhower Matrix task management",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "node server.js", 
-    "serve": "node server.js",
+    "start": "node --max-old-space-size=8192 --expose-gc server.js",
+    "dev": "node --max-old-space-size=8192 --expose-gc server.js", 
+    "serve": "node --max-old-space-size=8192 --expose-gc server.js",
     "test": "./tests/run-tests.sh",
     "test:ci": "./tests/run-tests.sh && node -e \"console.log('CI: All tests passed')\"",
     "test:coverage": "./tests/run-tests.sh && echo 'Coverage report in tests/reports/'",

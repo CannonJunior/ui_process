@@ -127,6 +127,10 @@ class MatrixAnimations {
                     })
                     .on('end', () => {
                         console.log('MatrixAnimations: Nodes transition to original positions completed');
+                        
+                        // Animate flowlines back to original positions
+                        this.animateFlowlinesFromMatrix();
+                        
                         this.animationsInProgress.delete(animationId);
                         resolve();
                     })
@@ -177,6 +181,9 @@ class MatrixAnimations {
             
             // Also animate next-action-slots to positions relative to their tasks
             this.animateNextActionSlots(taskContainersData);
+            
+            // Animate flowlines to update with new node positions
+            this.animateFlowlinesForMatrix();
             
         } catch (error) {
             console.error('MatrixAnimations: Error in animateTasksToMatrix:', error);
@@ -531,6 +538,117 @@ class MatrixAnimations {
             d3Status: this.validateD3Functionality(),
             recommendations: this.getPerformanceRecommendations()
         };
+    }
+    
+    // ==================== FLOWLINE ANIMATION METHODS ====================
+    
+    /**
+     * Animate flowlines when entering matrix mode
+     */
+    animateFlowlinesForMatrix() {
+        const animationId = 'flowlines-to-matrix';
+        this.animationsInProgress.add(animationId);
+        
+        try {
+            if (!this.app.flowlineManager) {
+                console.warn('MatrixAnimations: FlowlineManager not available');
+                this.animationsInProgress.delete(animationId);
+                return;
+            }
+            
+            const flowlines = this.app.flowlineManager.getAllFlowlines();
+            if (flowlines.length === 0) {
+                this.animationsInProgress.delete(animationId);
+                return;
+            }
+            
+            // Animate each flowline path with a staggered transition
+            flowlines.forEach((flowline, index) => {
+                if (flowline.element) {
+                    // Store original path before animation
+                    const originalPath = flowline.element.getAttribute('d');
+                    
+                    d3.select(flowline.element)
+                        .transition()
+                        .duration(this.animationConfig.duration.nodeTransition)
+                        .delay(index * 50) // Stagger animations
+                        .ease(this.animationConfig.easing)
+                        .attrTween('d', () => {
+                            // Update flowline path during transition
+                            return (t) => {
+                                // Force flowline update at each step of transition
+                                this.app.flowlineManager.updateSingleFlowline(flowline);
+                                return flowline.element.getAttribute('d');
+                            };
+                        })
+                        .on('end', () => {
+                            if (index === flowlines.length - 1) {
+                                // Final update after all animations complete
+                                this.app.flowlineManager.updateFlowlines();
+                                this.animationsInProgress.delete(animationId);
+                                console.log('MatrixAnimations: Flowlines transition to matrix completed');
+                            }
+                        });
+                }
+            });
+            
+        } catch (error) {
+            console.error('MatrixAnimations: Error in animateFlowlinesForMatrix:', error);
+            this.animationsInProgress.delete(animationId);
+        }
+    }
+    
+    /**
+     * Animate flowlines when exiting matrix mode back to original positions
+     */
+    animateFlowlinesFromMatrix() {
+        const animationId = 'flowlines-from-matrix';
+        this.animationsInProgress.add(animationId);
+        
+        try {
+            if (!this.app.flowlineManager) {
+                console.warn('MatrixAnimations: FlowlineManager not available');
+                this.animationsInProgress.delete(animationId);
+                return;
+            }
+            
+            const flowlines = this.app.flowlineManager.getAllFlowlines();
+            if (flowlines.length === 0) {
+                this.animationsInProgress.delete(animationId);
+                return;
+            }
+            
+            // Animate each flowline path back to original position
+            flowlines.forEach((flowline, index) => {
+                if (flowline.element) {
+                    d3.select(flowline.element)
+                        .transition()
+                        .duration(this.animationConfig.duration.nodeTransition)
+                        .delay(index * 30) // Slightly faster stagger for return
+                        .ease(this.animationConfig.easing)
+                        .attrTween('d', () => {
+                            // Update flowline path during transition
+                            return (t) => {
+                                // Force flowline update at each step of transition
+                                this.app.flowlineManager.updateSingleFlowline(flowline);
+                                return flowline.element.getAttribute('d');
+                            };
+                        })
+                        .on('end', () => {
+                            if (index === flowlines.length - 1) {
+                                // Final update after all animations complete
+                                this.app.flowlineManager.updateFlowlines();
+                                this.animationsInProgress.delete(animationId);
+                                console.log('MatrixAnimations: Flowlines transition from matrix completed');
+                            }
+                        });
+                }
+            });
+            
+        } catch (error) {
+            console.error('MatrixAnimations: Error in animateFlowlinesFromMatrix:', error);
+            this.animationsInProgress.delete(animationId);
+        }
     }
     
     /**

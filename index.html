@@ -15,8 +15,7 @@
     <link rel="stylesheet" href="https://unpkg.com/primereact/resources/themes/lara-light-cyan/theme.css" />
     <link rel="stylesheet" href="https://unpkg.com/primereact/resources/primereact.min.css" />
     <link rel="stylesheet" href="https://unpkg.com/primeicons/primeicons.css" />
-    <script src="https://unpkg.com/primereact/api/api.min.js"></script>
-    <script src="https://unpkg.com/primereact/calendar/calendar.min.js"></script>
+    <script src="https://unpkg.com/primereact/umd/primereact.min.js"></script>
 </head>
 <body>
     <div class="toolbar">
@@ -121,12 +120,14 @@
     
     <!-- Tag Context Menu -->
     <div id="tagContextMenu" class="context-menu tag-context-menu">
-        <div class="menu-item" data-attribute="category">Category</div>
-        <div class="menu-item" data-attribute="option">Option</div>
-        <div class="menu-item" data-attribute="date">Date</div>
+        <div class="menu-item" data-attribute="option">Edit Option</div>
+        <div class="menu-item" data-attribute="date">Edit Date</div>
+        <div class="menu-item" data-attribute="description">Edit Description</div>
+        <div class="menu-item" data-attribute="link">Edit Link</div>
         <div class="menu-separator"></div>
         <div class="menu-item" data-action="reset-next-action" style="display: none;">Move Back to Task</div>
         <div class="menu-item" data-action="delete">Delete Tag</div>
+        <div class="menu-item" data-action="close">Close</div>
     </div>
     
     <!-- Tag Attribute Options Menu -->
@@ -137,6 +138,52 @@
     <!-- Date Picker Container -->
     <div id="tagDatePicker" class="tag-date-picker">
         <!-- PrimeReact Calendar will be rendered here -->
+    </div>
+    
+    <!-- Tag Link Edit Modal -->
+    <div id="tagLinkModal" class="modal">
+        <div class="modal-content">
+            <h3>Edit Tag Link</h3>
+            <div class="tag-link-form">
+                <label for="tagLinkEdit">Link URL:</label>
+                <input type="url" id="tagLinkEdit" placeholder="https://example.com" class="tag-link-input">
+            </div>
+            <div class="modal-buttons">
+                <button id="tagLinkModalCancel" class="modal-button cancel">Cancel</button>
+                <button id="tagLinkModalSave" class="modal-button create">Save</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Tag Description Edit Modal -->
+    <div id="tagDescriptionModal" class="modal">
+        <div class="modal-content">
+            <h3>Edit Tag Description</h3>
+            <div class="tag-description-form">
+                <label for="tagDescriptionEdit">Description:</label>
+                <textarea id="tagDescriptionEdit" placeholder="Enter tag description..." class="tag-description-input" rows="4"></textarea>
+            </div>
+            <div class="modal-buttons">
+                <button id="tagDescriptionModalCancel" class="modal-button cancel">Cancel</button>
+                <button id="tagDescriptionModalSave" class="modal-button create">Save</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Tag Date Edit Modal -->
+    <div id="tagDateModal" class="modal">
+        <div class="modal-content">
+            <h3>Edit Tag Date</h3>
+            <div class="tag-date-form">
+                <label for="tagDateCalendar">Select Date:</label>
+                <div id="tagDateCalendar" class="tag-date-calendar-container"></div>
+            </div>
+            <div class="modal-buttons">
+                <button id="tagDateModalCancel" class="modal-button cancel">Cancel</button>
+                <button id="tagDateModalClear" class="modal-button secondary">Clear Date</button>
+                <button id="tagDateModalSave" class="modal-button create">Save</button>
+            </div>
+        </div>
     </div>
     
     <div id="taskModal" class="modal">
@@ -272,5 +319,26 @@
     
     <!-- Matrix Debug Script -->
     <script src="debug-matrix.js"></script>
+    
+    <!-- Tag Context Menu Test -->
+    <script src="test-tag-context-menu.js"></script>
+    
+    <!-- Tag Drag Drop Test -->
+    <script src="test-tag-drag-drop.js"></script>
+    
+    <!-- Tag Double Click Test -->
+    <script src="test-tag-double-click.js"></script>
+    
+    <!-- Tag Edit Option Test -->
+    <script src="test-tag-edit-option.js"></script>
+    
+    <!-- Tag Date Modal Test -->
+    <script src="test-tag-date-modal.js"></script>
+    
+    <!-- Tag Date Functionality Verification -->
+    <script src="verify-tag-date-functionality.js"></script>
+    
+    <!-- Modal Closing Behavior Test -->
+    <script src="test-modal-closing-behavior.js"></script>
 </body>
 </html>
