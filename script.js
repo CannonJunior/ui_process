@@ -41,6 +41,10 @@ class ProcessFlowDesigner {
         this.flowlineRenderer = new FlowlineRenderer(this.configService);
         this.flowlineManager = new FlowlineManager(this);
         
+        // Initialize workflow command bridge
+        this.workflowBridge = new WorkflowBridge();
+        this.workflowBridge.initialize(this);
+        
         this.init();
     }
     

@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Workflow Commands Test</title>
+    <style>
+        body { font-family: monospace; margin: 20px; }
+        .test-result { margin: 10px 0; padding: 10px; border-radius: 4px; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; }
+        button { margin: 5px; padding: 8px 16px; }
+        #log { max-height: 400px; overflow-y: auto; background: #f8f9fa; padding: 10px; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Workflow Commands Integration Test</h1>
+    
+    <div class="test-section">
+        <h2>Test Controls</h2>
+        <button onclick="testWorkflowCommandParsing()">Test Command Parsing</button>
+        <button onclick="testWorkflowCommandExecution()">Test Command Execution</button>
+        <button onclick="testChatIntegration()">Test Chat Integration</button>
+        <button onclick="clearLog()">Clear Log</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test Results</h2>
+        <div id="results"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Debug Log</h2>
+        <div id="log"></div>
+    </div>
+
+    <script>
+        const results = document.getElementById('results');
+        const log = document.getElementById('log');
+        
+        function addResult(type, message) {
+            const div = document.createElement('div');
+            div.className = `test-result ${type}`;
+            div.textContent = message;
+            results.appendChild(div);
+        }
+        
+        function addLog(message) {
+            const div = document.createElement('div');
+            div.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            log.appendChild(div);
+            log.scrollTop = log.scrollHeight;
+        }
+        
+        function clearLog() {
+            log.innerHTML = '';
+            results.innerHTML = '';
+        }
+        
+        async function testWorkflowCommandParsing() {
+            addLog('Starting workflow command parsing test...');
+            
+            try {
+                // Test basic MCP client functionality
+                if (!window.MCPClient) {
+                    throw new Error('MCPClient not available');
+                }
+                
+                const mcpClient = new MCPClient();
+                addLog('MCPClient created successfully');
+                
+                // Test parsing workflow commands
+                const testCommands = [
+                    '/workflow-status',
+                    '/node-create process "Test Node"',
+                    '/task-create "Test Task"',
+                    '/invalid-command'
+                ];
+                
+                let passed = 0;
+                for (const command of testCommands) {
+                    try {
+                        addLog(`Testing: ${command}`);
+                        const result = await mcpClient.parseWorkflowCommand(command);
+                        
+                        if (command.includes('invalid')) {
+                            if (!result.is_workflow_command || result.type === 'unknown_workflow_command') {
+                                addLog(`✅ Unknown command correctly identified`);
+                                passed++;
+                            } else {
+                                addLog(`❌ Unknown command handling failed`);
+                            }
+                        } else {
+                            if (result.is_workflow_command && result.command_type) {
+                                addLog(`✅ Parsed as ${result.command_type}`);
+                                passed++;
+                            } else {
+                                addLog(`❌ Failed to parse: ${JSON.stringify(result)}`);
+                            }
+                        }
+                    } catch (error) {
+                        addLog(`❌ Error parsing ${command}: ${error.message}`);
+                    }
+                }
+                
+                if (passed === testCommands.length) {
+                    addResult('success', `✅ Command Parsing: All ${testCommands.length} tests passed`);
+                } else {
+                    addResult('error', `❌ Command Parsing: ${passed}/${testCommands.length} tests passed`);
+                }
+                
+            } catch (error) {
+                addResult('error', `❌ Command Parsing Test Failed: ${error.message}`);
+                addLog(`Error: ${error.message}`);
+            }
+        }
+        
+        async function testWorkflowCommandExecution() {
+            addLog('Starting workflow command execution test...');
+            
+            try {
+                if (!window.MCPClient || !window.workflowBridge) {
+                    throw new Error('Required components not available');
+                }
+                
+                const mcpClient = new MCPClient();
+                addLog('Testing workflow status command execution...');
+                
+                // Parse the command
+                const parseResult = await mcpClient.parseWorkflowCommand('/workflow-status');
+                if (!parseResult.is_workflow_command) {
+                    throw new Error('Command parsing failed');
+                }
+                addLog('✅ Command parsed successfully');
+                
+                // Validate the command
+                const validationResult = await mcpClient.executeWorkflowCommand(parseResult);
+                if (validationResult.status !== 'ready_for_execution') {
+                    throw new Error(`Command validation failed: ${JSON.stringify(validationResult)}`);
+                }
+                addLog('✅ Command validated successfully');
+                
+                // Execute the command
+                const executionResult = await window.workflowBridge.executeCommand(validationResult.command_data);
+                if (executionResult.status === 'success') {
+                    addLog(`✅ Command executed: ${executionResult.message}`);
+                    addResult('success', '✅ Command Execution: Workflow status command executed successfully');
+                } else {
+                    throw new Error(`Command execution failed: ${executionResult.error}`);
+                }
+                
+            } catch (error) {
+                addResult('error', `❌ Command Execution Test Failed: ${error.message}`);
+                addLog(`Error: ${error.message}`);
+            }
+        }
+        
+        async function testChatIntegration() {
+            addLog('Starting chat integration test...');
+            
+            try {
+                // Check if chat interface is available
+                if (!window.chatInterface) {
+                    throw new Error('Chat interface not available');
+                }
+                
+                addLog('Chat interface found');
+                addLog(`MCP initialized: ${window.chatInterface.mcpInitialized}`);
+                
+                if (!window.chatInterface.mcpInitialized) {
+                    addResult('error', '❌ Chat Integration: MCP not initialized in chat interface');
+                    return;
+                }
+                
+                // Simulate sending a workflow command through chat
+                addLog('Simulating workflow command through chat...');
+                
+                // Check if the chat input is available
+                const chatInput = document.getElementById('chatInput');
+                if (!chatInput) {
+                    throw new Error('Chat input element not found');
+                }
+                
+                addResult('success', '✅ Chat Integration: All components available and ready');
+                addLog('✅ Chat integration test completed successfully');
+                
+            } catch (error) {
+                addResult('error', `❌ Chat Integration Test Failed: ${error.message}`);
+                addLog(`Error: ${error.message}`);
+            }
+        }
+        
+        // Auto-run tests when page loads
+        window.addEventListener('load', () => {
+            addLog('Test page loaded, waiting for components...');
+            setTimeout(() => {
+                addLog('Running automatic tests...');
+                testWorkflowCommandParsing();
+                setTimeout(() => testWorkflowCommandExecution(), 1000);
+                setTimeout(() => testChatIntegration(), 2000);
+            }, 2000);
+        });
+    </script>
+</body>
+</html>

@@ -9,6 +9,10 @@ class ChatInterface {
         this.maxDocuments = 50; // Limit stored documents
         this.maxConversationHistory = 100; // Limit conversation history
         
+        // MCP Bridge for note-taking integration
+        this.mcpBridge = null;
+        this.mcpInitialized = false;
+        
         // UI Elements
         this.chatSidebar = document.getElementById('chatSidebar');
         this.toggleButton = document.getElementById('toggleChatButton');
@@ -30,7 +34,137 @@ class ChatInterface {
         this.setupEventListeners();
         await this.loadDocuments();
         await this.checkOllamaConnection();
+        await this.initializeMCPBridge();
         this.updateUI();
+    }
+    
+    async initializeMCPBridge() {
+        try {
+            // Initialize real MCP client
+            this.mcpClient = new MCPClient();
+            
+            // Check if MCP service is available
+            const healthCheck = await this.mcpClient.healthCheck();
+            
+            if (healthCheck.service_available) {
+                this.mcpInitialized = true;
+                console.log('MCP Client connected successfully:', healthCheck);
+                
+                // Create bridge interface that matches expected API
+                this.mcpBridge = {
+                    initialized: true,
+                    parseMessage: (message) => this.mcpClient.parseMessage(message),
+                    executeNoteCommand: (commandData) => this.mcpClient.executeNoteCommand(commandData),
+                    analyzeContextForCommands: (text, history) => this.mcpClient.analyzeContextForCommands(text, history),
+                    getCommandSuggestions: (partialInput) => this.mcpClient.getCommandSuggestions(partialInput)
+                };
+                
+                // Show connection status in chat
+                this.addMessage('info', 'Note-taking system connected! Type /help to see available commands.');
+            } else {
+                throw new Error(healthCheck.error || 'MCP service not available');
+            }
+        } catch (error) {
+            console.warn('MCP Client initialization failed:', error);
+            this.mcpInitialized = false;
+            
+            // Create fallback bridge
+            this.mcpBridge = {
+                initialized: false,
+                async parseMessage(message) {
+                    if (message.startsWith('/')) {
+                        return {
+                            is_command: true,
+                            type: 'service_unavailable',
+                            error: 'Note-taking service not available. Start with: npm run mcp',
+                            should_process_with_llm: false
+                        };
+                    }
+                    return {
+                        is_command: false,
+                        should_process_with_llm: true
+                    };
+                },
+                async executeNoteCommand() {
+                    return {
+                        status: 'error',
+                        error: 'Note-taking service not available. Please start the MCP service with: npm run mcp'
+                    };
+                }
+            };
+            
+            // Show connection error in chat (but don't block other functionality)
+            this.addMessage('info', 'Note-taking system offline. To enable note commands, start the MCP service with: npm run mcp');
+            
+            // Set up retry mechanism
+            this.setupMCPRetry();
+        }
+    }
+    
+    setupMCPRetry() {
+        // Retry connection every 30 seconds if not connected
+        if (this.mcpRetryInterval) {
+            clearInterval(this.mcpRetryInterval);
+        }
+        
+        this.mcpRetryInterval = setInterval(async () => {
+            if (!this.mcpInitialized && this.mcpClient) {
+                try {
+                    const healthCheck = await this.mcpClient.healthCheck();
+                    if (healthCheck.service_available) {
+                        // Reconnect successful
+                        this.mcpInitialized = true;
+                        this.mcpBridge = {
+                            initialized: true,
+                            parseMessage: (message) => this.mcpClient.parseMessage(message),
+                            executeNoteCommand: (commandData) => this.mcpClient.executeNoteCommand(commandData),
+                            analyzeContextForCommands: (text, history) => this.mcpClient.analyzeContextForCommands(text, history),
+                            getCommandSuggestions: (partialInput) => this.mcpClient.getCommandSuggestions(partialInput)
+                        };
+                        
+                        this.addMessage('info', '✅ Note-taking system reconnected! Commands are now available.');
+                        clearInterval(this.mcpRetryInterval);
+                        this.mcpRetryInterval = null;
+                    }
+                } catch (error) {
+                    // Still not available, continue retrying silently
+                    console.log('MCP retry failed:', error.message);
+                }
+            }
+        }, 30000); // 30 seconds
+    }
+    
+    async attemptMCPReconnect() {
+        try {
+            if (!this.mcpClient) {
+                this.mcpClient = new MCPClient();
+            }
+            
+            const healthCheck = await this.mcpClient.healthCheck();
+            
+            if (healthCheck.service_available) {
+                this.mcpInitialized = true;
+                this.mcpBridge = {
+                    initialized: true,
+                    parseMessage: (message) => this.mcpClient.parseMessage(message),
+                    executeNoteCommand: (commandData) => this.mcpClient.executeNoteCommand(commandData),
+                    analyzeContextForCommands: (text, history) => this.mcpClient.analyzeContextForCommands(text, history),
+                    getCommandSuggestions: (partialInput) => this.mcpClient.getCommandSuggestions(partialInput)
+                };
+                
+                this.addMessage('info', '✅ Successfully reconnected to note-taking service!');
+                
+                // Stop retry interval if running
+                if (this.mcpRetryInterval) {
+                    clearInterval(this.mcpRetryInterval);
+                    this.mcpRetryInterval = null;
+                }
+            } else {
+                this.addMessage('error', 'Still unable to connect. Make sure the MCP service is running with: npm run mcp');
+            }
+        } catch (error) {
+            this.addMessage('error', `Reconnection failed: ${error.message}`);
+        }
     }
     
     setupEventListeners() {
@@ -216,38 +350,352 @@ class ChatInterface {
         this.setLoading(true);
         
         try {
-            // Get application context
-            const context = this.getApplicationContext();
-            
-            // Get relevant documents based on the message
-            const relevantDocs = this.findRelevantDocuments(message);
-            
-            // Prepare enhanced prompt with context and RAG
-            const enhancedPrompt = this.buildEnhancedPrompt(message, context, relevantDocs);
-            
-            // Send to Ollama
-            const response = await this.callOllama(enhancedPrompt);
-            
-            // Add assistant response
-            this.addMessage('assistant', response);
-            
-            // Store in conversation history
-            this.conversationHistory.push(
-                { role: 'user', content: message },
-                { role: 'assistant', content: response }
-            );
-            
-            // Keep conversation history manageable
-            if (this.conversationHistory.length > this.maxConversationHistory) {
-                this.conversationHistory = this.conversationHistory.slice(-this.maxConversationHistory);
+            // Check if this is a command using MCP Bridge
+            if (this.mcpInitialized) {
+                // First check for workflow commands
+                const workflowParseResult = await this.mcpClient.parseWorkflowCommand(message);
+                
+                if (workflowParseResult.is_workflow_command) {
+                    // Handle as workflow command
+                    await this.handleWorkflowCommand(workflowParseResult, message);
+                    return;
+                }
+                
+                // Then check for note commands
+                const parseResult = await this.mcpBridge.parseMessage(message);
+                
+                if (parseResult.is_command) {
+                    // Handle as note command
+                    await this.handleCommand(parseResult, message);
+                    return;
+                }
+                
+                // Add command suggestions if context suggests commands would be helpful
+                const contextAnalysis = await this.analyzeMessageContext(message);
+                if (contextAnalysis && contextAnalysis.suggested_commands && contextAnalysis.suggested_commands.length > 0) {
+                    this.addCommandSuggestions(contextAnalysis.suggested_commands);
+                }
             }
+            
+            // Process as regular LLM message
+            await this.handleLLMMessage(message);
             
         } catch (error) {
             console.error('Error sending message:', error);
-            this.addMessage('error', 'Sorry, I encountered an error. Please make sure Ollama is running and try again.');
+            this.addMessage('error', 'Sorry, I encountered an error. Please try again.');
         } finally {
             this.setLoading(false);
         }
+    }
+    
+    async handleCommand(parseResult, originalMessage) {
+        try {
+            if (parseResult.type === 'unknown_command') {
+                this.addMessage('error', `Unknown command: ${parseResult.command}. Type /help for available commands.`);
+                if (parseResult.suggestion) {
+                    this.addMessage('assistant', `Did you mean: ${parseResult.suggestion}?`);
+                }
+                return;
+            }
+            
+            if (parseResult.type === 'service_unavailable') {
+                this.addMessage('error', parseResult.error);
+                
+                // Add manual reconnect option
+                if (originalMessage.trim() === '/reconnect' || originalMessage.trim() === '/connect') {
+                    this.addMessage('info', 'Attempting to reconnect to note-taking service...');
+                    await this.attemptMCPReconnect();
+                }
+                return;
+            }
+            
+            // Execute command through MCP Bridge
+            const result = await this.mcpBridge.executeNoteCommand(parseResult);
+            
+            if (result.status === 'error') {
+                this.addMessage('error', `Command failed: ${result.error}`);
+            } else {
+                this.formatCommandResponse(result, parseResult);
+            }
+            
+        } catch (error) {
+            console.error('Error handling command:', error);
+            this.addMessage('error', 'Failed to execute command. Please try again.');
+        }
+    }
+
+    async handleWorkflowCommand(parseResult, originalMessage) {
+        try {
+            if (parseResult.type === 'unknown_workflow_command') {
+                this.addMessage('error', `Unknown workflow command: ${parseResult.command}. Type /workflow-help for available commands.`);
+                if (parseResult.suggestion) {
+                    this.addMessage('assistant', `Did you mean: ${parseResult.suggestion}?`);
+                }
+                return;
+            }
+            
+            if (parseResult.type === 'error') {
+                this.addMessage('error', parseResult.error);
+                return;
+            }
+            
+            // Validate command through MCP server
+            const validationResult = await this.mcpClient.executeWorkflowCommand(parseResult);
+            
+            if (validationResult.status === 'error') {
+                this.addMessage('error', `Command validation failed: ${validationResult.errors?.join(', ') || validationResult.error}`);
+                if (validationResult.suggestions && validationResult.suggestions.length > 0) {
+                    this.addMessage('info', `Suggestions: ${validationResult.suggestions.join(', ')}`);
+                }
+                return;
+            }
+            
+            // Show warnings if any
+            if (validationResult.validation?.warnings && validationResult.validation.warnings.length > 0) {
+                this.addMessage('warning', `Warning: ${validationResult.validation.warnings.join(', ')}`);
+            }
+            
+            // Execute command through WorkflowBridge
+            if (validationResult.status === 'ready_for_execution' && window.workflowBridge) {
+                const executionResult = await window.workflowBridge.executeCommand(validationResult.command_data);
+                
+                if (executionResult.status === 'success') {
+                    this.addMessage('success', executionResult.message);
+                    if (executionResult.result) {
+                        this.formatWorkflowCommandResponse(executionResult);
+                    }
+                } else {
+                    this.addMessage('error', `Command execution failed: ${executionResult.error}`);
+                }
+            } else {
+                this.addMessage('error', 'Workflow bridge not available. The application may not be fully loaded.');
+            }
+            
+        } catch (error) {
+            console.error('Error handling workflow command:', error);
+            this.addMessage('error', 'Failed to execute workflow command. Please try again.');
+        }
+    }
+    
+    async handleLLMMessage(message) {
+        // Get application context
+        const context = this.getApplicationContext();
+        
+        // Get relevant documents based on the message
+        const relevantDocs = this.findRelevantDocuments(message);
+        
+        // Prepare enhanced prompt with context and RAG
+        const enhancedPrompt = this.buildEnhancedPrompt(message, context, relevantDocs);
+        
+        // Send to Ollama
+        const response = await this.callOllama(enhancedPrompt);
+        
+        // Add assistant response
+        this.addMessage('assistant', response);
+        
+        // Store in conversation history
+        this.conversationHistory.push(
+            { role: 'user', content: message },
+            { role: 'assistant', content: response }
+        );
+        
+        // Keep conversation history manageable
+        if (this.conversationHistory.length > this.maxConversationHistory) {
+            this.conversationHistory = this.conversationHistory.slice(-this.maxConversationHistory);
+        }
+    }
+    
+    async analyzeMessageContext(message) {
+        if (!this.mcpInitialized || !this.mcpBridge.analyzeContextForCommands) {
+            return null;
+        }
+        
+        try {
+            return await this.mcpBridge.analyzeContextForCommands(message, this.conversationHistory);
+        } catch (error) {
+            console.warn('Context analysis failed:', error);
+            return null;
+        }
+    }
+    
+    formatCommandResponse(result, parseResult) {
+        switch (parseResult.action) {
+            case 'create_note':
+                if (result.status === 'created') {
+                    this.addMessage('assistant', `✅ Note created successfully (ID: ${result.note_id})`);
+                    if (result.associations && result.associations.suggestions) {
+                        this.addMessage('info', 'Suggested associations found - consider linking to opportunities.');
+                    }
+                }
+                break;
+                
+            case 'search_notes':
+                if (result.results && result.results.length > 0) {
+                    let response = `Found ${result.results.length} notes:\n\n`;
+                    result.results.forEach(note => {
+                        response += `📝 **${note.title || note.note_id}**\n${note.preview}\n\n`;
+                    });
+                    this.addMessage('assistant', response);
+                } else {
+                    this.addMessage('assistant', 'No notes found matching your search.');
+                }
+                break;
+                
+            case 'create_opportunity':
+                if (result.status === 'created') {
+                    this.addMessage('assistant', `🎯 Opportunity "${result.title}" created successfully (ID: ${result.opportunity_id})`);
+                }
+                break;
+                
+            case 'list_opportunities':
+                if (result.opportunities && result.opportunities.length > 0) {
+                    let response = `Found ${result.opportunities.length} opportunities:\n\n`;
+                    result.opportunities.forEach(opp => {
+                        response += `🎯 **${opp.title}** (${opp.note_count} notes)\n${opp.description || 'No description'}\n\n`;
+                    });
+                    this.addMessage('assistant', response);
+                } else {
+                    this.addMessage('assistant', 'No opportunities found.');
+                }
+                break;
+                
+            case 'show_help':
+                this.formatHelpResponse(result);
+                break;
+                
+            default:
+                this.addMessage('assistant', JSON.stringify(result, null, 2));
+        }
+    }
+
+    formatWorkflowCommandResponse(result) {
+        if (!result.result) {
+            return;
+        }
+
+        switch (result.action) {
+            case 'create_node':
+                if (result.result.node_id) {
+                    let response = `✅ Created ${result.result.type} node`;
+                    if (result.result.name) {
+                        response += ` "${result.result.name}"`;
+                    }
+                    if (result.result.position) {
+                        response += ` at position (${result.result.position.x}, ${result.result.position.y})`;
+                    }
+                    this.addMessage('info', response);
+                }
+                break;
+
+            case 'create_task':
+                if (result.result.task_id) {
+                    let response = `✅ Created task "${result.result.name}"`;
+                    if (result.result.anchored_to) {
+                        response += ` and anchored to node "${result.result.anchored_to}"`;
+                    }
+                    this.addMessage('info', response);
+                }
+                break;
+
+            case 'create_flowline':
+                if (result.result.source && result.result.target) {
+                    this.addMessage('info', `🔗 Connected "${result.result.source.name}" to "${result.result.target.name}" with ${result.result.type} flowline`);
+                }
+                break;
+
+            case 'save_workflow':
+                if (result.result.filename) {
+                    this.addMessage('info', `💾 Workflow saved as "${result.result.filename}" (${result.result.stats.nodes} nodes, ${result.result.stats.tasks} tasks)`);
+                }
+                break;
+
+            case 'show_workflow_status':
+                if (result.result) {
+                    const stats = result.result;
+                    let response = `📊 **Workflow Status:**\n`;
+                    response += `• Nodes: ${stats.nodes}\n`;
+                    response += `• Tasks: ${stats.tasks}\n`;
+                    response += `• Flowlines: ${stats.flowlines}\n`;
+                    response += `• Tags: ${stats.tags}\n`;
+                    if (stats.matrix_mode) {
+                        response += `• Matrix Mode: Active\n`;
+                    }
+                    if (stats.selected_node) {
+                        response += `• Selected: ${stats.selected_node.name || stats.selected_node.id}`;
+                    }
+                    this.addMessage('info', response);
+                }
+                break;
+
+            case 'enter_matrix_mode':
+                this.addMessage('info', '📊 Entered Eisenhower Matrix mode');
+                break;
+
+            case 'exit_matrix_mode':
+                this.addMessage('info', '📋 Exited Eisenhower Matrix mode');
+                break;
+
+            case 'delete_node':
+                if (result.result.deleted_node) {
+                    this.addMessage('info', `🗑️ Deleted ${result.result.deleted_node.type} node "${result.result.deleted_node.name}"`);
+                }
+                break;
+
+            case 'rename_node':
+                if (result.result.old_name && result.result.new_name) {
+                    this.addMessage('info', `✏️ Renamed node from "${result.result.old_name}" to "${result.result.new_name}"`);
+                }
+                break;
+
+            case 'move_node':
+                if (result.result.name && result.result.position) {
+                    this.addMessage('info', `📍 Moved node "${result.result.name}" to (${result.result.position.x}, ${result.result.position.y})`);
+                }
+                break;
+
+            default:
+                this.addMessage('info', JSON.stringify(result.result, null, 2));
+        }
+    }
+    
+    formatHelpResponse(helpResult) {
+        if (helpResult.type === 'general_help') {
+            let response = "**Available Commands:**\n\n";
+            for (const [category, commands] of Object.entries(helpResult.categories)) {
+                response += `**${category}:**\n`;
+                commands.forEach(cmd => {
+                    response += `• ${cmd} - ${helpResult.descriptions[cmd]}\n`;
+                });
+                response += "\n";
+            }
+            response += "**Getting Started:**\n";
+            helpResult.getting_started.forEach(example => {
+                response += `• ${example}\n`;
+            });
+            this.addMessage('assistant', response);
+        } else if (helpResult.type === 'specific_help') {
+            let response = `**Help for "${helpResult.query}":**\n\n`;
+            helpResult.matches.forEach(match => {
+                response += `• ${match.command} - ${match.description}\n`;
+            });
+            if (helpResult.examples && helpResult.examples.length > 0) {
+                response += "\n**Examples:**\n";
+                helpResult.examples.forEach(example => {
+                    response += `• ${example}\n`;
+                });
+            }
+            this.addMessage('assistant', response);
+        }
+    }
+    
+    addCommandSuggestions(suggestions) {
+        if (suggestions.length === 0) return;
+        
+        let suggestionText = "💡 **Command suggestions based on your message:**\n\n";
+        suggestions.forEach(suggestion => {
+            suggestionText += `• ${suggestion.command} - ${suggestion.reason}\n`;
+        });
+        this.addMessage('info', suggestionText);
     }
     
     async callOllama(prompt) {
@@ -387,10 +835,11 @@ class ChatInterface {
         } else {
             // Basic markdown-like formatting
             let formattedContent = content
-                .replace(/\\n/g, '\\n')
+                .replace(/\n/g, '<br>')
                 .replace(/`([^`]+)`/g, '<code>$1</code>')
-                .replace(/\\*\\*([^*]+)\\*\\*/g, '<strong>$1</strong>')
-                .replace(/\\*([^*]+)\\*/g, '<em>$1</em>');
+                .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+                .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+                .replace(/• /g, '• '); // Preserve bullet points
             
             contentDiv.innerHTML = formattedContent;
         }

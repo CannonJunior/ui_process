@@ -5,8 +5,13 @@
   "main": "server.js",
   "scripts": {
     "start": "node --max-old-space-size=8192 --expose-gc server.js",
-    "dev": "node --max-old-space-size=8192 --expose-gc server.js", 
+    "dev": "node --max-old-space-size=8192 --expose-gc server.js",
     "serve": "node --max-old-space-size=8192 --expose-gc server.js",
+    "mcp": "node mcp-service.js start",
+    "mcp:dev": "NODE_ENV=development node mcp-service.js start",
+    "mcp:test": "node mcp-service.js test",
+    "install-nb": "curl -L https://raw.github.com/xwmx/nb/master/nb --create-dirs -o ~/.local/bin/nb && chmod +x ~/.local/bin/nb",
+    "setup-mcp": "npm install && npm run install-nb",
     "test": "./tests/run-tests.sh",
     "test:ci": "./tests/run-tests.sh && node -e \"console.log('CI: All tests passed')\"",
     "test:coverage": "./tests/run-tests.sh && echo 'Coverage report in tests/reports/'",
@@ -21,12 +26,20 @@
     "task-management",
     "eisenhower-matrix",
     "workflow",
-    "visualization"
+    "visualization",
+    "mcp",
+    "note-taking",
+    "cli-bridge"
   ],
   "author": "Process Flow Designer",
   "license": "MIT",
-  "dependencies": {},
-  "devDependencies": {},
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
   "engines": {
     "node": ">=14.0.0"
   }
