@@ -17,6 +17,7 @@ A web-based process flow designer with Eisenhower Matrix task management, featur
 ### Prerequisites
 
 - **Node.js** (version 14.0.0 or higher)
+- **Python 3.10+** (for MCP servers)
 - Modern web browser (Chrome, Firefox, Safari, Edge)
 
 ### Installation & Running
@@ -27,7 +28,19 @@ A web-based process flow designer with Eisenhower Matrix task management, featur
    cd ui_process
    ```
 
-3. **Start the local server**
+3. **Install Node.js dependencies**
+   ```bash
+   npm install
+   ```
+
+4. **Set up Python environment** (for MCP servers)
+   ```bash
+   python3 -m venv venv_linux
+   source venv_linux/bin/activate
+   # Install any required Python packages as needed
+   ```
+
+5. **Start the local server**
    ```bash
    npm start
    ```
@@ -37,9 +50,9 @@ A web-based process flow designer with Eisenhower Matrix task management, featur
    node server.js
    ```
 
-4. **Open your browser**
+6. **Open your browser**
    - The server will automatically attempt to open your default browser
-   - Manual access: http://localhost:3000
+   - Manual access: http://localhost:8000
 
 ### Alternative Port
 
@@ -197,7 +210,8 @@ The application includes an AI chat assistant powered by Ollama:
 - PrimeReact (date picker component)
 
 **Development:**
-- Node.js built-in modules only (no external dependencies)
+- Node.js: Express, CORS
+- Python: MCP servers (installed separately)
 
 ### Architecture
 
