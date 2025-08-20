@@ -42,7 +42,7 @@ class WorkflowCommandServer:
     def __init__(self):
         self.command_patterns = {
             # Node Management Commands
-            'node-create': r'^/node[-_]?create\s+(\w+)(?:\s+"([^"]+)")?(?:\s+(\d+),(\d+))?$',
+            'node-create': r'^/node[-_]?create\s+(\w+)(?:\s+(?:"([^"]+)"|(\w+)))?(?:\s+(\d+),(\d+))?$',
             'node-delete': r'^/(?:node[-_]?delete|delete[-_]?node|remove[-_]?node)\s+(.+)$',
             'node-rename': r'^/node[-_]?rename\s+"([^"]+)"\s+"([^"]+)"$',
             'node-move': r'^/node[-_]?move\s+(.+)\s+(\d+),(\d+)$',
@@ -56,7 +56,7 @@ class WorkflowCommandServer:
             'task-priority': r'^/task[-_]?priority\s+(.+)\s+(\w+)$',
             
             # Flowline Management Commands
-            'flowline-create': r'^/(?:flowline[-_]?create|connect|flow)\s+"([^"]+)"\s+"([^"]+)"(?:\s+(\w+))?$',
+            'flowline-create': r'^/(?:flowline[-_]?create|connect)\s+"([^"]+)"\s+"([^"]+)"(?:\s+(\w+))?$',
             'flowline-delete': r'^/(?:flowline[-_]?delete|disconnect)\s+"([^"]+)"\s+"([^"]+)"$',
             'flowline-type': r'^/flowline[-_]?type\s+"([^"]+)"\s+"([^"]+)"\s+(\w+)$',
             'disconnect-all': r'^/disconnect\s+all$',
@@ -402,6 +402,64 @@ class WorkflowCommandServer:
                 'error': str(e)
             }
     
+    @mcp.tool(
+        name="execute_workflow_command",
+        description="Execute validated workflow command and prepare for browser execution"
+    )
+    async def execute_workflow_command(self, command_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Execute workflow command validation and prepare structured data for browser execution.
+        
+        Args:
+            command_data: Parsed command data from parse_workflow_command
+        
+        Returns:
+            Dict containing execution readiness and command data for WorkflowBridge
+        """
+        try:
+            if not command_data.get('is_workflow_command'):
+                return {
+                    'status': 'error',
+                    'error': 'Not a workflow command'
+                }
+            
+            # Validate the command first
+            validation_result = await self.validate_workflow_command(command_data)
+            
+            if not validation_result.get('valid', False):
+                return {
+                    'status': 'error',
+                    'error': 'Command validation failed',
+                    'errors': validation_result.get('errors', []),
+                    'suggestions': validation_result.get('suggestions', [])
+                }
+            
+            # Prepare command data for WorkflowBridge execution
+            action = command_data.get('action')
+            parameters = command_data.get('parameters', {})
+            
+            # Structure the command data for the browser WorkflowBridge
+            workflow_command = {
+                'action': action,
+                'parameters': parameters,
+                'command_type': command_data.get('command_type'),
+                'original_input': command_data.get('original_input', '')
+            }
+            
+            return {
+                'status': 'ready_for_execution',
+                'command_data': workflow_command,
+                'validation': validation_result,
+                'message': f"Executing {command_data.get('command_type', 'workflow command')}..."
+            }
+            
+        except Exception as e:
+            logger.error(f"Error executing workflow command: {e}")
+            return {
+                'status': 'error',
+                'error': str(e)
+            }
+    
     # Helper methods
     
     def _parse_workflow_match(self, command_name: str, match: re.Match, original_input: str) -> Dict[str, Any]:
@@ -417,11 +475,13 @@ class WorkflowCommandServer:
         
         # Parse based on command type
         if command_name == 'node-create':
+            # Handle both quoted and unquoted names
+            name = groups[1] if groups[1] else (groups[2] if groups[2] else None)
             result['parameters'] = {
                 'type': groups[0] if groups[0] else 'process',
-                'name': groups[1] if groups[1] else None,
-                'x': groups[2] if groups[2] else None,
-                'y': groups[3] if groups[3] else None
+                'name': name,
+                'x': groups[3] if groups[3] else None,
+                'y': groups[4] if groups[4] else None
             }
             result['action'] = 'create_node'
             
@@ -465,7 +525,137 @@ class WorkflowCommandServer:
             result['parameters'] = {}
             result['action'] = 'enter_matrix_mode'
             
-        # Add more command parsing as needed...
+        elif command_name == 'matrix-exit':
+            result['parameters'] = {}
+            result['action'] = 'exit_matrix_mode'
+            
+        elif command_name == 'matrix-move':
+            result['parameters'] = {'task': groups[0], 'quadrant': groups[1]}
+            result['action'] = 'move_task_in_matrix'
+            
+        elif command_name == 'task-delete':
+            result['parameters'] = {'identifier': groups[0]}
+            result['action'] = 'delete_task'
+            
+        elif command_name == 'task-move':
+            result['parameters'] = {'task': groups[0], 'target_node': groups[1]}
+            result['action'] = 'move_task'
+            
+        elif command_name == 'task-advance':
+            result['parameters'] = {'task': groups[0], 'target_node': groups[1]}
+            result['action'] = 'advance_task'
+            
+        elif command_name == 'task-priority':
+            result['parameters'] = {'task': groups[0], 'priority': groups[1]}
+            result['action'] = 'set_task_priority'
+            
+        elif command_name == 'flowline-delete':
+            result['parameters'] = {'source': groups[0], 'target': groups[1]}
+            result['action'] = 'delete_flowline'
+            
+        elif command_name == 'flowline-type':
+            result['parameters'] = {'source': groups[0], 'target': groups[1], 'type': groups[2]}
+            result['action'] = 'change_flowline_type'
+            
+        elif command_name == 'disconnect-all':
+            result['parameters'] = {}
+            result['action'] = 'disconnect_all_flowlines'
+            
+        elif command_name == 'tag-create':
+            result['parameters'] = {
+                'name': groups[0],
+                'category': groups[1] if groups[1] else 'general',
+                'properties': groups[2] if groups[2] else None
+            }
+            result['action'] = 'create_tag'
+            
+        elif command_name == 'tag-add':
+            result['parameters'] = {'tag': groups[0], 'element': groups[1]}
+            result['action'] = 'add_tag'
+            
+        elif command_name == 'tag-remove':
+            result['parameters'] = {'tag': groups[0], 'element': groups[1]}
+            result['action'] = 'remove_tag'
+            
+        elif command_name == 'tag-list':
+            result['parameters'] = {'filter': groups[0] if groups[0] else None}
+            result['action'] = 'list_tags'
+            
+        elif command_name == 'workflow-load':
+            result['parameters'] = {'filename': groups[0]}
+            result['action'] = 'load_workflow'
+            
+        elif command_name == 'workflow-export':
+            result['parameters'] = {'format': groups[0] if groups[0] else 'json'}
+            result['action'] = 'export_workflow'
+            
+        elif command_name == 'workflow-clear':
+            result['parameters'] = {'confirmed': groups[0] == 'yes' or groups[0] == 'confirm' if groups[0] else False}
+            result['action'] = 'clear_workflow'
+            
+        elif command_name == 'workflow-stats':
+            result['parameters'] = {}
+            result['action'] = 'show_workflow_stats'
+            
+        elif command_name == 'view-zoom':
+            result['parameters'] = {'level': groups[0]}
+            result['action'] = 'zoom_view'
+            
+        elif command_name == 'view-center':
+            result['parameters'] = {'target': groups[0] if groups[0] else None}
+            result['action'] = 'center_view'
+            
+        elif command_name == 'view-focus':
+            result['parameters'] = {'element': groups[0]}
+            result['action'] = 'focus_element'
+            
+        elif command_name == 'select':
+            result['parameters'] = {'target': groups[0]}
+            result['action'] = 'select_element'
+            
+        elif command_name == 'select-all':
+            result['parameters'] = {'type': groups[0] if groups[0] else None}
+            result['action'] = 'select_all'
+            
+        elif command_name == 'select-none':
+            result['parameters'] = {}
+            result['action'] = 'clear_selection'
+            
+        elif command_name == 'select-by':
+            result['parameters'] = {'criteria': groups[0]}
+            result['action'] = 'select_by_criteria'
+            
+        elif command_name == 'goto':
+            result['parameters'] = {'target': groups[0]}
+            result['action'] = 'navigate_to_element'
+            
+        elif command_name == 'find':
+            result['parameters'] = {'query': groups[0]}
+            result['action'] = 'find_element'
+            
+        elif command_name == 'next':
+            result['parameters'] = {'type': groups[0] if groups[0] else None}
+            result['action'] = 'navigate_next'
+            
+        elif command_name == 'previous':
+            result['parameters'] = {'type': groups[0] if groups[0] else None}
+            result['action'] = 'navigate_previous'
+            
+        elif command_name == 'batch-create':
+            result['parameters'] = {'type': groups[0], 'data': groups[1]}
+            result['action'] = 'batch_create_elements'
+            
+        elif command_name == 'batch-connect':
+            result['parameters'] = {'sources': groups[0], 'targets': groups[1]}
+            result['action'] = 'batch_connect_elements'
+            
+        elif command_name == 'batch-tag':
+            result['parameters'] = {'tag': groups[0], 'elements': groups[1]}
+            result['action'] = 'batch_tag_elements'
+            
+        # Default case for unhandled commands
+        else:
+            result['action'] = f"handle_{command_name.replace('-', '_')}"
         
         return result
     

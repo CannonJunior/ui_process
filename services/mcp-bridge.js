@@ -210,29 +210,14 @@ class MCPBridge extends EventEmitter {
             throw new Error('Not a valid workflow command');
         }
 
-        const { action, parameters } = commandData;
-
         try {
-            // First, validate the command through the workflow command server
-            const validation = await this.callMCPTool('workflow-command', 'validate_workflow_command', { command_data: commandData });
-        
-            if (!validation.valid) {
-                return {
-                    status: 'error',
-                    errors: validation.errors,
-                    warnings: validation.warnings,
-                    suggestions: validation.suggestions
-                };
-            }
-
-            // Command is valid, return the parsed command for execution by the browser
-            return {
-                status: 'ready_for_execution',
-                command_data: commandData,
-                validation: validation
-            };
+            // Execute the command through the workflow command server
+            const result = await this.callMCPTool('workflow-command', 'execute_workflow_command', {
+                command_data: commandData
+            });
+            return result;
         } catch (error) {
-            console.error('Error validating workflow command:', error);
+            console.error('Error executing workflow command:', error);
             return {
                 status: 'error',
                 error: error.message

@@ -36,6 +36,20 @@
         <button id="toggleChatButton" class="toolbar-button chat-toggle">💬 Chat</button>
         
         <button id="eisenhowerToggle" class="toolbar-button">📊 Matrix</button>
+        
+        <!-- Service Health Indicators -->
+        <div class="service-health">
+            <div id="mcpHealthIndicator" class="health-indicator" title="MCP Services">
+                <span class="health-icon">⚡</span>
+                <span class="health-status">MCP</span>
+                <span class="health-dot offline">●</span>
+            </div>
+            <div id="ollamaHealthIndicator" class="health-indicator" title="Ollama AI">
+                <span class="health-icon">🤖</span>
+                <span class="health-status">AI</span>
+                <span class="health-dot offline">●</span>
+            </div>
+        </div>
     </div>
     
     <div class="main-container">
@@ -302,6 +316,7 @@
     <!-- MCP Integration -->
     <script src="services/mcp-client.js"></script>
     <script src="services/workflow-bridge.js"></script>
+    <script src="services/health-manager.js"></script>
     <script src="test-mcp-integration.js"></script>
     
     <script src="chat-interface.js"></script>
@@ -349,7 +364,5 @@
     <!-- Workflow Commands Integration Test -->
     <script src="test-workflow-commands.js"></script>
     
-    <!-- Chat Workflow Debug Test -->
-    <script src="test-chat-workflow.js"></script>
 </body>
 </html>

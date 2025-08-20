@@ -97,7 +97,57 @@ class ChatCommandServer:
             
             '/help [command]': 'Show help information',
             '/commands': 'List all available commands',
-            '/status': 'Show system status'
+            '/status': 'Show system status',
+            
+            # Workflow Commands (Node Management)
+            '/node-create <type> [name] [x,y]': 'Create a new node (process, decision, terminal)',
+            '/node-delete <identifier>': 'Delete a node by name or ID',
+            '/node-rename <old> <new>': 'Rename a node',
+            '/node-move <node> <x,y>': 'Move a node to position',
+            '/node-type <node> <type>': 'Change node type',
+            
+            # Workflow Commands (Task Management)
+            '/task-create <name> [node] [priority]': 'Create a new task',
+            '/task-delete <identifier>': 'Delete a task',
+            '/task-move <task> <target-node>': 'Move task to node',
+            '/task-advance <task> <target-node>': 'Advance task to node',
+            '/task-priority <task> <priority>': 'Set task priority (low, normal, high, urgent)',
+            
+            # Workflow Commands (Flowlines)
+            '/connect <source> <target> [type]': 'Create flowline between nodes',
+            '/disconnect <source> <target>': 'Remove flowline',
+            '/flowline-type <source> <target> <type>': 'Change flowline type',
+            '/disconnect all': 'Remove all flowlines',
+            
+            # Workflow Commands (Tags)
+            '/tag-create <name> [category] [props]': 'Create a new tag',
+            '/tag-add <tag> <element>': 'Add tag to element',
+            '/tag-remove <tag> <element>': 'Remove tag from element',
+            '/tag-list [filter]': 'List tags',
+            
+            # Workflow Commands (Workflow Management)
+            '/workflow-save [filename]': 'Save current workflow',
+            '/workflow-load <filename>': 'Load workflow file',
+            '/workflow-export [format]': 'Export workflow (json, png, svg, pdf)',
+            '/workflow-clear [confirm]': 'Clear/reset workflow',
+            '/workflow-status': 'Show workflow statistics',
+            '/workflow-stats': 'Show detailed workflow stats',
+            
+            # Workflow Commands (Matrix & Views)
+            '/matrix-enter': 'Enter Eisenhower Matrix mode',
+            '/matrix-exit': 'Exit Eisenhower Matrix mode',
+            '/matrix-move <task> <quadrant>': 'Move task in matrix',
+            '/matrix-show [quadrant]': 'Show matrix quadrant',
+            
+            # Workflow Commands (View & Navigation)
+            '/view-zoom <level>': 'Zoom view (in, out, fit, reset)',
+            '/view-center [node]': 'Center view on node',
+            '/view-focus <element>': 'Focus on element',
+            '/select <element>': 'Select element',
+            '/select-all [type]': 'Select all elements of type',
+            '/select-none': 'Clear selection',
+            '/goto <node>': 'Navigate to node',
+            '/find <name>': 'Find element by name'
         }
     
     @mcp.tool(
@@ -272,7 +322,13 @@ class ChatCommandServer:
                 categories = {
                     'Note Commands': [cmd for cmd in self.command_descriptions.keys() if cmd.startswith('/note')],
                     'Opportunity Commands': [cmd for cmd in self.command_descriptions.keys() if cmd.startswith('/opp')],
+                    'Node Commands': [cmd for cmd in self.command_descriptions.keys() if cmd.startswith('/node')],
                     'Task Commands': [cmd for cmd in self.command_descriptions.keys() if cmd.startswith('/task')],
+                    'Flowline Commands': [cmd for cmd in self.command_descriptions.keys() if cmd.startswith(('/connect', '/disconnect', '/flowline'))],
+                    'Tag Commands': [cmd for cmd in self.command_descriptions.keys() if cmd.startswith('/tag')],
+                    'Workflow Commands': [cmd for cmd in self.command_descriptions.keys() if cmd.startswith('/workflow')],
+                    'Matrix Commands': [cmd for cmd in self.command_descriptions.keys() if cmd.startswith('/matrix')],
+                    'View & Navigation': [cmd for cmd in self.command_descriptions.keys() if cmd.startswith(('/view', '/select', '/goto', '/find'))],
                     'Analysis Commands': [cmd for cmd in self.command_descriptions.keys() if cmd.startswith(('/analyze', '/suggest', '/associate'))],
                     'General Commands': [cmd for cmd in self.command_descriptions.keys() if cmd.startswith(('/help', '/commands', '/status'))]
                 }
@@ -282,10 +338,11 @@ class ChatCommandServer:
                     'categories': categories,
                     'descriptions': self.command_descriptions,
                     'getting_started': [
-                        '/note-create "My first note"',
-                        '/opp-create "New Project"',
-                        '/help note',
-                        '/commands'
+                        '/node-create process "Start Process"',
+                        '/task-create "My Task" "Start Process"',
+                        '/note-create "Meeting notes"',
+                        '/workflow-status',
+                        '/help node'
                     ]
                 }
                 

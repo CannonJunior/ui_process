@@ -4,14 +4,20 @@
   "description": "A web-based process flow designer with Eisenhower Matrix task management",
   "main": "server.js",
   "scripts": {
-    "start": "node --max-old-space-size=8192 --expose-gc server.js",
-    "dev": "node --max-old-space-size=8192 --expose-gc server.js",
+    "start": "./start.sh",
+    "start:full": "concurrently --names 'SERVER,MCP' --prefix-colors 'blue,green' \"npm run start:server\" \"npm run start:mcp\"",
+    "start:server": "node --max-old-space-size=8192 --expose-gc server.js",
+    "start:mcp": "node mcp-service.js start",
+    "dev": "npm run dev:full",
+    "dev:full": "concurrently --names 'SERVER,MCP' --prefix-colors 'blue,green' \"npm run start:server\" \"npm run mcp:dev\"",
     "serve": "node --max-old-space-size=8192 --expose-gc server.js",
     "mcp": "node mcp-service.js start",
     "mcp:dev": "NODE_ENV=development node mcp-service.js start",
     "mcp:test": "node mcp-service.js test",
     "install-nb": "curl -L https://raw.github.com/xwmx/nb/master/nb --create-dirs -o ~/.local/bin/nb && chmod +x ~/.local/bin/nb",
     "setup-mcp": "npm install && npm run install-nb",
+    "start:simple": "echo '⚠️  Starting server only. For full functionality, run: npm start' && npm run start:server",
+    "start:manual": "echo '📋 Manual startup instructions:' && echo '1. Terminal 1: npm run start:server' && echo '2. Terminal 2: npm run start:mcp' && echo '3. Open http://localhost:8000'",
     "test": "./tests/run-tests.sh",
     "test:ci": "./tests/run-tests.sh && node -e \"console.log('CI: All tests passed')\"",
     "test:coverage": "./tests/run-tests.sh && echo 'Coverage report in tests/reports/'",
@@ -38,6 +44,7 @@
     "express": "^4.21.2"
   },
   "devDependencies": {
+    "concurrently": "^8.2.2",
     "nodemon": "^3.0.1"
   },
   "engines": {

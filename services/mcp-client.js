@@ -101,7 +101,9 @@ class MCPClient {
 
     async parseMessage(message) {
         try {
-            const result = await this.makeRequest('/api/mcp/parse-message', { message });
+            // Preprocess message to handle quote escaping issues
+            const processedMessage = this.preprocessCommandMessage(message);
+            const result = await this.makeRequest('/api/mcp/parse-message', { message: processedMessage });
             return result;
         } catch (error) {
             console.error('Error parsing message:', error);
@@ -191,7 +193,9 @@ class MCPClient {
 
     async parseWorkflowCommand(message) {
         try {
-            const result = await this.makeRequest('/api/mcp/parse-workflow-command', { message });
+            // Preprocess message to handle quote escaping issues
+            const processedMessage = this.preprocessCommandMessage(message);
+            const result = await this.makeRequest('/api/mcp/parse-workflow-command', { message: processedMessage });
             return result;
         } catch (error) {
             console.error('Error parsing workflow command:', error);
@@ -274,6 +278,38 @@ class MCPClient {
                 connection_stable: false
             };
         }
+    }
+
+    // Preprocess command messages to handle quote escaping issues
+    preprocessCommandMessage(message) {
+        if (!message || !message.startsWith('/')) {
+            return message;
+        }
+
+        // Handle common quote patterns that cause JSON parsing issues
+        // Convert quoted parameters to unquoted ones for better compatibility
+        
+        // Pattern for /command "quoted content"
+        const quotedPattern = /^(\/[\w-]+(?:\s+\w+)*)\s+"([^"]+)"(.*)$/;
+        if (quotedPattern.test(message)) {
+            return message.replace(quotedPattern, (match, command, content, rest) => {
+                // Remove spaces and special characters from content to make it safe as unquoted
+                const safeContent = content.replace(/\s+/g, '_').replace(/[^\w-_]/g, '');
+                return `${command} ${safeContent}${rest}`;
+            });
+        }
+
+        // Pattern for /command type "quoted content"
+        const typeQuotedPattern = /^(\/[\w-]+\s+\w+)\s+"([^"]+)"(.*)$/;
+        if (typeQuotedPattern.test(message)) {
+            return message.replace(typeQuotedPattern, (match, commandType, content, rest) => {
+                // Remove spaces and special characters from content to make it safe as unquoted
+                const safeContent = content.replace(/\s+/g, '_').replace(/[^\w-_]/g, '');
+                return `${commandType} ${safeContent}${rest}`;
+            });
+        }
+
+        return message;
     }
 
     // Graceful shutdown

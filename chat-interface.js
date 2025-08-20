@@ -13,6 +13,9 @@ class ChatInterface {
         this.mcpBridge = null;
         this.mcpInitialized = false;
         
+        // Health manager for service status
+        this.healthManager = null;
+        
         // UI Elements
         this.chatSidebar = document.getElementById('chatSidebar');
         this.toggleButton = document.getElementById('toggleChatButton');
@@ -33,6 +36,12 @@ class ChatInterface {
     async init() {
         this.setupEventListeners();
         await this.loadDocuments();
+        
+        // Initialize health manager
+        if (window.ServiceHealthManager) {
+            this.healthManager = new ServiceHealthManager();
+        }
+        
         await this.checkOllamaConnection();
         await this.initializeMCPBridge();
         this.updateUI();
@@ -50,6 +59,11 @@ class ChatInterface {
                 this.mcpInitialized = true;
                 console.log('MCP Client connected successfully:', healthCheck);
                 
+                // Update health manager
+                if (this.healthManager) {
+                    this.healthManager.setMCPClient(this.mcpClient);
+                }
+                
                 // Create bridge interface that matches expected API
                 this.mcpBridge = {
                     initialized: true,
@@ -60,7 +74,7 @@ class ChatInterface {
                 };
                 
                 // Show connection status in chat
-                this.addMessage('info', 'Note-taking system connected! Type /help to see available commands.');
+                this.addMessage('info', '✅ MCP Services connected! Workflow commands and note-taking available. Type /help to see commands.');
             } else {
                 throw new Error(healthCheck.error || 'MCP service not available');
             }
@@ -93,8 +107,13 @@ class ChatInterface {
                 }
             };
             
+            // Update health manager
+            if (this.healthManager) {
+                this.healthManager.setMCPClient(null);
+            }
+            
             // Show connection error in chat (but don't block other functionality)
-            this.addMessage('info', 'Note-taking system offline. To enable note commands, start the MCP service with: npm run mcp');
+            this.addMessage('info', '❌ MCP Services offline. Workflow commands not available. Start MCP service with: npm run mcp');
             
             // Set up retry mechanism
             this.setupMCPRetry();
@@ -264,6 +283,11 @@ class ChatInterface {
         this.statusIndicator.className = `status-indicator ${status}`;
         this.statusText.textContent = message;
         
+        // Update health manager
+        if (this.healthManager) {
+            this.healthManager.setOllamaClient(this);
+        }
+        
         // Update status indicator symbols
         switch (status) {
             case 'connected':
@@ -350,12 +374,20 @@ class ChatInterface {
         this.setLoading(true);
         
         try {
+            // Debug logging for command detection
+            console.log(`🔍 Processing message: "${message}"`);
+            console.log(`📡 MCP initialized: ${this.mcpInitialized}`);
+            
             // Check if this is a command using MCP Bridge
             if (this.mcpInitialized) {
+                console.log(`✅ MCP available, checking for workflow commands...`);
+                
                 // First check for workflow commands
                 const workflowParseResult = await this.mcpClient.parseWorkflowCommand(message);
+                console.log(`🔧 Workflow parse result:`, workflowParseResult);
                 
                 if (workflowParseResult.is_workflow_command) {
+                    console.log(`✅ Recognized as workflow command: ${workflowParseResult.command_type}`);
                     // Handle as workflow command
                     await this.handleWorkflowCommand(workflowParseResult, message);
                     return;
@@ -363,8 +395,10 @@ class ChatInterface {
                 
                 // Then check for note commands
                 const parseResult = await this.mcpBridge.parseMessage(message);
+                console.log(`📝 Note parse result:`, parseResult);
                 
                 if (parseResult.is_command) {
+                    console.log(`✅ Recognized as note command: ${parseResult.type}`);
                     // Handle as note command
                     await this.handleCommand(parseResult, message);
                     return;
@@ -375,14 +409,42 @@ class ChatInterface {
                 if (contextAnalysis && contextAnalysis.suggested_commands && contextAnalysis.suggested_commands.length > 0) {
                     this.addCommandSuggestions(contextAnalysis.suggested_commands);
                 }
+            } else {
+                console.log(`❌ MCP not initialized, checking for fallback command detection...`);
+                
+                // Basic fallback for workflow commands when MCP is offline
+                if (message.startsWith('/')) {
+                    console.log(`🔄 Detected command syntax but MCP offline`);
+                    this.addMessage('error', '❌ Command detected but MCP services are offline. Please start MCP service with: npm run mcp');
+                    
+                    // Report to health manager
+                    if (this.healthManager) {
+                        this.healthManager.reportCommandIssue(message, 'MCP services offline');
+                    }
+                    return;
+                }
             }
             
+            console.log(`💬 Processing as LLM message`);
             // Process as regular LLM message
             await this.handleLLMMessage(message);
             
         } catch (error) {
             console.error('Error sending message:', error);
-            this.addMessage('error', 'Sorry, I encountered an error. Please try again.');
+            console.error('Error stack:', error.stack);
+            
+            // Provide more specific error information
+            let errorMessage = 'Sorry, I encountered an error. Please try again.';
+            if (error.message) {
+                errorMessage += `\n\nDetails: ${error.message}`;
+            }
+            
+            this.addMessage('error', errorMessage);
+            
+            // Report to health manager if available
+            if (this.healthManager) {
+                this.healthManager.reportCommandIssue(message, error.message);
+            }
         } finally {
             this.setLoading(false);
         }

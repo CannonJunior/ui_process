@@ -75,6 +75,69 @@ body {
     background-color: #0056b3;
 }
 
+/* Service Health Indicators */
+.service-health {
+    display: flex;
+    gap: 8px;
+    margin-left: auto;
+    align-items: center;
+}
+
+.health-indicator {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    color: white;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.health-indicator:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+.health-icon {
+    font-size: 14px;
+}
+
+.health-status {
+    font-weight: 500;
+    min-width: 24px;
+}
+
+.health-dot {
+    font-size: 8px;
+    transition: color 0.3s;
+}
+
+.health-dot.online {
+    color: #28a745;
+    animation: pulse 2s infinite;
+}
+
+.health-dot.offline {
+    color: #dc3545;
+}
+
+.health-dot.connecting {
+    color: #ffc107;
+    animation: blink 1s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+@keyframes blink {
+    0%, 50% { opacity: 1; }
+    51%, 100% { opacity: 0.3; }
+}
+
 /* Main Container Layout */
 .main-container {
     display: flex;

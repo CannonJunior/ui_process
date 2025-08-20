@@ -17,7 +17,8 @@ A web-based process flow designer with Eisenhower Matrix task management, featur
 ### Prerequisites
 
 - **Node.js** (version 14.0.0 or higher)
-- **Python 3.10+** (for MCP servers)
+- **Python 3.10+** (for MCP note-taking servers)
+- **Git** (for nb note-taking CLI)
 - Modern web browser (Chrome, Firefox, Safari, Edge)
 
 ### Installation & Running
@@ -33,26 +34,48 @@ A web-based process flow designer with Eisenhower Matrix task management, featur
    npm install
    ```
 
-4. **Set up Python environment** (for MCP servers)
+4. **Set up Python environment** (for MCP note-taking servers)
    ```bash
    python3 -m venv venv_linux
    source venv_linux/bin/activate
-   # Install any required Python packages as needed
+   # MCP servers use built-in Python libraries only
    ```
 
-5. **Start the local server**
+5. **Install nb CLI** (for note-taking features)
+   ```bash
+   npm run install-nb
+   # Or manually: curl -L https://raw.github.com/xwmx/nb/master/nb --create-dirs -o ~/.local/bin/nb && chmod +x ~/.local/bin/nb
+   ```
+
+6. **Start the application** (automatically starts both services)
    ```bash
    npm start
    ```
    
-   Or alternatively:
+   This will start:
+   - Main server on http://localhost:8000
+   - MCP service on http://localhost:3001 (for workflow commands)
+   
+   **Alternative startup options:**
    ```bash
-   node server.js
+   # Start server only (limited functionality)
+   npm run start:simple
+   
+   # Manual startup (separate terminals)
+   npm run start:manual
+   
+   # Development mode with auto-reload
+   npm run dev
    ```
 
-6. **Open your browser**
-   - The server will automatically attempt to open your default browser
-   - Manual access: http://localhost:8000
+7. **Open your browser**
+   - The application will automatically open at http://localhost:8000
+   - Check the health indicators (⚡🤖) in the top-right toolbar
+   
+8. **Verify services are running**
+   - ⚡ **MCP** should show green (workflow commands available)
+   - 🤖 **AI** shows green if Ollama is running (optional)
+   - Click indicators for detailed status and troubleshooting
 
 ### Alternative Port
 
@@ -165,14 +188,92 @@ ui: {
 }
 ```
 
-## 🤖 Chat Assistant (Optional)
+## 🤖 Chat Assistant & Note-Taking
 
-The application includes an AI chat assistant powered by Ollama:
+The application includes an AI chat assistant with intelligent note-taking capabilities:
+
+### Basic Chat Assistant (Optional)
 
 1. **Install Ollama**: https://ollama.ai/
 2. **Pull a model**: `ollama pull qwen2.5:3b`
 3. **Start Ollama service**: `ollama serve`
 4. **Click the Chat button** in the application toolbar
+
+### Advanced Note-Taking System
+
+The chat interface includes a sophisticated note-taking system powered by the [nb](https://github.com/xwmx/nb) CLI tool through Model Context Protocol (MCP) integration.
+
+#### Setup Note-Taking
+
+The MCP service starts automatically with `npm start`. If you need to start it manually:
+
+1. **Start the MCP service** (only if not using `npm start`):
+   ```bash
+   npm run mcp
+   ```
+
+2. **Initialize nb** (first time only):
+   ```bash
+   nb init
+   ```
+
+3. **Verify connection** in chat:
+   ```
+   /help
+   ```
+   
+   Check that the ⚡ MCP indicator shows green in the toolbar.
+
+#### Available Commands
+
+**Note Management:**
+- `/note-create "Meeting notes: Discussed project timeline and deliverables"` - Create new note
+- `/note-search "project timeline"` - Search notes by content
+- `/note-list tag:meeting limit:10` - List notes with filters
+- `/note-tag <note_id> meeting,urgent` - Add tags to note
+
+**Opportunity Organization:**
+- `/opp-create "Website Redesign - Complete overhaul with new branding"` - Create opportunity
+- `/opp-list tag:web` - List opportunities by tag
+- `/opp-link <opp_id> <task_id>` - Link opportunity to task
+
+**Smart Features:**
+- `/analyze "This is important for the Q1 launch"` - Get association suggestions
+- `/help <command>` - Get command-specific help
+- `/status` - Check system status
+
+#### Intelligent Features
+
+- **Auto-Association**: Notes are automatically linked to similar opportunities
+- **Smart Tagging**: Content analysis suggests relevant tags
+- **Context Awareness**: Chat provides suggestions based on current workflow
+- **Semantic Search**: Find related notes even with different keywords
+
+### Workflow Commands
+
+The chat interface now supports powerful workflow commands for creating and managing process elements:
+
+**Node Management:**
+- `/node-create process "Data Processing"` - Create process nodes
+- `/node-delete "Node Name"` - Delete nodes
+- `/node-rename "Old" "New"` - Rename nodes
+
+**Task Management:**
+- `/task-create "Task Name" "Node Name"` - Create tasks
+- `/task-move "Task" "Target Node"` - Move tasks
+- `/task-priority "Task" high` - Set priority
+
+**Flow Control:**
+- `/connect "Start" "End"` - Create flowlines
+- `/disconnect "Start" "End"` - Remove connections
+- `/matrix-enter` - Enter Eisenhower Matrix mode
+
+**Workflow Operations:**
+- `/workflow-save "filename"` - Save workflow
+- `/workflow-load "filename"` - Load workflow
+- `/workflow-status` - Show current status
+
+See [docs/workflow-commands.md](docs/workflow-commands.md) for complete command reference.
 
 ## 📁 Workflow Files
 
@@ -195,11 +296,19 @@ The application includes an AI chat assistant powered by Ollama:
 - **D3 animations not working**: Ensure modern browser with JavaScript enabled
 - **Chat not connecting**: Verify Ollama is running on localhost:11434
 
+### Note-Taking Issues
+
+- **"Note-taking system offline"**: Start MCP service with `npm run mcp`
+- **"nb not found"**: Install nb CLI with `npm run install-nb`
+- **Commands not working**: Type `/help` to verify connection and see available commands
+- **MCP service fails**: Check Python virtual environment is activated
+
 ### Performance
 
 - **Large workflows**: Consider reducing number of tasks per quadrant
 - **Animation lag**: Check browser developer tools for performance insights
 - **Memory usage**: Refresh page for complex workflows to reset state
+- **Note search slow**: Use specific keywords for better performance
 
 ## 📋 Technical Details
 
@@ -211,7 +320,8 @@ The application includes an AI chat assistant powered by Ollama:
 
 **Development:**
 - Node.js: Express, CORS
-- Python: MCP servers (installed separately)
+- Python: MCP note-taking servers (built-in libraries only)
+- nb CLI: Note-taking and organization
 
 ### Architecture
 
@@ -230,8 +340,6 @@ The application includes an AI chat assistant powered by Ollama:
 - ResizeObserver API (dynamic layouts)
 
 ## 📄 License
-
-MIT License - Feel free to use, modify, and distribute.
 
 ---
 
