@@ -6,91 +6,96 @@ This document provides a comprehensive reference for all chat commands available
 
 Type `/help` in chat to see available commands, or `/help <command>` for specific command details.
 
+## ⚠️ Important Usage Notes
+
+**Quote Handling:** The system automatically converts quoted parameters to safe unquoted versions. For names with spaces, quotes are recommended but the system will process them safely.
+
+**Copy-Paste Ready:** All examples below can be copied and pasted directly into the chat interface.
+
 ---
 
 ## 🔨 Node Management Commands
 
 Create and manage workflow nodes (process, decision, terminal types).
 
-### `/node-create <type> ["name"] [x,y]`
+### `/node-create <type> [name] [x,y]`
 Create a new node in the workflow.
 
 **Parameters:**
 - `<type>` - Node type: `process`, `decision`, `terminal`
-- `["name"]` - Optional: Node name in quotes
+- `[name]` - Optional: Node name (quotes recommended for names with spaces)
 - `[x,y]` - Optional: Position coordinates
 
-**Examples:**
+**Copy-Paste Examples:**
 ```
 /node-create process
 /node-create process "Data Processing"
-/node-create decision "Quality Check?" 100,200
+/node-create process DataProcessing
+/node-create decision "Quality Check?"
+/node-create decision QualityCheck
 /node-create terminal "End Process" 300,400
+/node-create terminal EndProcess 300,400
 ```
 
 ### `/node-delete <identifier>`
 Delete a node from the workflow.
 
 **Parameters:**
-- `<identifier>` - Node name (in quotes) or node ID
+- `<identifier>` - Node name (quotes recommended for names with spaces) or node ID
 
-**Examples:**
+**Copy-Paste Examples:**
 ```
 /node-delete "Data Processing"
+/node-delete DataProcessing
 /node-delete node_123
+/delete-node "Quality Check"
+/remove-node EndProcess
 ```
 
-### `/node-rename <old> <new>`
+### `/node-rename "<old>" "<new>"`
 Rename an existing node.
 
 **Parameters:**
-- `<old>` - Current node name in quotes
-- `<new>` - New node name in quotes
+- `<old>` - Current node name (must be in quotes)
+- `<new>` - New node name (must be in quotes)
 
-**Examples:**
+**Copy-Paste Examples:**
 ```
 /node-rename "Old Name" "New Name"
 /node-rename "Process 1" "Data Validation"
+/node-rename "Quality Check" "Final Review"
 ```
 
 ### `/node-move <node> <x,y>`
 Move a node to specific coordinates.
 
 **Parameters:**
-- `<node>` - Node name in quotes or node ID
-- `<x,y>` - Target coordinates
+- `<node>` - Node name or node ID
+- `<x,y>` - Target coordinates (no spaces around comma)
 
-**Examples:**
+**Copy-Paste Examples:**
 ```
 /node-move "Data Processing" 150,300
+/node-move DataProcessing 150,300
 /node-move node_123 200,100
+/node-move QualityCheck 250,400
 ```
 
 ### `/node-type <node> <type>`
 Change the type of an existing node.
 
 **Parameters:**
-- `<node>` - Node name in quotes or node ID
+- `<node>` - Node name or node ID
 - `<type>` - New node type: `process`, `decision`, `terminal`
 
-**Examples:**
+**Copy-Paste Examples:**
 ```
 /node-type "Quality Check" decision
+/node-type QualityCheck decision
 /node-type node_123 terminal
+/node-type EndProcess process
 ```
 
-### `/node-list [filter]`
-List all nodes in the workflow.
-
-**Parameters:**
-- `[filter]` - Optional: Filter by type or name pattern
-
-**Examples:**
-```
-/node-list
-/node-list process
-/node-list "Data*"
-```
 
 ---
 
@@ -98,84 +103,79 @@ List all nodes in the workflow.
 
 Create and manage tasks associated with workflow nodes.
 
-### `/task-create "name" [node] [priority]`
+### `/task-create "<name>" ["node"] [priority]`
 Create a new task, optionally attached to a node.
 
 **Parameters:**
-- `"name"` - Task name in quotes
-- `[node]` - Optional: Target node name in quotes
+- `"name"` - Task name (must be in quotes)
+- `["node"]` - Optional: Target node name (in quotes if provided)
 - `[priority]` - Optional: Priority level (`high`, `medium`, `low`)
 
-**Examples:**
+**Copy-Paste Examples:**
 ```
 /task-create "Review documentation"
 /task-create "Validate data" "Data Processing"
 /task-create "Critical fix" "Bug Check" high
+/add-task "Testing phase"
+/create-task "Final review" "Quality Check" medium
 ```
 
 ### `/task-delete <identifier>`
 Delete a task from the workflow.
 
 **Parameters:**
-- `<identifier>` - Task name in quotes or task ID
+- `<identifier>` - Task name or task ID
 
-**Examples:**
+**Copy-Paste Examples:**
 ```
 /task-delete "Review documentation"
 /task-delete task_456
+/task-delete ReviewDocumentation
 ```
 
-### `/task-move <task> <target-node>`
+### `/task-move <task> "<target-node>"`
 Move a task to a different node.
 
 **Parameters:**
-- `<task>` - Task name in quotes or task ID
-- `<target-node>` - Target node name in quotes
+- `<task>` - Task name or task ID
+- `"target-node"` - Target node name (must be in quotes)
 
-**Examples:**
+**Copy-Paste Examples:**
 ```
 /task-move "Review documentation" "Quality Check"
 /task-move task_456 "Final Review"
+/task-move ReviewDocumentation "Quality Check"
 ```
 
-### `/task-advance <task> <target-node>`
+### `/task-advance <task> "<target-node>"`
 Advance a task through the workflow to the next node.
 
 **Parameters:**
-- `<task>` - Task name in quotes or task ID
-- `<target-node>` - Next node in workflow process
+- `<task>` - Task name or task ID
+- `"target-node"` - Next node in workflow process (must be in quotes)
 
-**Examples:**
+**Copy-Paste Examples:**
 ```
 /task-advance "Data validation" "Quality Check"
 /task-advance task_456 "Final Processing"
+/task-advance DataValidation "Quality Check"
 ```
 
 ### `/task-priority <task> <priority>`
 Set the priority level of a task.
 
 **Parameters:**
-- `<task>` - Task name in quotes or task ID
-- `<priority>` - Priority level: `high`, `medium`, `low`
+- `<task>` - Task name or task ID
+- `<priority>` - Priority level: `high`, `normal`, `low`, `urgent`
 
-**Examples:**
+**Copy-Paste Examples:**
 ```
 /task-priority "Critical fix" high
 /task-priority "Documentation" low
+/task-priority task_456 urgent
+/task-priority CriticalFix high
 ```
 
-### `/task-list [filter]`
-List all tasks in the workflow.
-
-**Parameters:**
-- `[filter]` - Optional: Filter by priority, node, or name pattern
-
-**Examples:**
-```
-/task-list
-/task-list high
-/task-list "Review*"
-```
 
 ---
 
@@ -183,63 +183,59 @@ List all tasks in the workflow.
 
 Create and manage connections between workflow nodes.
 
-### `/connect <source> <target> [type]`
+### `/connect "<source>" "<target>" [type]`
 Create a flowline connection between two nodes.
 
 **Parameters:**
-- `<source>` - Source node name in quotes
-- `<target>` - Target node name in quotes  
+- `"source"` - Source node name (must be in quotes)
+- `"target"` - Target node name (must be in quotes)
 - `[type]` - Optional: Flowline type (`normal`, `conditional`, `error`)
 
-**Examples:**
+**Copy-Paste Examples:**
 ```
 /connect "Start" "Data Processing"
 /connect "Quality Check" "Error Handler" error
 /connect "Decision Point" "Path A" conditional
+/flowline-create "Process A" "Process B"
 ```
 
-### `/disconnect <source> <target>`
+### `/disconnect "<source>" "<target>"`
 Remove a flowline connection between nodes.
 
 **Parameters:**
-- `<source>` - Source node name in quotes
-- `<target>` - Target node name in quotes
+- `"source"` - Source node name (must be in quotes)
+- `"target"` - Target node name (must be in quotes)
 
-**Examples:**
+**Copy-Paste Examples:**
 ```
 /disconnect "Start" "Old Process"
 /disconnect "Quality Check" "Error Handler"
+/flowline-delete "Process A" "Process B"
 ```
 
-### `/flowline-type <source> <target> <type>`
+### `/flowline-type "<source>" "<target>" <type>`
 Change the type of an existing flowline.
 
 **Parameters:**
-- `<source>` - Source node name in quotes
-- `<target>` - Target node name in quotes
+- `"source"` - Source node name (must be in quotes)
+- `"target"` - Target node name (must be in quotes)
 - `<type>` - New flowline type: `normal`, `conditional`, `error`
 
-**Examples:**
+**Copy-Paste Examples:**
 ```
 /flowline-type "Decision" "Path A" conditional
 /flowline-type "Process" "Error" error
+/flowline-type "Quality Check" "Retry" conditional
 ```
 
 ### `/disconnect all`
 Remove all flowline connections in the workflow.
 
-**Examples:**
+**Copy-Paste Examples:**
 ```
 /disconnect all
 ```
 
-### `/flowline-list`
-List all flowline connections in the workflow.
-
-**Examples:**
-```
-/flowline-list
-```
 
 ---
 
@@ -247,70 +243,64 @@ List all flowline connections in the workflow.
 
 Add, modify, and manage tags on workflow elements.
 
-### `/tag-add <target> <key:value>`
+### `/tag-add "<target>" <tag>`
 Add a tag to a workflow element.
 
 **Parameters:**
-- `<target>` - Element name in quotes (node or task)
-- `<key:value>` - Tag in format `key:value`
+- `"target"` - Element name (must be in quotes)
+- `<tag>` - Tag in any format (key:value, single words, etc.)
 
-**Examples:**
+**Copy-Paste Examples:**
 ```
 /tag-add "Data Processing" urgency:high
 /tag-add "Review task" importance:critical
 /tag-add "Quality Check" stage:testing
+/tag-add "Node 1" priority
+/tag-add "Task A" status:completed
 ```
 
-### `/tag-remove <target> <key>`
+### `/tag-remove "<target>" <tag>`
 Remove a tag from a workflow element.
 
 **Parameters:**
-- `<target>` - Element name in quotes
-- `<key>` - Tag key to remove
+- `"target"` - Element name (must be in quotes)
+- `<tag>` - Tag to remove
 
-**Examples:**
+**Copy-Paste Examples:**
 ```
 /tag-remove "Data Processing" urgency
 /tag-remove "Review task" importance
+/tag-remove "Quality Check" stage:testing
 ```
 
-### `/tag-update <target> <key> <new-value>`
-Update the value of an existing tag.
+### `/tag-create "<name>" [category] [props]`
+Create a new tag definition.
 
 **Parameters:**
-- `<target>` - Element name in quotes
-- `<key>` - Tag key to update
-- `<new-value>` - New tag value
+- `"name"` - Tag name (must be in quotes)
+- `[category]` - Optional: Tag category
+- `[props]` - Optional: Additional properties
 
-**Examples:**
+**Copy-Paste Examples:**
 ```
-/tag-update "Data Processing" urgency medium
-/tag-update "Review task" stage completed
+/tag-create "priority"
+/tag-create "status" workflow
+/tag-create "urgency" system active
 ```
 
-### `/tag-list [target]`
+### `/tag-list [filter]`
 List tags on elements.
 
 **Parameters:**
-- `[target]` - Optional: Specific element name in quotes (lists all if omitted)
+- `[filter]` - Optional: Filter criteria (lists all if omitted)
 
-**Examples:**
+**Copy-Paste Examples:**
 ```
 /tag-list
-/tag-list "Data Processing"
+/tag-list priority
+/tag-list workflow
 ```
 
-### `/tag-search <key:value>`
-Find all elements with a specific tag.
-
-**Parameters:**
-- `<key:value>` - Tag to search for
-
-**Examples:**
-```
-/tag-search urgency:high
-/tag-search stage:testing
-```
 
 ---
 
@@ -318,29 +308,31 @@ Find all elements with a specific tag.
 
 Save, load, and manage entire workflows.
 
-### `/workflow-save [filename]`
+### `/workflow-save ["filename"]`
 Save the current workflow to a file.
 
 **Parameters:**
-- `[filename]` - Optional: Custom filename (auto-generated if omitted)
+- `["filename"]` - Optional: Custom filename in quotes (auto-generated if omitted)
 
-**Examples:**
+**Copy-Paste Examples:**
 ```
 /workflow-save
 /workflow-save "my-process-v2"
 /workflow-save "data-pipeline-workflow"
+/workflow-save "backup-2024"
 ```
 
-### `/workflow-load <filename>`
+### `/workflow-load "<filename>"`
 Load a workflow from a file.
 
 **Parameters:**
-- `<filename>` - Workflow filename to load
+- `"filename"` - Workflow filename to load (must be in quotes)
 
-**Examples:**
+**Copy-Paste Examples:**
 ```
 /workflow-load "my-process-v2"
 /workflow-load "backup-workflow"
+/workflow-load "data-pipeline-workflow"
 ```
 
 ### `/workflow-clear [confirm]`
@@ -349,29 +341,34 @@ Clear all elements from the current workflow.
 **Parameters:**
 - `[confirm]` - Optional: Type `yes` or `confirm` to proceed
 
-**Examples:**
+**Copy-Paste Examples:**
 ```
 /workflow-clear
 /workflow-clear yes
+/workflow-clear confirm
+/workflow-reset
+/workflow-reset yes
 ```
 
 ### `/workflow-export [format]`
 Export workflow in different formats.
 
 **Parameters:**
-- `[format]` - Optional: Export format (`json`, `pdf`, `png`)
+- `[format]` - Optional: Export format (`json`, `png`, `svg`, `pdf`)
 
-**Examples:**
+**Copy-Paste Examples:**
 ```
 /workflow-export
 /workflow-export json
+/workflow-export png
+/workflow-export svg
 /workflow-export pdf
 ```
 
 ### `/workflow-status`
 Show current workflow status and statistics.
 
-**Examples:**
+**Copy-Paste Examples:**
 ```
 /workflow-status
 ```
@@ -379,7 +376,7 @@ Show current workflow status and statistics.
 ### `/workflow-stats`
 Show detailed workflow statistics and metrics.
 
-**Examples:**
+**Copy-Paste Examples:**
 ```
 /workflow-stats
 ```
@@ -393,7 +390,7 @@ Control the Eisenhower Matrix view for task prioritization.
 ### `/matrix-enter`
 Enter Eisenhower Matrix mode for task visualization.
 
-**Examples:**
+**Copy-Paste Examples:**
 ```
 /matrix-enter
 ```
@@ -401,7 +398,7 @@ Enter Eisenhower Matrix mode for task visualization.
 ### `/matrix-exit`
 Exit Eisenhower Matrix mode and return to normal view.
 
-**Examples:**
+**Copy-Paste Examples:**
 ```
 /matrix-exit
 ```
@@ -410,13 +407,15 @@ Exit Eisenhower Matrix mode and return to normal view.
 Move a task to a specific matrix quadrant.
 
 **Parameters:**
-- `<task>` - Task name in quotes or task ID
+- `<task>` - Task name or task ID
 - `<quadrant>` - Target quadrant: `urgent-important`, `urgent-not-important`, `not-urgent-important`, `not-urgent-not-important`
 
-**Examples:**
+**Copy-Paste Examples:**
 ```
 /matrix-move "Critical bug fix" urgent-important
 /matrix-move "Documentation update" not-urgent-not-important
+/matrix-move task_123 urgent-not-important
+/matrix-move CriticalFix urgent-important
 ```
 
 ### `/matrix-show [quadrant]`
@@ -425,10 +424,13 @@ Show information about matrix quadrants.
 **Parameters:**
 - `[quadrant]` - Optional: Specific quadrant to show (shows all if omitted)
 
-**Examples:**
+**Copy-Paste Examples:**
 ```
 /matrix-show
 /matrix-show urgent-important
+/matrix-show urgent-not-important
+/matrix-show not-urgent-important
+/matrix-show not-urgent-not-important
 ```
 
 ---
@@ -437,49 +439,58 @@ Show information about matrix quadrants.
 
 Control the view and navigate through the workflow.
 
-### `/view-center [target]`
+### `/view-center ["target"]`
 Center the view on a specific element or fit all content.
 
 **Parameters:**
-- `[target]` - Optional: Element name in quotes (centers on all if omitted)
+- `["target"]` - Optional: Element name in quotes (centers on all if omitted)
 
-**Examples:**
+**Copy-Paste Examples:**
 ```
 /view-center
 /view-center "Data Processing"
+/view-center "Quality Check"
 ```
 
 ### `/view-zoom <level>`
 Set the zoom level of the workflow view.
 
 **Parameters:**
-- `<level>` - Zoom level: number (0.5-3.0) or keyword (`in`, `out`, `fit`)
+- `<level>` - Zoom level: number (0.5-3.0) or keyword (`in`, `out`, `fit`, `reset`)
 
-**Examples:**
+**Copy-Paste Examples:**
 ```
 /view-zoom 1.5
 /view-zoom in
+/view-zoom out
 /view-zoom fit
+/view-zoom reset
 ```
 
-### `/view-fit`
-Fit all workflow content in the current view.
+### `/view-focus <element>`
+Focus on a specific workflow element.
 
-**Examples:**
+**Parameters:**
+- `<element>` - Element name or ID to focus on
+
+**Copy-Paste Examples:**
 ```
-/view-fit
+/view-focus "Data Processing"
+/view-focus node_123
+/view-focus DataProcessing
 ```
 
 ### `/select <target>`
 Select a specific workflow element.
 
 **Parameters:**
-- `<target>` - Element name in quotes or element ID
+- `<target>` - Element name or element ID
 
-**Examples:**
+**Copy-Paste Examples:**
 ```
 /select "Data Processing"
 /select task_456
+/select DataProcessing
 ```
 
 ### `/select-all [type]`
@@ -488,19 +499,78 @@ Select all elements of a specific type.
 **Parameters:**
 - `[type]` - Optional: Element type (`nodes`, `tasks`, `flowlines`)
 
-**Examples:**
+**Copy-Paste Examples:**
 ```
 /select-all
 /select-all nodes
 /select-all tasks
+/select-all flowlines
 ```
 
 ### `/select-none`
 Clear all current selections.
 
-**Examples:**
+**Copy-Paste Examples:**
 ```
 /select-none
+```
+
+### `/select-by <criteria>`
+Select elements by criteria.
+
+**Parameters:**
+- `<criteria>` - Selection criteria
+
+**Copy-Paste Examples:**
+```
+/select-by type:process
+/select-by priority:high
+/select-by tag:urgent
+```
+
+---
+
+## ⚡ Batch Operations Commands
+
+Perform operations on multiple elements at once.
+
+### `/batch-create <type> <specification>`
+Create multiple elements at once.
+
+**Parameters:**
+- `<type>` - Element type to create (`nodes`, `tasks`)
+- `<specification>` - Creation specification
+
+**Copy-Paste Examples:**
+```
+/batch-create nodes 5
+/batch-create tasks 3
+```
+
+### `/batch-connect \"<source-pattern>\" \"<target-pattern>\"`
+Create multiple flowline connections based on patterns.
+
+**Parameters:**
+- `\"source-pattern\"` - Source node name pattern (must be in quotes)
+- `\"target-pattern\"` - Target node name pattern (must be in quotes)
+
+**Copy-Paste Examples:**
+```
+/batch-connect "Process*" "Check*"
+/batch-connect "Step*" "Next*"
+```
+
+### `/batch-tag \"<element-pattern>\" <tag>`
+Add tags to multiple elements matching a pattern.
+
+**Parameters:**
+- `\"element-pattern\"` - Element name pattern (must be in quotes)
+- `<tag>` - Tag to add
+
+**Copy-Paste Examples:**
+```
+/batch-tag "Process*" stage:development
+/batch-tag "*Check*" importance:critical
 ```
 
 ---
@@ -509,28 +579,30 @@ Clear all current selections.
 
 Find and navigate to workflow elements.
 
-### `/find "search-term"`
-Search for elements by name or content.
+### `/find \"<name>\"`
+Find element by name.
 
 **Parameters:**
-- `"search-term"` - Search term in quotes
+- `\"name\"` - Element name (must be in quotes)
 
-**Examples:**
+**Copy-Paste Examples:**
 ```
-/find "data"
-/find "processing"
+/find "Data Processing"
+/find "Quality Check"
+/find "Process 1"
 ```
 
-### `/goto "element-name"`
-Navigate directly to a specific element.
+### `/goto \"<node>\"`
+Navigate directly to a specific node.
 
 **Parameters:**
-- `"element-name"` - Element name in quotes
+- `\"node\"` - Node name (must be in quotes)
 
-**Examples:**
+**Copy-Paste Examples:**
 ```
 /goto "Data Processing"
 /goto "Quality Check"
+/goto "Process Node"
 ```
 
 ### `/next [type]`
@@ -539,7 +611,7 @@ Navigate to the next element of a type.
 **Parameters:**
 - `[type]` - Optional: Element type to navigate through
 
-**Examples:**
+**Copy-Paste Examples:**
 ```
 /next
 /next node
@@ -552,57 +624,15 @@ Navigate to the previous element of a type.
 **Parameters:**
 - `[type]` - Optional: Element type to navigate through
 
-**Examples:**
+**Copy-Paste Examples:**
 ```
 /previous
 /previous node
 /previous task
 ```
 
----
 
-## ⚡ Batch Operations Commands
 
-Perform operations on multiple elements at once.
-
-### `/batch-create <type> <count>`
-Create multiple elements at once.
-
-**Parameters:**
-- `<type>` - Element type to create (`nodes`, `tasks`)
-- `<count>` - Number of elements to create
-
-**Examples:**
-```
-/batch-create nodes 5
-/batch-create tasks 3
-```
-
-### `/batch-connect "source-pattern" "target-pattern"`
-Create multiple flowline connections based on patterns.
-
-**Parameters:**
-- `"source-pattern"` - Source node name pattern
-- `"target-pattern"` - Target node name pattern
-
-**Examples:**
-```
-/batch-connect "Process*" "Check*"
-/batch-connect "Step*" "Next*"
-```
-
-### `/batch-tag "element-pattern" <key:value>`
-Add tags to multiple elements matching a pattern.
-
-**Parameters:**
-- `"element-pattern"` - Element name pattern
-- `<key:value>` - Tag to add
-
-**Examples:**
-```
-/batch-tag "Process*" stage:development
-/batch-tag "*Check*" importance:critical
-```
 
 ---
 
@@ -616,30 +646,27 @@ Show help information for commands.
 **Parameters:**
 - `[command]` - Optional: Specific command to get help for
 
-**Examples:**
+**Copy-Paste Examples:**
 ```
 /help
 /help node-create
 /help workflow-save
+/help task
+/help matrix
 ```
 
-### `/commands [category]`
-List available commands by category.
+### `/commands`
+List all available commands.
 
-**Parameters:**
-- `[category]` - Optional: Command category (`node`, `task`, `workflow`, etc.)
-
-**Examples:**
+**Copy-Paste Examples:**
 ```
 /commands
-/commands node
-/commands workflow
 ```
 
 ### `/status`
 Show system status and active features.
 
-**Examples:**
+**Copy-Paste Examples:**
 ```
 /status
 ```
@@ -648,36 +675,37 @@ Show system status and active features.
 
 ## 💡 Usage Tips
 
+### **Quote Handling**
+- **Recommended:** Use quotes for names with spaces: `"My Process Node"`
+- **Automatic:** System converts quotes to safe unquoted versions internally
+- **Flexible:** Both `"Data Processing"` and `DataProcessing` work
+
 ### **Command Shortcuts**
-- Use quotes around names with spaces: `"My Process Node"`
 - Element IDs can substitute for names: `node_123` instead of `"Process 1"`
 - Commands are case-insensitive: `/NODE-CREATE` works like `/node-create`
-
-### **Pattern Matching**
-- Use `*` for wildcards: `"Process*"` matches "Process A", "Process B", etc.
-- Use `?` for single character: `"Step?"` matches "Step1", "Step2", etc.
+- Hyphens and underscores are interchangeable: `/node-create` = `/node_create`
 
 ### **Common Workflows**
 ```
 # Create a simple linear process
 /node-create process "Start"
-/node-create process "Middle" 
+/node-create process "Middle"
 /node-create terminal "End"
 /connect "Start" "Middle"
 /connect "Middle" "End"
 
-# Set up Eisenhower Matrix workflow
+# Set up task management
 /task-create "Critical bug" "Start" high
-/tag-add "Critical bug" urgency:urgent
-/tag-add "Critical bug" importance:important
+/tag-add "Critical bug" urgency:high
 /matrix-enter
+/matrix-move "Critical bug" urgent-important
 ```
 
 ### **Error Recovery**
 - Type `/help` if a command fails
 - Use `/workflow-status` to check current state
 - Use `/select-none` to clear problematic selections
-- Use `/view-fit` to reset view if lost
+- Try unquoted names if quoted names don't work: `DataProcessing` instead of `"Data Processing"`
 
 ### **Best Practices**
 - Save frequently with `/workflow-save`
@@ -689,21 +717,25 @@ Show system status and active features.
 
 ## 🔧 Command Status
 
-### **✅ Implemented Commands**
-- `/help` - Basic help system
+### **✅ Fully Implemented (Parsing)**
+- `/help` - Complete help system with all categories
 - `/status` - System status
 - Note-taking commands (`/note-*`, `/opp-*`)
+- All workflow command parsing and validation
+
+### **📋 Commands Available (May Show "Not Implemented")**
+All commands listed in this document are recognized and parsed correctly, but some may show "not implemented" during execution as the backend functionality is still in development.
 
 ### **🚧 In Development**
-- All workflow commands listed above
-- Batch operations
-- Advanced search and filtering
+- Workflow command execution backends
+- Full node, task, and flowline operations
+- Matrix mode functionality
+- Batch operations execution
 
-### **📋 Planned Features**
-- Command auto-completion
-- Interactive command builder
-- Workflow templates
-- Advanced export options
+### **⚠️ Important Notes**
+- Commands will parse successfully but may not execute fully
+- Use `/workflow-status` to check what's actually working
+- Some commands removed from documentation (like `/node-list`) were not implemented
 
 ---
 

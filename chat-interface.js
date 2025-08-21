@@ -474,6 +474,21 @@ class ChatInterface {
             // Execute command through MCP Bridge
             const result = await this.mcpBridge.executeNoteCommand(parseResult);
             
+            // Debug logging for help command responses
+            if (parseResult.action === 'show_help') {
+                console.log(`🔍 Help command result:`, result);
+                if (result.type === 'general_help') {
+                    console.log(`📊 Categories found:`, Object.keys(result.categories || {}));
+                    console.log(`📝 Total descriptions:`, Object.keys(result.descriptions || {}).length);
+                    
+                    // Check for workflow commands specifically
+                    const nodeCommands = Object.keys(result.descriptions || {}).filter(cmd => cmd.startsWith('/node'));
+                    const taskCommands = Object.keys(result.descriptions || {}).filter(cmd => cmd.startsWith('/task'));
+                    console.log(`🏗️  Node commands in result:`, nodeCommands.length, nodeCommands);
+                    console.log(`📋 Task commands in result:`, taskCommands.length, taskCommands);
+                }
+            }
+            
             if (result.status === 'error') {
                 this.addMessage('error', `Command failed: ${result.error}`);
             } else {
@@ -723,7 +738,11 @@ class ChatInterface {
     formatHelpResponse(helpResult) {
         if (helpResult.type === 'general_help') {
             let response = "**Available Commands:**\n\n";
+            
+            console.log(`🔧 Formatting help response with ${Object.keys(helpResult.categories).length} categories`);
+            
             for (const [category, commands] of Object.entries(helpResult.categories)) {
+                console.log(`📁 Processing category: ${category} with ${commands.length} commands`);
                 response += `**${category}:**\n`;
                 commands.forEach(cmd => {
                     response += `• ${cmd} - ${helpResult.descriptions[cmd]}\n`;
@@ -734,6 +753,11 @@ class ChatInterface {
             helpResult.getting_started.forEach(example => {
                 response += `• ${example}\n`;
             });
+            
+            console.log(`💬 Final response length: ${response.length} characters`);
+            console.log(`💬 First 200 chars: "${response.substring(0, 200)}"`);
+            console.log(`💬 Last 200 chars: "${response.substring(response.length - 200)}"`);
+            
             this.addMessage('assistant', response);
         } else if (helpResult.type === 'specific_help') {
             let response = `**Help for "${helpResult.query}":**\n\n`;
@@ -773,7 +797,7 @@ class ChatInterface {
                 options: {
                     temperature: 0.7,
                     top_p: 0.9,
-                    max_tokens: 500,
+                    max_tokens: 1000,
                     stop: ['User:', 'Human:', '\\n\\n']
                 }
             })
@@ -886,6 +910,13 @@ class ChatInterface {
     }
     
     addMessage(type, content) {
+        // Debug logging for help responses
+        if (type === 'assistant' && content.includes('**Available Commands:**')) {
+            console.log(`🖥️  addMessage received help content: ${content.length} characters`);
+            console.log(`🖥️  Content starts with: "${content.substring(0, 100)}"`);
+            console.log(`🖥️  Content ends with: "${content.substring(content.length - 100)}"`);
+        }
+        
         const messageDiv = document.createElement('div');
         messageDiv.className = `chat-message ${type}`;
         
@@ -903,7 +934,40 @@ class ChatInterface {
                 .replace(/\*([^*]+)\*/g, '<em>$1</em>')
                 .replace(/• /g, '• '); // Preserve bullet points
             
+            // Debug logging for help responses after formatting
+            if (type === 'assistant' && content.includes('**Available Commands:**')) {
+                console.log(`🎨 Formatted content: ${formattedContent.length} characters`);
+                console.log(`🎨 Formatted ends with: "${formattedContent.substring(formattedContent.length - 200)}"`);
+            }
+            
             contentDiv.innerHTML = formattedContent;
+            
+            // Debug logging after DOM insertion
+            if (type === 'assistant' && content.includes('**Available Commands:**')) {
+                console.log(`📄 DOM innerHTML: ${contentDiv.innerHTML.length} characters`);
+                console.log(`📄 DOM textContent: ${contentDiv.textContent.length} characters`);
+                console.log(`📄 DOM ends with: "${contentDiv.textContent.substring(contentDiv.textContent.length - 100)}"`);
+                
+                // Check if the DOM is actually displaying all content
+                const actuallyVisible = contentDiv.offsetHeight < contentDiv.scrollHeight;
+                console.log(`🖼️  Content is clipped (scrollHeight > offsetHeight): ${actuallyVisible}`);
+                console.log(`🖼️  Element dimensions: ${contentDiv.offsetWidth}x${contentDiv.offsetHeight}, scroll: ${contentDiv.scrollWidth}x${contentDiv.scrollHeight}`);
+                
+                // Test if we can find workflow commands in the rendered DOM
+                const domText = contentDiv.textContent;
+                const hasNodeCommands = domText.includes('Node Commands:');
+                const hasTaskCommands = domText.includes('Task Commands:');
+                const hasWorkflowCommands = domText.includes('Workflow Commands:');
+                console.log(`🔍 DOM contains Node Commands: ${hasNodeCommands}`);
+                console.log(`🔍 DOM contains Task Commands: ${hasTaskCommands}`);  
+                console.log(`🔍 DOM contains Workflow Commands: ${hasWorkflowCommands}`);
+                
+                // Log where the content appears to end
+                const lines = domText.split('\n');
+                const lastNonEmptyLine = lines.filter(line => line.trim()).pop();
+                console.log(`📝 Last non-empty line in DOM: "${lastNonEmptyLine}"`);
+                console.log(`📝 Total lines in DOM: ${lines.length}`);
+            }
         }
         
         messageDiv.appendChild(contentDiv);
@@ -915,6 +979,23 @@ class ChatInterface {
         messageDiv.appendChild(timestamp);
         
         this.chatMessages.appendChild(messageDiv);
+        
+        // Fix for help command display - ensure proper rendering
+        if (type === 'assistant' && content.includes('**Available Commands:**')) {
+            // Force reflow to ensure element is properly rendered
+            setTimeout(() => {
+                console.log(`🔄 Post-render check: ${contentDiv.offsetWidth}x${contentDiv.offsetHeight}, scroll: ${contentDiv.scrollWidth}x${contentDiv.scrollHeight}`);
+                const isStillClipped = contentDiv.scrollHeight > contentDiv.offsetHeight;
+                console.log(`🔄 Content clipped after render: ${isStillClipped}`);
+                
+                if (isStillClipped) {
+                    console.log(`🛠️  Applying height fix for clipped help content`);
+                    contentDiv.style.maxHeight = 'none';
+                    contentDiv.style.height = 'auto';
+                    contentDiv.style.overflow = 'visible';
+                }
+            }, 100);
+        }
         
         // Scroll to bottom
         this.chatMessages.scrollTop = this.chatMessages.scrollHeight;

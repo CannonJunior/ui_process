@@ -75,59 +75,59 @@ class ChatCommandServer:
         # Command descriptions for help system
         self.command_descriptions = {
             '/note': 'General note operations',
-            '/note-create <content>': 'Create a new note',
-            '/note-search <query>': 'Search notes by content',
-            '/note-find <query>': 'Find notes (alias for search)',
-            '/note-tag <note_id> <tags>': 'Add tags to a note',
+            '/note-create &lt;content&gt;': 'Create a new note',
+            '/note-search &lt;query&gt;': 'Search notes by content',
+            '/note-find &lt;query&gt;': 'Find notes (alias for search)',
+            '/note-tag &lt;note_id&gt; &lt;tags&gt;': 'Add tags to a note',
             '/note-list [filters]': 'List notes with optional filters',
-            '/note-link <note_id> <target_id>': 'Link note to opportunity/task',
+            '/note-link &lt;note_id&gt; &lt;target_id&gt;': 'Link note to opportunity/task',
             
             '/opp': 'General opportunity operations',
-            '/opp-create <title>': 'Create a new opportunity',
+            '/opp-create &lt;title&gt;': 'Create a new opportunity',
             '/opp-list [filters]': 'List opportunities',
-            '/opp-link <opp_id> <target_id>': 'Link opportunity to task/workflow',
-            '/opp-search <query>': 'Search opportunities',
+            '/opp-link &lt;opp_id&gt; &lt;target_id&gt;': 'Link opportunity to task/workflow',
+            '/opp-search &lt;query&gt;': 'Search opportunities',
             
-            '/task-note <task_id> <content>': 'Create note for specific task',
-            '/task-link <task_id> <note_id>': 'Link task to note',
+            '/task-note &lt;task_id&gt; &lt;content&gt;': 'Create note for specific task',
+            '/task-link &lt;task_id&gt; &lt;note_id&gt;': 'Link task to note',
             
-            '/analyze <text>': 'Analyze text for potential associations',
+            '/analyze &lt;text&gt;': 'Analyze text for potential associations',
             '/suggest [context]': 'Get suggestions for current context',
-            '/associate <id1> <id2>': 'Create association between items',
+            '/associate &lt;id1&gt; &lt;id2&gt;': 'Create association between items',
             
             '/help [command]': 'Show help information',
             '/commands': 'List all available commands',
             '/status': 'Show system status',
             
             # Workflow Commands (Node Management)
-            '/node-create <type> [name] [x,y]': 'Create a new node (process, decision, terminal)',
-            '/node-delete <identifier>': 'Delete a node by name or ID',
-            '/node-rename <old> <new>': 'Rename a node',
-            '/node-move <node> <x,y>': 'Move a node to position',
-            '/node-type <node> <type>': 'Change node type',
+            '/node-create &lt;type&gt; [name] [x,y]': 'Create a new node (process, decision, terminal)',
+            '/node-delete &lt;identifier&gt;': 'Delete a node by name or ID',
+            '/node-rename &lt;old&gt; &lt;new&gt;': 'Rename a node',
+            '/node-move &lt;node&gt; &lt;x,y&gt;': 'Move a node to position',
+            '/node-type &lt;node&gt; &lt;type&gt;': 'Change node type',
             
             # Workflow Commands (Task Management)
-            '/task-create <name> [node] [priority]': 'Create a new task',
-            '/task-delete <identifier>': 'Delete a task',
-            '/task-move <task> <target-node>': 'Move task to node',
-            '/task-advance <task> <target-node>': 'Advance task to node',
-            '/task-priority <task> <priority>': 'Set task priority (low, normal, high, urgent)',
+            '/task-create &lt;name&gt; [node] [priority]': 'Create a new task',
+            '/task-delete &lt;identifier&gt;': 'Delete a task',
+            '/task-move &lt;task&gt; &lt;target-node&gt;': 'Move task to node',
+            '/task-advance &lt;task&gt; &lt;target-node&gt;': 'Advance task to node',
+            '/task-priority &lt;task&gt; &lt;priority&gt;': 'Set task priority (low, normal, high, urgent)',
             
             # Workflow Commands (Flowlines)
-            '/connect <source> <target> [type]': 'Create flowline between nodes',
-            '/disconnect <source> <target>': 'Remove flowline',
-            '/flowline-type <source> <target> <type>': 'Change flowline type',
+            '/connect &lt;source&gt; &lt;target&gt; [type]': 'Create flowline between nodes',
+            '/disconnect &lt;source&gt; &lt;target&gt;': 'Remove flowline',
+            '/flowline-type &lt;source&gt; &lt;target&gt; &lt;type&gt;': 'Change flowline type',
             '/disconnect all': 'Remove all flowlines',
             
             # Workflow Commands (Tags)
-            '/tag-create <name> [category] [props]': 'Create a new tag',
-            '/tag-add <tag> <element>': 'Add tag to element',
-            '/tag-remove <tag> <element>': 'Remove tag from element',
+            '/tag-create &lt;name&gt; [category] [props]': 'Create a new tag',
+            '/tag-add &lt;tag&gt; &lt;element&gt;': 'Add tag to element',
+            '/tag-remove &lt;tag&gt; &lt;element&gt;': 'Remove tag from element',
             '/tag-list [filter]': 'List tags',
             
             # Workflow Commands (Workflow Management)
             '/workflow-save [filename]': 'Save current workflow',
-            '/workflow-load <filename>': 'Load workflow file',
+            '/workflow-load &lt;filename&gt;': 'Load workflow file',
             '/workflow-export [format]': 'Export workflow (json, png, svg, pdf)',
             '/workflow-clear [confirm]': 'Clear/reset workflow',
             '/workflow-status': 'Show workflow statistics',
@@ -136,18 +136,18 @@ class ChatCommandServer:
             # Workflow Commands (Matrix & Views)
             '/matrix-enter': 'Enter Eisenhower Matrix mode',
             '/matrix-exit': 'Exit Eisenhower Matrix mode',
-            '/matrix-move <task> <quadrant>': 'Move task in matrix',
+            '/matrix-move &lt;task&gt; &lt;quadrant&gt;': 'Move task in matrix',
             '/matrix-show [quadrant]': 'Show matrix quadrant',
             
             # Workflow Commands (View & Navigation)
-            '/view-zoom <level>': 'Zoom view (in, out, fit, reset)',
+            '/view-zoom &lt;level&gt;': 'Zoom view (in, out, fit, reset)',
             '/view-center [node]': 'Center view on node',
-            '/view-focus <element>': 'Focus on element',
-            '/select <element>': 'Select element',
+            '/view-focus &lt;element&gt;': 'Focus on element',
+            '/select &lt;element&gt;': 'Select element',
             '/select-all [type]': 'Select all elements of type',
             '/select-none': 'Clear selection',
-            '/goto <node>': 'Navigate to node',
-            '/find <name>': 'Find element by name'
+            '/goto &lt;node&gt;': 'Navigate to node',
+            '/find &lt;name&gt;': 'Find element by name'
         }
     
     @mcp.tool(
