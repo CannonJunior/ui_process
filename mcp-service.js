@@ -21,6 +21,44 @@ class MCPService {
         this.setupRoutes();
         this.setupErrorHandling();
     }
+    
+    preprocessCommandMessage(message) {
+        if (!message || !message.startsWith('/')) {
+            return message;
+        }
+        // Handle common quote patterns that cause JSON parsing issues
+        // Convert quoted parameters to unquoted ones for better compatibility
+        
+        // Replace all quoted content with safe unquoted versions
+        let processedMessage = message;
+        
+        // Keep processing until no more quoted content is found
+        let hasQuotes = true;
+        let iterations = 0;
+        const maxIterations = 10; // Prevent infinite loops
+        
+        while (hasQuotes && iterations < maxIterations) {
+            iterations++;
+            const beforeProcessing = processedMessage;
+            
+            // Pattern for any "quoted content" in the message
+            processedMessage = processedMessage.replace(/"([^"]+)"/g, (match, content) => {
+                // Convert spaces and special characters to safe equivalents
+                const safeContent = content
+                    .replace(/\s+/g, '_')
+                    .replace(/[^\w-_]/g, '')
+                    .replace(/^_+|_+$/g, ''); // Remove leading/trailing underscores
+                
+                // Ensure it's not empty
+                return safeContent || 'unnamed';
+            });
+            
+            // Check if we made any changes
+            hasQuotes = beforeProcessing !== processedMessage && /"/.test(processedMessage);
+        }
+        
+        return processedMessage;
+    }
 
     setupMiddleware() {
         // Enable CORS for browser requests
@@ -69,7 +107,9 @@ class MCPService {
                     return res.status(400).json({ error: 'Message is required' });
                 }
 
-                const result = await this.mcpBridge.parseMessage(message);
+                // Preprocess the message to handle quoted parameters
+                const processedMessage = this.preprocessCommandMessage(message);
+                const result = await this.mcpBridge.parseMessage(processedMessage);
                 res.json(result);
             } catch (error) {
                 console.error('Error parsing message:', error);
@@ -160,7 +200,9 @@ class MCPService {
                     return res.status(400).json({ error: 'Message is required' });
                 }
 
-                const result = await this.mcpBridge.parseWorkflowCommand(message);
+                // Preprocess the message to handle quoted parameters
+                const processedMessage = this.preprocessCommandMessage(message);
+                const result = await this.mcpBridge.parseWorkflowCommand(processedMessage);
                 res.json(result);
             } catch (error) {
                 console.error('Error parsing workflow command:', error);

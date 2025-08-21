@@ -49,27 +49,27 @@ class WorkflowCommandServer:
             'node-type': r'^/node[-_]?type\s+(.+)\s+(\w+)$',
             
             # Task Management Commands
-            'task-create': r'^/(?:task[-_]?create|add[-_]?task|create[-_]?task)\s+"([^"]+)"(?:\s+"([^"]+)")?(?:\s+(\w+))?$',
+            'task-create': r'^/(?:task[-_]?create|add[-_]?task|create[-_]?task)\s+(\w+)(?:\s+(\w+))?(?:\s+(\w+))?$',
             'task-delete': r'^/task[-_]?delete\s+(.+)$',
             'task-move': r'^/task[-_]?move\s+(.+)\s+"([^"]+)"$',
             'task-advance': r'^/task[-_]?advance\s+(.+)\s+"([^"]+)"$',
             'task-priority': r'^/task[-_]?priority\s+(.+)\s+(\w+)$',
             
             # Flowline Management Commands
-            'flowline-create': r'^/(?:flowline[-_]?create|connect)\s+"([^"]+)"\s+"([^"]+)"(?:\s+(\w+))?$',
-            'flowline-delete': r'^/(?:flowline[-_]?delete|disconnect)\s+"([^"]+)"\s+"([^"]+)"$',
-            'flowline-type': r'^/flowline[-_]?type\s+"([^"]+)"\s+"([^"]+)"\s+(\w+)$',
+            'flowline-create': r'^/(?:flowline[-_]?create|connect)\s+(\w+)\s+(\w+)(?:\s+(\w+))?$',
+            'flowline-delete': r'^/(?:flowline[-_]?delete|disconnect)\s+(\w+)\s+(\w+)$',
+            'flowline-type': r'^/flowline[-_]?type\s+(\w+)\s+(\w+)\s+(\w+)$',
             'disconnect-all': r'^/disconnect\s+all$',
             
             # Tag Management Commands
-            'tag-create': r'^/tag[-_]?create\s+"([^"]+)"(?:\s+(\w+))?(?:\s+(.+))?$',
-            'tag-add': r'^/tag[-_]?add\s+"([^"]+)"\s+(.+)$',
-            'tag-remove': r'^/tag[-_]?remove\s+"([^"]+)"\s+(.+)$',
+            'tag-create': r'^/tag[-_]?create\s+(\w+)(?:\s+(\w+))?(?:\s+(.+))?$',
+            'tag-add': r'^/tag[-_]?add\s+(\w+)\s+(.+)$',
+            'tag-remove': r'^/tag[-_]?remove\s+(\w+)\s+(.+)$',
             'tag-list': r'^/tag[-_]?list(?:\s+(.+))?$',
             
             # Workflow Management Commands
-            'workflow-save': r'^/workflow[-_]?save(?:\s+"([^"]+)")?$',
-            'workflow-load': r'^/workflow[-_]?load\s+"([^"]+)"$',
+            'workflow-save': r'^/workflow[-_]?save(?:\s+(\w+))?$',
+            'workflow-load': r'^/workflow[-_]?load\s+(\w+)$',
             'workflow-export': r'^/workflow[-_]?export(?:\s+(\w+))?$',
             'workflow-clear': r'^/workflow[-_]?(?:clear|reset)(?:\s+(yes|confirm))?$',
             'workflow-status': r'^/workflow[-_]?status$',
@@ -93,15 +93,15 @@ class WorkflowCommandServer:
             'select-by': r'^/select[-_]?by\s+(.+)$',
             
             # Navigation Commands
-            'goto': r'^/goto\s+"([^"]+)"$',
-            'find': r'^/find\s+"([^"]+)"$',
+            'goto': r'^/goto\s+(\w+)$',
+            'find': r'^/find\s+(\w+)$',
             'next': r'^/next(?:\s+(\w+))?$',
             'previous': r'^/previous(?:\s+(\w+))?$',
             
             # Batch Operations
             'batch-create': r'^/batch[-_]?create\s+(\w+)\s+(.+)$',
-            'batch-connect': r'^/batch[-_]?connect\s+"([^"]+)"\s+"([^"]+)"$',
-            'batch-tag': r'^/batch[-_]?tag\s+"([^"]+)"\s+(.+)$',
+            'batch-connect': r'^/batch[-_]?connect\s+(\w+)\s+(\w+)$',
+            'batch-tag': r'^/batch[-_]?tag\s+(\w+)\s+(.+)$',
         }
         
         # Command descriptions for help system
