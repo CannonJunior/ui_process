@@ -84,7 +84,7 @@ export class ModalManager {
         this.domService.addEventListener(this.tagModalCancel, 'click', () => this.hideTagModal());
         this.domService.addEventListener(this.tagModalAdd, 'click', () => this.addTagToTask());
         this.domService.addEventListener(this.tagModalSave, 'click', () => this.saveTaskTags());
-        this.domService.addEventListener(this.tagCategoryDropdown, 'change', (e) => this.handleTagCategoryChange(e));
+        // Note: Tag category change is handled by TagManager via script.js delegation
 
         // Click outside to close
         this.domService.addEventListener(this.tagModal, 'click', (e) => {

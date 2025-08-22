@@ -47,11 +47,19 @@ class TagManager {
         this.tagCompletedInput = this.domService.getElement('tagCompletedInput');
         
         // Validate critical tag elements
-        const requiredElements = ['canvas', 'currentTags', 'tagCategoryDropdown'];
+        const requiredElements = ['canvas', 'currentTags', 'tagCategoryDropdown', 'tagOptionDropdown'];
         const missingElements = requiredElements.filter(id => !this[id]);
         
         if (missingElements.length > 0) {
-            console.warn(`TagManager: Some tag elements missing: ${missingElements.join(', ')}`);
+            console.error(`TagManager: Critical tag elements missing: ${missingElements.join(', ')}`);
+            console.error('TagManager element states:', {
+                canvas: !!this.canvas,
+                currentTags: !!this.currentTags,
+                tagCategoryDropdown: !!this.tagCategoryDropdown,
+                tagOptionDropdown: !!this.tagOptionDropdown,
+                tagDateInput: !!this.tagDateInput,
+                tagDescriptionInput: !!this.tagDescriptionInput
+            });
         }
     }
     
@@ -642,6 +650,7 @@ class TagManager {
      */
     handleTagCategoryChange(e) {
         const selectedCategory = e.target.value;
+        console.log('TagManager.handleTagCategoryChange called with category:', selectedCategory);
         
         if (!selectedCategory) {
             if (this.tagOptionDropdown) {
@@ -659,10 +668,13 @@ class TagManager {
             
             if (success) {
                 this.tagOptionDropdown.disabled = false;
+                console.log(`TagManager: Successfully populated ${selectedCategory} options`);
             } else {
                 console.warn(`TagManager: No options found for category: ${selectedCategory}`);
                 this.tagOptionDropdown.innerHTML = '<option value="">No options available</option>';
             }
+        } else {
+            console.error('TagManager: tagOptionDropdown element not found');
         }
         
         console.log(`TagManager: Category changed to ${selectedCategory}`);

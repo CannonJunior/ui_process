@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Tag Modal Issue</title>
+</head>
+<body>
+    <h2>Steps to Test Tag Modal Issue:</h2>
+    <ol>
+        <li>Open the main application at <a href="http://localhost:8000" target="_blank">http://localhost:8000</a></li>
+        <li>Create a new task using right-click → "Add Task to Node"</li>
+        <li>Right-click on the task and select "Manage Tags" or similar option</li>
+        <li>In the "Manage Task Tags" modal, select "Stage" from the first dropdown</li>
+        <li>Check if the second dropdown populates with stage options</li>
+        <li>Open browser Developer Tools (F12) and check the Console for debug messages</li>
+    </ol>
+    
+    <h3>Expected Debug Output:</h3>
+    <pre>
+TagManager.handleTagCategoryChange called with category: stage
+tagOptionDropdown element: [HTMLSelectElement object]
+Attempting to populate dropdown for path: tagSystem.options.stage
+ConfigService.populateDropdown called with path: tagSystem.options.stage
+Extracted category from path: stage
+Retrieved options for category: [array of stage options]
+About to populate dropdown with options: [...]
+Successfully populated dropdown
+populateDropdown success: true
+Successfully populated dropdown, enabled it
+    </pre>
+    
+    <h3>If the issue persists, look for:</h3>
+    <ul>
+        <li>Null/undefined tagOptionDropdown element</li>
+        <li>Empty or null options array</li>
+        <li>Config path not matching expected format</li>
+        <li>Multiple event handlers conflicting</li>
+    </ul>
+</body>
+</html>

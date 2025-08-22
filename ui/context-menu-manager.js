@@ -428,14 +428,29 @@ class ContextMenuManager {
     handleContextMenuAction(action) {
         console.log(`ContextMenuManager: Node context action: ${action}`);
         
+        // Preserve the selected element before context menu is hidden
+        const selectedElement = this.selectedElement;
+        
         switch (action) {
             case 'flowline':
+                // Ensure selectedNode is set for flowline creation
+                if (selectedElement) {
+                    this.app.selectedNode = selectedElement;
+                }
                 this.app.startFlowlineCreation();
                 break;
             case 'rename':
+                // Ensure selectedNode is set for rename operation
+                if (selectedElement) {
+                    this.app.selectedNode = selectedElement;
+                }
                 this.app.renameNode();
                 break;
             case 'delete':
+                // Ensure selectedNode is set for delete operation
+                if (selectedElement) {
+                    this.app.selectedNode = selectedElement;
+                }
                 this.app.deleteNode();
                 break;
             default:

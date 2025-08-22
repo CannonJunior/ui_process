@@ -428,7 +428,20 @@ class ProcessFlowDesigner {
     
     
     renameNode() {
-        const textElement = this.selectedNode.querySelector('.node-text');
+        if (!this.selectedNode) {
+            console.error('No node selected for renaming');
+            return;
+        }
+        
+        // Capture the selected node in a local variable to avoid closure issues
+        const nodeToRename = this.selectedNode;
+        const textElement = nodeToRename.querySelector('.node-text');
+        
+        if (!textElement) {
+            console.error('No .node-text element found in selected node');
+            return;
+        }
+        
         const currentText = textElement.textContent;
         
         const input = document.createElement('input');
@@ -437,21 +450,23 @@ class ProcessFlowDesigner {
         input.value = currentText;
         
         // Replace the text element with the input
-        this.selectedNode.replaceChild(input, textElement);
+        nodeToRename.replaceChild(input, textElement);
         input.focus();
         input.select();
         
         const finishRename = () => {
             textElement.textContent = input.value || currentText;
-            this.selectedNode.replaceChild(textElement, input);
+            nodeToRename.replaceChild(textElement, input);
             
             // Update next-action-slot position if this is a task node
-            if (this.selectedNode.dataset.type === 'task') {
+            if (nodeToRename.dataset.type === 'task') {
                 // Add small delay to allow DOM to update size
                 setTimeout(() => {
-                    this.updateNextActionSlotPosition(this.selectedNode);
+                    this.updateNextActionSlotPosition(nodeToRename);
                 }, 10);
             }
+            
+            console.log(`Node ${nodeToRename.dataset.id} renamed to: "${textElement.textContent}"`);
         };
         
         input.addEventListener('blur', finishRename);
@@ -997,19 +1012,103 @@ class ProcessFlowDesigner {
         }
     }
     
+    /**
+     * Enhanced text extraction for nodes to handle all node types properly
+     * @param {HTMLElement} node - The node element
+     * @returns {string} Extracted text content
+     */
+    extractNodeText(node) {
+        if (!node) {
+            console.log('🔍 extractNodeText: node is null/undefined');
+            return '';
+        }
+        
+        console.log(`🔍 extractNodeText: Processing node ID=${node.dataset.id}, Type=${node.dataset.type}`);
+        console.log(`🔍 extractNodeText: Node className="${node.className}"`);
+        
+        // Standardized text extraction - treat all node types uniformly
+        const textElement = node.querySelector('.node-text');
+        console.log(`🔍 extractNodeText: .node-text element found: ${!!textElement}`);
+        
+        if (textElement) {
+            console.log(`🔍 extractNodeText: .node-text textContent: "${textElement.textContent}"`);
+            console.log(`🔍 extractNodeText: .node-text trimmed: "${textElement.textContent?.trim()}"`);
+        }
+        
+        if (textElement && textElement.textContent && textElement.textContent.trim()) {
+            // Primary method: extract from .node-text element
+            const extractedText = textElement.textContent.trim();
+            console.log(`✅ extractNodeText: Successfully extracted: "${extractedText}"`);
+            return extractedText;
+        } else {
+            // Uniform fallback for all node types when .node-text is missing or empty
+            const nodeType = node.dataset.type || 'Node';
+            const nodeId = node.dataset.id || '';
+            const fallbackText = `${nodeType.charAt(0).toUpperCase() + nodeType.slice(1)} ${nodeId}`;
+            
+            console.warn(`⚠️ extractNodeText: Node ${node.dataset.id} (${node.dataset.type}) missing or empty .node-text element, using fallback: "${fallbackText}"`);
+            return fallbackText;
+        }
+    }
+
     saveWorkflow() {
-        console.log(`Debug: Saving workflow. this.nodes has ${this.nodes.length} elements:`, this.nodes.map(n => ({ id: n.dataset.id, type: n.dataset.type })));
-        console.log(`Debug: this.taskNodes has ${this.taskNodes.length} elements:`, this.taskNodes.map(n => ({ id: n.dataset.id, type: n.dataset.type })));
+        console.log(`\n🚀 SAVE WORKFLOW STARTED`);
+        console.log(`📊 SAVE: this.nodes has ${this.nodes.length} elements:`, this.nodes.map(n => ({ id: n.dataset.id, type: n.dataset.type })));
+        console.log(`📊 SAVE: this.taskNodes has ${this.taskNodes.length} elements:`, this.taskNodes.map(n => ({ id: n.dataset.id, type: n.dataset.type })));
+        
+        // Show what's actually in the DOM
+        const allDOMNodes = Array.from(document.querySelectorAll('.node:not(.task-banner), .task-banner'));
+        console.log(`🌐 SAVE: Found ${allDOMNodes.length} total nodes in DOM:`);
+        allDOMNodes.forEach((node, index) => {
+            const textElement = node.querySelector('.node-text');
+            const currentText = textElement ? textElement.textContent : 'NO .node-text';
+            console.log(`  DOM Node ${index + 1}: ID=${node.dataset.id}, Type=${node.dataset.type}, Text="${currentText}"`);
+        });
+        
+        // Ensure we capture ALL nodes, even if there are tracking issues
+        // Find all DOM nodes and cross-reference with tracked nodes
+        const trackedNodeIds = new Set([
+            ...this.nodes.map(n => n.dataset.id),
+            ...this.taskNodes.map(n => n.dataset.id)
+        ]);
+        
+        console.log(`🔗 SAVE: Tracked node IDs:`, Array.from(trackedNodeIds));
+        
+        // Add any untracked nodes to the appropriate array
+        let untrackedCount = 0;
+        allDOMNodes.forEach(node => {
+            if (!trackedNodeIds.has(node.dataset.id)) {
+                console.warn(`❗ SAVE: Found untracked node during save: ID=${node.dataset.id}, Type=${node.dataset.type}`);
+                if (node.dataset.type === 'task') {
+                    this.taskNodes.push(node);
+                } else {
+                    this.nodes.push(node);
+                }
+                untrackedCount++;
+            }
+        });
+        
+        if (untrackedCount > 0) {
+            console.log(`🔧 SAVE: Fixed tracking for ${untrackedCount} nodes during save`);
+        }
+        
+        console.log(`\n📝 SAVE: Starting node processing...`)
         
         const workflow = {
             version: "1.1",
             timestamp: new Date().toISOString(),
             nodeCounter: this.nodeCounter,
-            nodes: [...new Set([...this.nodes, ...this.taskNodes])].map(node => {
+            nodes: [...new Set([...this.nodes, ...this.taskNodes])].map((node, index) => {
+                console.log(`\n📝 SAVE: Processing node ${index + 1}/${[...new Set([...this.nodes, ...this.taskNodes])].length}`);
+                console.log(`📝 SAVE: Node ID=${node.dataset.id}, Type=${node.dataset.type}`);
+                
+                const extractedText = this.extractNodeText(node);
+                console.log(`📝 SAVE: Final text for node ${node.dataset.id}: "${extractedText}"`);
+                
                 const nodeData = {
                     id: node.dataset.id,
                     type: node.dataset.type,
-                    text: node.querySelector('.node-text').textContent,
+                    text: extractedText,
                     left: parseInt(node.style.left) || 0,
                     top: parseInt(node.style.top) || 0,
                     anchoredTo: node.dataset.anchoredTo || null,
@@ -1063,7 +1162,7 @@ class ProcessFlowDesigner {
             structured: {
                 tasks: this.taskNodes.map(node => ({
                     id: node.dataset.id,
-                    text: node.querySelector('.node-text').textContent,
+                    text: this.extractNodeText(node),
                     tags: node.dataset.tags ? JSON.parse(node.dataset.tags) : [],
                     position: {
                         left: parseInt(node.style.left) || 0,
@@ -1093,7 +1192,7 @@ class ProcessFlowDesigner {
                         if (tags.length > 0) {
                             allTags.push({
                                 taskId: node.dataset.id,
-                                taskText: node.querySelector('.node-text').textContent,
+                                taskText: this.extractNodeText(node),
                                 taskType: node.dataset.type,
                                 tags: tags,
                                 tagCount: tags.length
@@ -1105,7 +1204,7 @@ class ProcessFlowDesigner {
                 regularNodes: this.nodes.filter(node => node.dataset.type !== 'task').map(node => ({
                     id: node.dataset.id,
                     type: node.dataset.type,
-                    text: node.querySelector('.node-text').textContent,
+                    text: this.extractNodeText(node),
                     position: {
                         left: parseInt(node.style.left) || 0,
                         top: parseInt(node.style.top) || 0
@@ -1138,10 +1237,17 @@ class ProcessFlowDesigner {
         
         // Provide detailed save information
         const summary = workflow.structured.summary;
-        console.log('Workflow saved successfully (v1.1 format)');
-        console.log(`Debug: this.nodes.length = ${this.nodes.length}, this.taskNodes.length = ${this.taskNodes.length}`);
-        console.log(`Debug: taskNodes array:`, this.taskNodes.map(n => ({ id: n.dataset.id, type: n.dataset.type })));
-        console.log(`Saved: ${summary.totalNodes} nodes, ${summary.taskCount} tasks, ${summary.totalTagCount} tags, ${summary.flowlineCount} flowlines`);
+        
+        console.log(`\n🎉 SAVE COMPLETED - Workflow saved successfully (v1.1 format)`);
+        console.log(`📈 SAVE SUMMARY: ${summary.totalNodes} nodes, ${summary.taskCount} tasks, ${summary.totalTagCount} tags, ${summary.flowlineCount} flowlines`);
+        
+        // Show final text values that were saved
+        console.log(`\n📋 FINAL SAVED NODE TEXTS:`);
+        workflow.nodes.forEach((nodeData, index) => {
+            console.log(`  Node ${index + 1}: ID=${nodeData.id}, Type=${nodeData.type}, Text="${nodeData.text}"`);
+        });
+        
+        console.log(`\n🔚 SAVE WORKFLOW ENDED`);
         
         // Provide user feedback
         setTimeout(() => {
