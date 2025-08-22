@@ -637,11 +637,8 @@ class ProcessFlowDesigner {
         taskBanner.addEventListener('contextmenu', (e) => this.handleContextMenu(e, taskBanner));
         taskBanner.addEventListener('dblclick', (e) => this.handleDoubleClick(e, taskBanner));
         
-        // Add drop event listeners to the Next Action slot
-        nextActionSlot.addEventListener('dragover', (e) => this.handleSlotDragOver(e));
-        // Drop handling is now handled by TagManager canvas listener
-        // nextActionSlot.addEventListener('drop', (e) => this.handleSlotDrop(e));
-        nextActionSlot.addEventListener('dragleave', (e) => this.handleSlotDragLeave(e));
+        // Tag drag and drop is now handled by TagManager canvas listeners
+        // Individual slot listeners removed to prevent conflicts
         
         // Add ResizeObserver to monitor task container size changes
         if (window.ResizeObserver) {
@@ -1552,11 +1549,8 @@ class ProcessFlowDesigner {
             taskBanner.addEventListener('contextmenu', (e) => this.handleContextMenu(e, taskBanner));
             taskBanner.addEventListener('dblclick', (e) => this.handleDoubleClick(e, taskBanner));
             
-            // Add drop event listeners to the Next Action slot
-            nextActionSlot.addEventListener('dragover', (e) => this.handleSlotDragOver(e));
-            // Drop handling is now handled by TagManager canvas listener
-        // nextActionSlot.addEventListener('drop', (e) => this.handleSlotDrop(e));
-            nextActionSlot.addEventListener('dragleave', (e) => this.handleSlotDragLeave(e));
+            // Tag drag and drop is now handled by TagManager canvas listeners
+            // Individual slot listeners removed to prevent conflicts
             
             // Add ResizeObserver to monitor task container size changes
             if (window.ResizeObserver) {
@@ -1619,24 +1613,7 @@ class ProcessFlowDesigner {
         this.successfulDrop = this.tagManager.successfulDrop;
     }
     
-    handleSlotDragOver(e) {
-        // Delegate to tag manager
-        this.tagManager.handleSlotDragOver(e);
-    }
-    
-    handleSlotDragLeave(e) {
-        // Delegate to tag manager
-        this.tagManager.handleSlotDragLeave(e);
-    }
-    
-    // handleSlotDrop is now handled by TagManager canvas listener
-    // handleSlotDrop(e) {
-    //     // Delegate to tag manager
-    //     this.tagManager.handleSlotDrop(e);
-    //     // Sync drag state with main app
-    //     this.draggedTag = this.tagManager.draggedTag;
-    //     this.successfulDrop = this.tagManager.successfulDrop;
-    // }
+    // Tag drag and drop methods removed - now handled entirely by TagManager canvas listeners
     
     snapTagToSlot(tagElement, slotElement) {
         // Delegate to tag manager

@@ -886,6 +886,57 @@ input.node-input {
     user-select: none;
 }
 
+/* Custom Fields for Advanced Tag Types */
+.tag-custom-fields {
+    margin: 15px 0;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+}
+
+.custom-field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 15px;
+}
+
+.custom-field:last-child {
+    margin-bottom: 0;
+}
+
+.custom-field label {
+    font-size: 13px;
+    font-weight: 500;
+    color: #333;
+}
+
+.custom-field-input {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 13px;
+    font-family: inherit;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.custom-field-input:focus {
+    border-color: #007bff;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.custom-field-input:invalid {
+    border-color: #dc3545;
+}
+
+.custom-field-input:invalid:focus {
+    border-color: #dc3545;
+    box-shadow: 0 0 0 2px rgba(220, 53, 69, 0.25);
+}
+
 /* Current Tags Display in Modal */
 .current-tags {
     margin-bottom: 20px;

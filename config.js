@@ -27,7 +27,10 @@ const AppConfig = {
             { value: "bnb", label: "BNB" },
             { value: "boe", label: "BOE" },
             { value: "urgency", label: "Urgency" },
-            { value: "importance", label: "Importance" }
+            { value: "importance", label: "Importance" },
+            { value: "sharepoint", label: "SharePoint" },
+            { value: "crm", label: "CRM" },
+            { value: "confluence", label: "Confluence" }
         ],
 
         // Sub-options for each tag category
@@ -65,6 +68,30 @@ const AppConfig = {
                 { value: "", label: "Select Importance", disabled: true },
                 { value: "important", label: "Important" },
                 { value: "not-important", label: "Not-Important" }
+            ],
+            sharepoint: [
+                { value: "", label: "Select SharePoint Type", disabled: true },
+                { value: "document", label: "Document" },
+                { value: "list", label: "List" },
+                { value: "library", label: "Library" },
+                { value: "site", label: "Site" },
+                { value: "workflow", label: "Workflow" }
+            ],
+            crm: [
+                { value: "", label: "Select CRM Type", disabled: true },
+                { value: "opportunity", label: "Opportunity" },
+                { value: "account", label: "Account" },
+                { value: "contact", label: "Contact" },
+                { value: "lead", label: "Lead" },
+                { value: "case", label: "Case" }
+            ],
+            confluence: [
+                { value: "", label: "Select Confluence Type", disabled: true },
+                { value: "page", label: "Page" },
+                { value: "blog", label: "Blog Post" },
+                { value: "space", label: "Space" },
+                { value: "template", label: "Template" },
+                { value: "attachment", label: "Attachment" }
             ]
         },
 
@@ -74,7 +101,36 @@ const AppConfig = {
             bnb: { color: "#28a745", bgColor: "#e8f5e8" },
             boe: { color: "#ffc107", bgColor: "#fff8e1" },
             urgency: { color: "#dc3545", bgColor: "#ffebee" },
-            importance: { color: "#6f42c1", bgColor: "#f3e5f5" }
+            importance: { color: "#6f42c1", bgColor: "#f3e5f5" },
+            sharepoint: { color: "#0078d4", bgColor: "#e6f3ff" },
+            crm: { color: "#d83b01", bgColor: "#ffeae6" },
+            confluence: { color: "#0052cc", bgColor: "#e6f0ff" }
+        },
+
+        // Custom field configurations for advanced tag types
+        customFields: {
+            sharepoint: {
+                required: ["name", "link"],
+                optional: ["description", "date"],
+                fields: {
+                    name: { type: "text", label: "SharePoint Name", placeholder: "Enter SharePoint item name" }
+                }
+            },
+            crm: {
+                required: ["opportunity_id", "link"],
+                optional: ["description", "date"],
+                fields: {
+                    opportunity_id: { type: "text", label: "Opportunity ID", placeholder: "Enter opportunity ID" }
+                }
+            },
+            confluence: {
+                required: ["name", "link"],
+                optional: ["author", "description", "date"],
+                fields: {
+                    name: { type: "text", label: "Confluence Name", placeholder: "Enter page/document name" },
+                    author: { type: "text", label: "Author", placeholder: "Enter author name" }
+                }
+            }
         }
     },
 

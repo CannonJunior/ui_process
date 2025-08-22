@@ -362,8 +362,8 @@ class WorkflowBridge {
     }
 
     async enterMatrixMode() {
-        if (this.app.matrixController && this.app.matrixController.enterMatrix) {
-            this.app.matrixController.enterMatrix();
+        if (this.app.matrixController && this.app.matrixController.enterMatrixMode) {
+            this.app.matrixController.enterMatrixMode();
             return {
                 action: 'enter_matrix_mode',
                 result: { matrix_mode: true },
@@ -375,8 +375,8 @@ class WorkflowBridge {
     }
 
     async exitMatrixMode() {
-        if (this.app.matrixController && this.app.matrixController.exitMatrix) {
-            this.app.matrixController.exitMatrix();
+        if (this.app.matrixController && this.app.matrixController.exitMatrixMode) {
+            this.app.matrixController.exitMatrixMode();
             return {
                 action: 'exit_matrix_mode',
                 result: { matrix_mode: false },

@@ -46,6 +46,13 @@ class TagManager {
         this.tagLinkInput = this.domService.getElement('tagLinkInput');
         this.tagCompletedInput = this.domService.getElement('tagCompletedInput');
         
+        // Get custom field elements
+        this.tagCustomFields = this.domService.getElement('tagCustomFields');
+        this.tagSharePointName = this.domService.getElement('tagSharePointName');
+        this.tagCrmOpportunityId = this.domService.getElement('tagCrmOpportunityId');
+        this.tagConfluenceName = this.domService.getElement('tagConfluenceName');
+        this.tagConfluenceAuthor = this.domService.getElement('tagConfluenceAuthor');
+        
         // Validate critical tag elements
         const requiredElements = ['canvas', 'currentTags', 'tagCategoryDropdown', 'tagOptionDropdown'];
         const missingElements = requiredElements.filter(id => !this[id]);
@@ -108,6 +115,12 @@ class TagManager {
             });
             
             this.canvas.addEventListener('drop', (e) => {
+                console.log('TagManager: Drop event triggered on:', e.target);
+                console.log('TagManager: Target has next-action-slot class:', e.target.classList.contains('next-action-slot'));
+                console.log('TagManager: draggedTag exists:', !!this.draggedTag);
+                console.log('TagManager: Target taskId:', e.target.dataset.taskId);
+                console.log('TagManager: draggedTag taskId:', this.draggedTag ? this.draggedTag.taskId : 'none');
+                
                 // Clear all drag-over classes
                 document.querySelectorAll('.next-action-slot.drag-over').forEach(slot => {
                     slot.classList.remove('drag-over');
@@ -116,10 +129,22 @@ class TagManager {
                 // Handle valid drops
                 if (e.target.classList.contains('next-action-slot') && 
                     this.draggedTag && e.target.dataset.taskId === this.draggedTag.taskId) {
+                    console.log('TagManager: Valid drop detected, calling snapTagToSlot');
+                    
+                    // Debug slot position
+                    const slotRect = e.target.getBoundingClientRect();
+                    console.log('🎯 POSITION: Next-action-slot position:', {
+                        left: slotRect.left,
+                        top: slotRect.top,
+                        width: slotRect.width,
+                        height: slotRect.height
+                    });
+                    
                     e.preventDefault();
                     this.successfulDrop = true;
                     this.snapTagToSlot(this.draggedTag.element, e.target);
                 } else {
+                    console.log('TagManager: Invalid drop, preventing default');
                     // Prevent drops on invalid locations
                     e.preventDefault();
                 }
@@ -228,6 +253,13 @@ class TagManager {
             return;
         }
         
+        // Validate custom fields for advanced tag types
+        const customFieldsValidation = this.validateCustomFields(category);
+        if (!customFieldsValidation.isValid) {
+            alert(customFieldsValidation.message);
+            return;
+        }
+        
         const tags = this.getTaskTags(this.app.selectedTaskForTags);
         
         // Create tag object with optional fields
@@ -236,6 +268,9 @@ class TagManager {
         if (description) tagData.description = description;
         if (link) tagData.link = link;
         if (completed) tagData.completed = completed;
+        
+        // Add custom fields for advanced tag types
+        this.addCustomFieldsToTag(tagData, category);
         
         // Check if this tag category already exists
         const existingTagIndex = tags.findIndex(tag => tag.category === category);
@@ -311,6 +346,15 @@ class TagManager {
         if (this.tagDescriptionInput) this.tagDescriptionInput.value = '';
         if (this.tagLinkInput) this.tagLinkInput.value = '';
         if (this.tagCompletedInput) this.tagCompletedInput.checked = false;
+        
+        // Clear custom fields
+        if (this.tagSharePointName) this.tagSharePointName.value = '';
+        if (this.tagCrmOpportunityId) this.tagCrmOpportunityId.value = '';
+        if (this.tagConfluenceName) this.tagConfluenceName.value = '';
+        if (this.tagConfluenceAuthor) this.tagConfluenceAuthor.value = '';
+        
+        // Hide custom fields container
+        if (this.tagCustomFields) this.tagCustomFields.style.display = 'none';
     }
     
     // ==================== TAG DISPLAY METHODS ====================
@@ -351,9 +395,10 @@ class TagManager {
         const categoryLabel = this.configService.getTagCategoryLabel(tag.category);
         const optionLabel = this.configService.getTagOptionLabel(tag.category, tag.option);
         const dateText = tag.date ? ` (${this.formatDateForDisplay(tag.date)})` : '';
+        const customFieldText = this.getCustomFieldDisplayText(tag);
         
         tagElement.innerHTML = `
-            <span>${categoryLabel}: ${optionLabel}${dateText}</span>
+            <span>${categoryLabel}: ${optionLabel}${customFieldText}${dateText}</span>
             <button class="tag-remove" data-index="${index}">×</button>
         `;
         
@@ -437,8 +482,9 @@ class TagManager {
         const categoryLabel = this.configService.getTagCategoryLabel(tag.category);
         const optionLabel = this.configService.getTagOptionLabel(tag.category, tag.option);
         const dateText = tag.date ? ` (${this.formatDateForDisplay(tag.date)})` : '';
+        const customFieldText = this.getCustomFieldDisplayText(tag);
         
-        tagElement.textContent = `${categoryLabel}: ${optionLabel}${dateText}`;
+        tagElement.textContent = `${categoryLabel}: ${optionLabel}${customFieldText}${dateText}`;
         
         // Add visual indicator if tag has a link
         if (tag.link && tag.link.trim()) {
@@ -506,17 +552,29 @@ class TagManager {
      */
     handleTagDragStart(e) {
         console.log('TagManager: Drag start:', e.target);
+        console.log('TagManager: Target dataset:', e.target.dataset);
         this.successfulDrop = false; // Reset flag for new drag operation
+        
+        // Get initial positions for debugging
+        const tagRect = e.target.getBoundingClientRect();
+        const originalPos = {
+            left: tagRect.left,
+            top: tagRect.top,
+            parent: e.target.parentNode.className
+        };
         
         this.draggedTag = {
             element: e.target,
             taskId: e.target.dataset.taskId,
             tagIndex: parseInt(e.target.dataset.tagIndex),
             originalParent: e.target.parentNode,
-            originalPosition: Array.from(e.target.parentNode.children).indexOf(e.target)
+            originalPosition: Array.from(e.target.parentNode.children).indexOf(e.target),
+            originalPos: originalPos // Store for position debugging
         };
         
+        console.log('🎯 POSITION: Tag original position:', originalPos);
         console.log('TagManager: Dragged tag data:', this.draggedTag);
+        console.log('TagManager: draggedTag.taskId set to:', this.draggedTag.taskId);
         
         e.target.classList.add('dragging');
         e.dataTransfer.effectAllowed = 'move';
@@ -528,7 +586,7 @@ class TagManager {
      * @param {Event} e - Drag end event
      */
     handleTagDragEnd(e) {
-        console.log('TagManager: Drag end, successful drop:', this.successfulDrop);
+        console.log('TagManager: Drag end, successful drop (before timeout):', this.successfulDrop);
         e.target.classList.remove('dragging');
         
         // Clear all drag-over classes
@@ -536,16 +594,48 @@ class TagManager {
             slot.classList.remove('drag-over');
         });
         
-        // If drag ended without a successful drop, snap back
-        if (this.draggedTag && !this.successfulDrop) {
-            console.log('TagManager: Snapping tag back');
-            this.snapTagBack();
-        } else {
-            console.log('TagManager: Drop was successful, not snapping back');
-        }
-        
-        // Clean up drag state
-        this.draggedTag = null;
+        // Add a small delay to let the drop event fire first
+        setTimeout(() => {
+            console.log('TagManager: Drag end, successful drop (after timeout):', this.successfulDrop);
+            
+            // Debug final position
+            if (this.draggedTag) {
+                const finalRect = this.draggedTag.element.getBoundingClientRect();
+                const finalPos = {
+                    left: finalRect.left,
+                    top: finalRect.top,
+                    parent: this.draggedTag.element.parentNode.className,
+                    display: this.draggedTag.element.style.display
+                };
+                console.log('🎯 POSITION: Tag final position:', finalPos);
+                console.log('🎯 POSITION: Original vs Final:', {
+                    original: this.draggedTag.originalPos,
+                    final: finalPos,
+                    moved: finalPos.left !== this.draggedTag.originalPos.left || finalPos.top !== this.draggedTag.originalPos.top
+                });
+            }
+            
+            // If drag ended without a successful drop, snap back
+            if (this.draggedTag && !this.successfulDrop) {
+                console.log('TagManager: Snapping tag back');
+                this.snapTagBack();
+                
+                // Debug position after snap back
+                if (this.draggedTag) {
+                    const snapBackRect = this.draggedTag.element.getBoundingClientRect();
+                    console.log('🎯 POSITION: After snap back:', {
+                        left: snapBackRect.left,
+                        top: snapBackRect.top,
+                        parent: this.draggedTag.element.parentNode.className
+                    });
+                }
+            } else {
+                console.log('TagManager: Drop was successful, not snapping back');
+            }
+            
+            // Clean up drag state
+            this.draggedTag = null;
+        }, 10); // Small delay to let drop event fire
     }
     
     /**
@@ -554,85 +644,50 @@ class TagManager {
      * @param {HTMLElement} slotElement - Slot element
      */
     snapTagToSlot(tagElement, slotElement) {
-        // Store restoration data on the tag element
+        console.log('🎯 SIMPLE: Moving tag directly to slot');
+        console.log('🎯 SIMPLE: Tag element:', tagElement);
+        console.log('🎯 SIMPLE: Slot element:', slotElement);
+        
+        // Store restoration data
         tagElement.dataset.originalParent = 'task-tags';
+        tagElement.dataset.isInNextAction = 'true';
         
-        // Get current and target positions for animation
-        const tagRect = tagElement.getBoundingClientRect();
-        const slotRect = slotElement.getBoundingClientRect();
+        // Add slot classes
+        tagElement.classList.add('tag-in-slot');
         
-        // Calculate animation offset
-        const deltaX = slotRect.left - tagRect.left;
-        const deltaY = slotRect.top - tagRect.top;
+        // Clear the slot and move the tag directly
+        slotElement.innerHTML = '';
+        slotElement.appendChild(tagElement);
         
-        // Clone the tag for the animation
-        const tagClone = tagElement.cloneNode(true);
-        tagClone.classList.add('tag-in-slot');
-        tagClone.dataset.isInNextAction = 'true';
-        tagClone.style.position = 'absolute';
-        tagClone.style.left = tagRect.left + 'px';
-        tagClone.style.top = tagRect.top + 'px';
-        tagClone.style.zIndex = '1000';
+        // Reset positioning styles
+        tagElement.style.position = 'relative';
+        tagElement.style.left = 'auto';
+        tagElement.style.top = 'auto';
+        tagElement.style.display = '';
         
-        // Add the clone to the document
-        document.body.appendChild(tagClone);
-        
-        // Animate to the slot position
-        tagClone.style.transition = 'all 0.3s ease-out';
-        requestAnimationFrame(() => {
-            tagClone.style.left = slotRect.left + 'px';
-            tagClone.style.top = slotRect.top + 'px';
+        // Verify it worked
+        const finalRect = tagElement.getBoundingClientRect();
+        console.log('🎯 SIMPLE: Tag moved to slot position:', {
+            left: finalRect.left,
+            top: finalRect.top,
+            parent: tagElement.parentNode.className,
+            slotChildren: slotElement.children.length,
+            inDOM: document.contains(tagElement)
         });
         
-        // After animation, move to slot and clean up
-        setTimeout(() => {
-            // Remove the animated clone
-            if (tagClone.parentNode) {
-                tagClone.parentNode.removeChild(tagClone);
-            }
-            
-            // Create a new tag in the slot
-            const slotTag = tagElement.cloneNode(true);
-            slotTag.classList.add('tag-in-slot');
-            slotTag.dataset.type = 'tag';  // Ensure type is set for context menu
-            slotTag.dataset.isInNextAction = 'true';
-            slotTag.style.position = 'relative';
-            slotTag.style.left = 'auto';
-            slotTag.style.top = 'auto';
-            slotTag.style.zIndex = 'auto';
-            
-            // Add context menu event listener - same pattern as tasks
-            slotTag.addEventListener('contextmenu', (e) => this.app.handleContextMenu(e, slotTag));
-            
-            // Add double-click event listener to open links (need to get tag data)
-            const taskNode = this.draggedTag.element.closest('.task-banner') || 
-                            this.draggedTag.element.closest('[data-type="task"]') ||
-                            document.querySelector(`.task-banner[data-id="${this.draggedTag.taskId}"]`);
-            if (taskNode) {
-                const tags = this.getTaskTags(taskNode);
-                const tagData = tags[this.draggedTag.tagIndex];
-                if (tagData) {
-                    slotTag.addEventListener('dblclick', (e) => this.handleTagDoubleClick(e, slotTag, tagData));
-                }
-            }
-            
-            slotElement.appendChild(slotTag);
-            
-            // Hide the original tag
-            tagElement.style.display = 'none';
-            
-            console.log('TagManager: Tag animation complete and positioned in slot');
-        }, 300);
+        console.log('🎯 SIMPLE: Tag move complete');
     }
     
     /**
      * Snap tag back to original position
      */
     snapTagBack() {
+        console.log('TagManager: snapTagBack called, draggedTag exists:', !!this.draggedTag);
         if (!this.draggedTag) return;
         
         const tagElement = this.draggedTag.element;
         const originalParent = this.draggedTag.originalParent;
+        console.log('TagManager: Snapping back element:', tagElement, 'to parent:', originalParent);
         
         // Restore tag to original position if needed
         if (tagElement.parentNode !== originalParent) {
@@ -677,10 +732,162 @@ class TagManager {
             console.error('TagManager: tagOptionDropdown element not found');
         }
         
+        // Show/hide custom fields based on selected category
+        this.toggleCustomFields(selectedCategory);
+        
         console.log(`TagManager: Category changed to ${selectedCategory}`);
     }
     
+    /**
+     * Toggle custom fields visibility based on selected category
+     * @param {string} selectedCategory - The selected tag category
+     */
+    toggleCustomFields(selectedCategory) {
+        if (!this.tagCustomFields) return;
+        
+        // Hide all custom field groups first
+        const customFieldGroups = this.tagCustomFields.querySelectorAll('.custom-field');
+        customFieldGroups.forEach(group => {
+            group.style.display = 'none';
+        });
+        
+        // Show the custom fields container if we have a category with custom fields
+        const hasCustomFields = ['sharepoint', 'crm', 'confluence'].includes(selectedCategory);
+        this.tagCustomFields.style.display = hasCustomFields ? 'block' : 'none';
+        
+        // Show the specific custom field group for the selected category
+        if (hasCustomFields) {
+            const targetGroup = this.tagCustomFields.querySelector(`.custom-field[data-category="${selectedCategory}"]`);
+            if (targetGroup) {
+                targetGroup.style.display = 'block';
+                console.log(`TagManager: Showing custom fields for ${selectedCategory}`);
+            }
+        }
+        
+        // Update link field label based on category
+        if (this.tagLinkInput && this.tagLinkInput.previousElementSibling) {
+            const linkLabel = this.tagLinkInput.previousElementSibling;
+            if (hasCustomFields) {
+                linkLabel.textContent = 'Link (required):';
+                this.tagLinkInput.required = true;
+            } else {
+                linkLabel.textContent = 'Link (optional):';
+                this.tagLinkInput.required = false;
+            }
+        }
+    }
     
+    /**
+     * Validate custom fields for advanced tag types
+     * @param {string} category - The tag category
+     * @returns {Object} Validation result with isValid and message
+     */
+    validateCustomFields(category) {
+        const customFieldsConfig = AppConfig.tagSystem.customFields;
+        
+        if (!customFieldsConfig || !customFieldsConfig[category]) {
+            return { isValid: true, message: '' };
+        }
+        
+        const config = customFieldsConfig[category];
+        const requiredFields = config.required || [];
+        
+        // Check SharePoint specific fields
+        if (category === 'sharepoint') {
+            if (requiredFields.includes('name') && (!this.tagSharePointName || !this.tagSharePointName.value.trim())) {
+                return { isValid: false, message: 'SharePoint Name is required.' };
+            }
+            if (requiredFields.includes('link') && (!this.tagLinkInput || !this.tagLinkInput.value.trim())) {
+                return { isValid: false, message: 'SharePoint Link is required.' };
+            }
+        }
+        
+        // Check CRM specific fields
+        if (category === 'crm') {
+            if (requiredFields.includes('opportunity_id') && (!this.tagCrmOpportunityId || !this.tagCrmOpportunityId.value.trim())) {
+                return { isValid: false, message: 'Opportunity ID is required.' };
+            }
+            if (requiredFields.includes('link') && (!this.tagLinkInput || !this.tagLinkInput.value.trim())) {
+                return { isValid: false, message: 'CRM Link is required.' };
+            }
+        }
+        
+        // Check Confluence specific fields
+        if (category === 'confluence') {
+            if (requiredFields.includes('name') && (!this.tagConfluenceName || !this.tagConfluenceName.value.trim())) {
+                return { isValid: false, message: 'Confluence Name is required.' };
+            }
+            if (requiredFields.includes('link') && (!this.tagLinkInput || !this.tagLinkInput.value.trim())) {
+                return { isValid: false, message: 'Confluence Link is required.' };
+            }
+        }
+        
+        return { isValid: true, message: '' };
+    }
+    
+    /**
+     * Add custom fields to tag object
+     * @param {Object} tagData - The tag data object to modify
+     * @param {string} category - The tag category
+     */
+    addCustomFieldsToTag(tagData, category) {
+        switch (category) {
+            case 'sharepoint':
+                if (this.tagSharePointName && this.tagSharePointName.value.trim()) {
+                    tagData.sharepoint_name = this.tagSharePointName.value.trim();
+                }
+                break;
+                
+            case 'crm':
+                if (this.tagCrmOpportunityId && this.tagCrmOpportunityId.value.trim()) {
+                    tagData.opportunity_id = this.tagCrmOpportunityId.value.trim();
+                }
+                break;
+                
+            case 'confluence':
+                if (this.tagConfluenceName && this.tagConfluenceName.value.trim()) {
+                    tagData.confluence_name = this.tagConfluenceName.value.trim();
+                }
+                if (this.tagConfluenceAuthor && this.tagConfluenceAuthor.value.trim()) {
+                    tagData.author = this.tagConfluenceAuthor.value.trim();
+                }
+                break;
+        }
+    }
+    
+    /**
+     * Get display text for custom fields in a tag
+     * @param {Object} tag - Tag data object
+     * @returns {string} Formatted custom field display text
+     */
+    getCustomFieldDisplayText(tag) {
+        let customText = '';
+        
+        switch (tag.category) {
+            case 'sharepoint':
+                if (tag.sharepoint_name) {
+                    customText += ` - ${tag.sharepoint_name}`;
+                }
+                break;
+                
+            case 'crm':
+                if (tag.opportunity_id) {
+                    customText += ` - ID: ${tag.opportunity_id}`;
+                }
+                break;
+                
+            case 'confluence':
+                if (tag.confluence_name) {
+                    customText += ` - ${tag.confluence_name}`;
+                }
+                if (tag.author) {
+                    customText += ` (${tag.author})`;
+                }
+                break;
+        }
+        
+        return customText;
+    }
     
     // ==================== UTILITY METHODS ====================
     

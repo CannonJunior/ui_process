@@ -257,6 +257,31 @@
                         <label for="tagLinkInput">Link (optional):</label>
                         <input type="url" id="tagLinkInput" class="tag-link-input" placeholder="https://example.com">
                     </div>
+                    
+                    <!-- Custom fields for advanced tag types -->
+                    <div id="tagCustomFields" class="tag-custom-fields" style="display: none;">
+                        <!-- SharePoint specific fields -->
+                        <div class="custom-field sharepoint-field" data-category="sharepoint" style="display: none;">
+                            <label for="tagSharePointName">SharePoint Name (required):</label>
+                            <input type="text" id="tagSharePointName" class="custom-field-input" placeholder="Enter SharePoint item name">
+                        </div>
+                        
+                        <!-- CRM specific fields -->
+                        <div class="custom-field crm-field" data-category="crm" style="display: none;">
+                            <label for="tagCrmOpportunityId">Opportunity ID (required):</label>
+                            <input type="text" id="tagCrmOpportunityId" class="custom-field-input" placeholder="Enter opportunity ID">
+                        </div>
+                        
+                        <!-- Confluence specific fields -->
+                        <div class="custom-field confluence-field" data-category="confluence" style="display: none;">
+                            <label for="tagConfluenceName">Confluence Name (required):</label>
+                            <input type="text" id="tagConfluenceName" class="custom-field-input" placeholder="Enter page/document name">
+                            
+                            <label for="tagConfluenceAuthor">Author (optional):</label>
+                            <input type="text" id="tagConfluenceAuthor" class="custom-field-input" placeholder="Enter author name">
+                        </div>
+                    </div>
+                    
                     <div class="tag-completed-selector">
                         <label class="checkbox-label">
                             <input type="checkbox" id="tagCompletedInput" class="tag-completed-input">
