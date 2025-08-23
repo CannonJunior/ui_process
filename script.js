@@ -15,6 +15,9 @@ class ProcessFlowDesigner {
         // this.isMatrixMode now handled by MatrixController (getter defined below)
         this.originalNodePositions = new Map(); // Store original positions for ALL nodes before matrix mode
         
+        // Track if workflows have been appended (for future merge validation)
+        this.hasAppendedWorkflows = false;
+        
         // Initialize services
         this.domService = getDOMService();
         this.configService = getConfigService();
@@ -265,7 +268,7 @@ class ProcessFlowDesigner {
             'contextMenu', 'taskContextMenu', 'canvas', 'nodeTypeDropdown', 'flowlineTypeDropdown',
             'addTaskButton', 'taskModal', 'taskNameInput', 'taskModalCancel', 'taskModalCreate',
             'advanceTaskModal', 'advanceOptions', 'advanceModalCancel', 'saveWorkflowButton',
-            'loadWorkflowButton', 'loadWorkflowInput', 'tagModal', 'currentTags',
+            'loadWorkflowButton', 'loadWorkflowInput', 'appendWorkflowButton', 'appendWorkflowInput', 'tagModal', 'currentTags',
             'tagCategoryDropdown', 'tagOptionDropdown', 'tagDateInput', 'tagDescriptionInput',
             'tagLinkInput', 'tagCompletedInput', 'tagModalCancel', 'tagModalAdd', 'tagModalSave',
             'tagContextMenu', 'tagAttributeMenu', 'tagDatePicker', 'eisenhowerToggle', 'eisenhowerMatrix',
@@ -353,6 +356,9 @@ class ProcessFlowDesigner {
         this.saveWorkflowButton.addEventListener('click', () => this.saveWorkflow());
         this.loadWorkflowButton.addEventListener('click', () => this.loadWorkflowInput.click());
         this.loadWorkflowInput.addEventListener('change', (e) => this.loadWorkflow(e));
+        
+        this.appendWorkflowButton.addEventListener('click', () => this.appendWorkflowInput.click());
+        this.appendWorkflowInput.addEventListener('change', (e) => this.appendWorkflow(e));
         
         // Eisenhower Matrix toggle event listener is now handled by MatrixController
         
@@ -1300,6 +1306,63 @@ class ProcessFlowDesigner {
         event.target.value = '';
     }
     
+    appendWorkflow(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const workflow = JSON.parse(e.target.result);
+                
+                // Check if this is a supported workflow format
+                if (!workflow.version) {
+                    throw new Error('Missing workflow version');
+                }
+                
+                if (workflow.version === '2.0') {
+                    throw new Error('Version 2.0 workflows require the new module system (not yet loaded)');
+                }
+                
+                if (workflow.version !== '1.1') {
+                    throw new Error(`Unsupported workflow version: ${workflow.version}`);
+                }
+                
+                // Store current state for merge validation planning
+                const currentNodeCount = this.nodes.length;
+                const currentTaskCount = this.taskNodes.length;
+                
+                // Do NOT call clearWorkflow() - this is the key difference from loadWorkflow
+                this.appendDeserializeWorkflow(workflow);
+                
+                // Provide detailed loading information
+                const appendedNodeCount = workflow.nodes ? workflow.nodes.length : 0;
+                const appendedTaskCount = workflow.structured ? workflow.structured.summary.taskCount : 
+                    (workflow.nodes ? workflow.nodes.filter(n => n.type === 'task').length : 0);
+                const appendedTagCount = workflow.structured ? workflow.structured.summary.totalTagCount : 
+                    (workflow.nodes ? workflow.nodes.reduce((count, node) => count + (node.tags ? node.tags.length : 0), 0) : 0);
+                const appendedFlowlineCount = workflow.flowlines ? workflow.flowlines.length : 0;
+                
+                console.log('Workflow appended successfully (v1.1 format)');
+                console.log(`Appended: ${appendedNodeCount} nodes, ${appendedTaskCount} tasks, ${appendedTagCount} tags, ${appendedFlowlineCount} flowlines`);
+                console.log(`Canvas now has: ${this.nodes.length} nodes, ${this.taskNodes.length} tasks total`);
+                
+                // Mark that this workflow now contains multiple sources (for future merge validation)
+                this.hasAppendedWorkflows = true;
+                
+                alert(`Workflow appended successfully!\nAdded: ${appendedNodeCount} nodes, ${appendedTaskCount} tasks, ${appendedTagCount} tags, ${appendedFlowlineCount} flowlines\nCanvas total: ${this.nodes.length} nodes, ${this.taskNodes.length} tasks`);
+            } catch (error) {
+                let errorMessage = error.message || 'Invalid file format';
+                alert(`Error appending workflow: ${errorMessage}`);
+                console.error('Error appending workflow:', error);
+            }
+        };
+        reader.readAsText(file);
+        
+        // Reset the input so the same file can be appended again
+        event.target.value = '';
+    }
+    
     clearWorkflow() {
         console.log('Debug: Starting clearWorkflow...');
         console.log(`Current state - this.nodes: ${this.nodes.length} elements`, this.nodes.map(n => ({id: n.dataset.id, type: n.dataset.type})));
@@ -1450,6 +1513,119 @@ class ProcessFlowDesigner {
         });
         
         this.updateFlowlines();
+    }
+    
+    appendDeserializeWorkflow(workflow) {
+        // Build a map of existing node IDs to detect conflicts
+        const existingNodeIds = new Set();
+        [...this.nodes, ...this.taskNodes].forEach(node => {
+            existingNodeIds.add(node.dataset.id);
+        });
+        
+        // Create an ID mapping for conflicts and track the highest counter
+        const idMapping = new Map();
+        let maxCounter = this.nodeCounter;
+        
+        // First pass: resolve ID conflicts and update node counter
+        workflow.nodes.forEach(nodeData => {
+            if (existingNodeIds.has(nodeData.id)) {
+                // ID conflict - assign a new unique ID
+                const newId = `node_${++maxCounter}`;
+                idMapping.set(nodeData.id, newId);
+                console.log(`ID conflict: mapping ${nodeData.id} -> ${newId}`);
+            } else {
+                // No conflict - keep original ID
+                idMapping.set(nodeData.id, nodeData.id);
+                existingNodeIds.add(nodeData.id);
+            }
+            
+            // Track highest counter from the appended workflow
+            if (nodeData.id.startsWith('node_')) {
+                const nodeNum = parseInt(nodeData.id.split('_')[1]);
+                if (!isNaN(nodeNum)) {
+                    maxCounter = Math.max(maxCounter, nodeNum);
+                }
+            }
+        });
+        
+        // Update node counter to avoid future conflicts
+        this.nodeCounter = maxCounter;
+        
+        // Calculate offset to position appended nodes to the right of existing content
+        const existingBounds = this.calculateCanvasBounds();
+        const offsetX = existingBounds.maxX + 200; // 200px gap
+        const offsetY = 0;
+        
+        // Create nodes with remapped IDs and offset positions
+        const nodeMap = new Map();
+        workflow.nodes.forEach(nodeData => {
+            const remappedNodeData = {
+                ...nodeData,
+                id: idMapping.get(nodeData.id),
+                x: (nodeData.x || 0) + offsetX,
+                y: (nodeData.y || 0) + offsetY
+            };
+            
+            console.log(`Debug: Appending node from data:`, remappedNodeData);
+            const node = this.createNodeFromData(remappedNodeData);
+            nodeMap.set(nodeData.id, node); // Map using original ID for flowline creation
+            
+            if (remappedNodeData.type === 'task') {
+                console.log(`Debug: Appended task node with ID ${remappedNodeData.id}, tags:`, remappedNodeData.tags);
+            }
+        });
+        
+        // Create flowlines with remapped node IDs
+        workflow.flowlines.forEach(flowlineData => {
+            const sourceNode = nodeMap.get(flowlineData.sourceId);
+            const targetNode = nodeMap.get(flowlineData.targetId);
+            
+            if (sourceNode && targetNode) {
+                this.createFlowlineBetweenNodes(sourceNode, targetNode, flowlineData.type);
+            }
+        });
+        
+        // Reposition task nodes according to their anchoring
+        this.taskNodes.forEach(taskNode => {
+            if (taskNode.dataset.anchoredTo && nodeMap.has(taskNode.dataset.anchoredTo)) {
+                console.log(`Debug: Repositioning appended task ${taskNode.dataset.id} to anchor ${taskNode.dataset.anchoredTo}`);
+                this.positionTaskInSlot(taskNode);
+            }
+            
+            // Update tags display for appended task nodes
+            this.updateTaskTagsDisplay(taskNode);
+        });
+        
+        this.updateFlowlines();
+        
+        console.log(`Debug: Workflow appended. ID mappings:`, Object.fromEntries(idMapping));
+        console.log(`Debug: Node counter updated to: ${this.nodeCounter}`);
+    }
+    
+    calculateCanvasBounds() {
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        
+        [...this.nodes, ...this.taskNodes].forEach(node => {
+            const rect = node.getBoundingClientRect();
+            const canvasRect = this.canvas.getBoundingClientRect();
+            
+            const nodeX = rect.left - canvasRect.left;
+            const nodeY = rect.top - canvasRect.top;
+            const nodeRight = nodeX + rect.width;
+            const nodeBottom = nodeY + rect.height;
+            
+            minX = Math.min(minX, nodeX);
+            minY = Math.min(minY, nodeY);
+            maxX = Math.max(maxX, nodeRight);
+            maxY = Math.max(maxY, nodeBottom);
+        });
+        
+        // If no nodes exist, return default bounds
+        if (minX === Infinity) {
+            return { minX: 0, minY: 0, maxX: 0, maxY: 0 };
+        }
+        
+        return { minX, minY, maxX, maxY };
     }
     
     createNodeFromData(nodeData) {

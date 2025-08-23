@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Process Flow Designer</title>
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
     <link rel="stylesheet" href="styles.css">
     
     <!-- D3.js for animations -->
@@ -13,6 +14,9 @@
 </head>
 <body>
     <div class="toolbar">
+        <div class="toolbar-logo">
+            <img src="robobrain.svg" alt="Process Flow Designer" class="logo-image">
+        </div>
         <select id="nodeTypeDropdown">
             <!-- Options will be populated by config.js -->
         </select>
@@ -20,8 +24,10 @@
         <button id="addTaskButton" class="toolbar-button">Add Task</button>
         
         <button id="saveWorkflowButton" class="toolbar-button">Save Workflow</button>
+        <button id="appendWorkflowButton" class="toolbar-button">Append Workflow</button>
         <button id="loadWorkflowButton" class="toolbar-button">Load Workflow</button>
         <input type="file" id="loadWorkflowInput" accept=".json" style="display: none;">
+        <input type="file" id="appendWorkflowInput" accept=".json" style="display: none;">
         
         <select id="flowlineTypeDropdown">
             <!-- Options will be populated by config.js -->

@@ -75,6 +75,25 @@ body {
     background-color: #0056b3;
 }
 
+/* Toolbar Logo */
+.toolbar-logo {
+    display: flex;
+    align-items: center;
+    margin-right: 8px;
+}
+
+.logo-image {
+    height: 32px;
+    width: 32px;
+    filter: brightness(0) invert(1); /* Makes the SVG white */
+    opacity: 0.9;
+    transition: opacity 0.2s;
+}
+
+.logo-image:hover {
+    opacity: 1;
+}
+
 /* Service Health Indicators */
 .service-health {
     display: flex;
@@ -1191,6 +1210,8 @@ input.node-input {
     .chat-sidebar {
         width: 100vw;
         right: -100vw;
+        top: 60px; /* Maintain consistent positioning on mobile */
+        height: calc(100vh - 60px);
     }
     
     .canvas.chat-open {
@@ -1201,10 +1222,10 @@ input.node-input {
 /* Chat Sidebar Styles */
 .chat-sidebar {
     position: fixed;
-    top: 0;
+    top: 60px; /* Align with canvas, accounting for toolbar height + border */
     right: -350px;
     width: 350px;
-    height: 100vh;
+    height: calc(100vh - 60px); /* Adjust height to exclude toolbar */
     background-color: #ffffff;
     border-left: 1px solid #ddd;
     display: flex;
