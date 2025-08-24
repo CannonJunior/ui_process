@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Next Action Slot Centering Fix Test</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+
+        .test-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .test-row {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .test-slot {
+            position: relative;
+        }
+
+        .tag-demo {
+            background: #007bff;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 11px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 Next Action Slot Centering Fix Test</h1>
+    
+    <div class="test-container">
+        <h3>✅ Fixed Implementation (class-based styling)</h3>
+        <p>Using <code>.has-tag</code> class instead of <code>:has()</code> pseudo-class for better browser compatibility.</p>
+        
+        <div class="test-row">
+            <div class="next-action-slot test-slot"></div>
+            <span><strong>Empty slot:</strong> Should show centered "+" symbol</span>
+        </div>
+        
+        <div class="test-row">
+            <div class="next-action-slot has-tag test-slot">
+                <div class="tag-demo">Priority: High</div>
+            </div>
+            <span><strong>Slot with tag:</strong> Should hide "+" symbol and left-align content</span>
+        </div>
+
+        <div class="test-row">
+            <div class="next-action-slot test-slot" id="dynamicSlot"></div>
+            <button onclick="toggleTag()">🔄 Toggle Tag</button>
+            <span><strong>Dynamic test:</strong> Click to add/remove tag</span>
+        </div>
+    </div>
+
+    <div class="test-container">
+        <h3>🔍 CSS Rules Applied</h3>
+        <div style="font-family: monospace; font-size: 12px; background: #f8f9fa; padding: 15px; border-radius: 4px;">
+            <div><strong>.next-action-slot</strong> - display: flex; align-items: center; justify-content: center;</div>
+            <div><strong>.next-action-slot::after</strong> - content: '+'; (centered by default)</div>
+            <div><strong>.next-action-slot.has-tag</strong> - justify-content: flex-start; padding: 6px;</div>
+            <div><strong>.next-action-slot.has-tag::after</strong> - display: none;</div>
+        </div>
+    </div>
+
+    <script>
+        let hasTag = false;
+        const dynamicSlot = document.getElementById('dynamicSlot');
+        
+        function toggleTag() {
+            hasTag = !hasTag;
+            
+            if (hasTag) {
+                // Add tag
+                const tag = document.createElement('div');
+                tag.className = 'tag-demo';
+                tag.textContent = 'Dynamic Tag';
+                dynamicSlot.innerHTML = '';
+                dynamicSlot.appendChild(tag);
+                dynamicSlot.classList.add('has-tag');
+            } else {
+                // Remove tag
+                dynamicSlot.innerHTML = '';
+                dynamicSlot.classList.remove('has-tag');
+            }
+        }
+
+        // Test initial states
+        console.log('🧪 Testing Next Action Slot Centering Fix:');
+        
+        // Check if empty slots are properly centered
+        const emptySlots = document.querySelectorAll('.next-action-slot:not(.has-tag)');
+        emptySlots.forEach((slot, index) => {
+            const computed = window.getComputedStyle(slot);
+            console.log(`Empty slot ${index + 1}:`, {
+                display: computed.display,
+                alignItems: computed.alignItems,
+                justifyContent: computed.justifyContent
+            });
+        });
+
+        // Check if slots with tags are properly styled
+        const slotsWithTags = document.querySelectorAll('.next-action-slot.has-tag');
+        slotsWithTags.forEach((slot, index) => {
+            const computed = window.getComputedStyle(slot);
+            console.log(`Slot with tag ${index + 1}:`, {
+                display: computed.display,
+                alignItems: computed.alignItems,
+                justifyContent: computed.justifyContent,
+                padding: computed.padding
+            });
+        });
+    </script>
+</body>
+</html>

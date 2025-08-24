@@ -18,9 +18,7 @@
         <div class="toolbar-logo">
             <img src="robobrain.svg" alt="Process Flow Designer" class="logo-image">
         </div>
-        <select id="nodeTypeDropdown">
-            <!-- Options will be populated by config.js -->
-        </select>
+        <button id="addButton" class="toolbar-button">Add</button>
         
         <button id="addTaskButton" class="toolbar-button">Add Task</button>
         
@@ -150,6 +148,16 @@
     <!-- Tag Attribute Options Menu -->
     <div id="tagAttributeMenu" class="context-menu tag-attribute-menu">
         <!-- Dynamic content will be populated here -->
+    </div>
+    
+    <!-- Add Context Menu -->
+    <div id="addContextMenu" class="context-menu add-context-menu">
+        <div class="menu-item" data-add-type="node">Node</div>
+    </div>
+    
+    <!-- Node Type Menu -->
+    <div id="nodeTypeMenu" class="context-menu node-type-menu">
+        <!-- Dynamic content populated by script -->
     </div>
     
     <!-- Date Picker Container -->

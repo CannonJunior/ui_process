@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Context Menu Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            padding: 20px;
+            background: #f0f0f0;
+            margin: 0;
+        }
+        
+        .toolbar {
+            background-color: #333;
+            padding: 8px 12px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .toolbar-button {
+            padding: 6px 12px;
+            font-size: 13px;
+            border: none;
+            border-radius: 4px;
+            background-color: #4a90e2;
+            color: white;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        
+        .toolbar-button:hover {
+            background-color: #357abd;
+        }
+        
+        /* Context Menu Styles */
+        .context-menu {
+            display: none;
+            position: absolute;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 2000;
+            min-width: 120px;
+        }
+        
+        .context-menu .menu-item {
+            padding: 8px 12px;
+            color: #333;
+            cursor: pointer;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 13px;
+        }
+        
+        .context-menu .menu-item:hover {
+            background-color: #4a90e2;
+            color: white;
+        }
+        
+        .context-menu .menu-item:last-child {
+            border-bottom: none;
+        }
+        
+        .demo-info {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .canvas {
+            background: white;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            height: 300px;
+            margin: 20px 0;
+            position: relative;
+        }
+        
+        .node {
+            position: absolute;
+            padding: 10px 15px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            font-size: 12px;
+            cursor: move;
+            min-width: 80px;
+            text-align: center;
+        }
+        
+        .node.process {
+            background: #28a745;
+        }
+        
+        .node.decision {
+            background: #ffc107;
+            color: #333;
+        }
+        
+        .node.terminal {
+            background: #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Add Context Menu System Test</h1>
+    
+    <div class="toolbar">
+        <button id="addButton" class="toolbar-button">Add</button>
+        <span style="color: white; margin-left: 10px;">Click "Add" to test context menu</span>
+    </div>
+    
+    <div class="canvas" id="canvas">
+        <!-- Nodes will be added here -->
+    </div>
+    
+    <!-- Add Context Menu -->
+    <div id="addContextMenu" class="context-menu">
+        <div class="menu-item" data-add-type="node">Node</div>
+        <!-- Future add options will go here -->
+    </div>
+    
+    <!-- Node Type Menu -->
+    <div id="nodeTypeMenu" class="context-menu">
+        <div class="menu-item" data-node-type="process">Process</div>
+        <div class="menu-item" data-node-type="decision">Decision</div>
+        <div class="menu-item" data-node-type="terminal">Terminal</div>
+    </div>
+    
+    <div class="demo-info">
+        <h3>How to test:</h3>
+        <ol>
+            <li>Click the "Add" button - the context menu should appear</li>
+            <li>Click "Node" - the node type menu should appear to the right</li>
+            <li>Click a node type (Process, Decision, Terminal) - a node should be created on the canvas</li>
+            <li>Click elsewhere to hide menus</li>
+        </ol>
+        
+        <div id="output">
+            <p><strong>Actions:</strong></p>
+            <ul id="actionList"></ul>
+        </div>
+    </div>
+    
+    <script>
+        let nodeCounter = 0;
+        
+        const addButton = document.getElementById('addButton');
+        const addContextMenu = document.getElementById('addContextMenu');
+        const nodeTypeMenu = document.getElementById('nodeTypeMenu');
+        const canvas = document.getElementById('canvas');
+        const actionList = document.getElementById('actionList');
+        
+        function logAction(message) {
+            const li = document.createElement('li');
+            li.textContent = `${new Date().toLocaleTimeString()}: ${message}`;
+            actionList.appendChild(li);
+        }
+        
+        function hideAllContextMenus() {
+            addContextMenu.style.display = 'none';
+            nodeTypeMenu.style.display = 'none';
+        }
+        
+        function createNode(nodeType) {
+            nodeCounter++;
+            const node = document.createElement('div');
+            node.className = `node ${nodeType}`;
+            node.textContent = `${nodeType.charAt(0).toUpperCase() + nodeType.slice(1)} ${nodeCounter}`;
+            node.style.left = `${50 + (nodeCounter * 20)}px`;
+            node.style.top = `${50 + (nodeCounter * 20)}px`;
+            canvas.appendChild(node);
+            
+            logAction(`Created ${nodeType} node`);
+        }
+        
+        // Add button click
+        addButton.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            hideAllContextMenus();
+            
+            const rect = addButton.getBoundingClientRect();
+            addContextMenu.style.left = `${rect.left}px`;
+            addContextMenu.style.top = `${rect.bottom + 5}px`;
+            addContextMenu.style.display = 'block';
+            
+            logAction('Opened Add context menu');
+        });
+        
+        // Add context menu item clicks
+        addContextMenu.addEventListener('click', (e) => {
+            if (e.target.classList.contains('menu-item')) {
+                const addType = e.target.dataset.addType;
+                if (addType === 'node') {
+                    const rect = addContextMenu.getBoundingClientRect();
+                    nodeTypeMenu.style.left = `${rect.right + 5}px`;
+                    nodeTypeMenu.style.top = `${rect.top}px`;
+                    nodeTypeMenu.style.display = 'block';
+                    
+                    logAction('Opened Node type menu');
+                }
+            }
+        });
+        
+        // Node type menu item clicks
+        nodeTypeMenu.addEventListener('click', (e) => {
+            if (e.target.classList.contains('menu-item')) {
+                const nodeType = e.target.dataset.nodeType;
+                createNode(nodeType);
+                hideAllContextMenus();
+            }
+        });
+        
+        // Global click to hide menus
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('#addButton') && 
+                !e.target.closest('#addContextMenu') && 
+                !e.target.closest('#nodeTypeMenu')) {
+                hideAllContextMenus();
+            }
+        });
+        
+        logAction('Context menu system initialized');
+    </script>
+</body>
+</html>

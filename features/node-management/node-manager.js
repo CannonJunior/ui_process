@@ -42,10 +42,9 @@ class NodeManager {
     initializeNodeElements() {
         // Get node-related elements from DOM service
         this.canvas = this.domService.getElement('canvas');
-        this.nodeTypeDropdown = this.domService.getElement('nodeTypeDropdown');
         
         // Validate critical node elements
-        const requiredElements = ['canvas', 'nodeTypeDropdown'];
+        const requiredElements = ['canvas'];
         const missingElements = requiredElements.filter(id => !this[id]);
         
         if (missingElements.length > 0) {
@@ -57,15 +56,7 @@ class NodeManager {
      * Setup event listeners for node functionality
      */
     setupNodeEventListeners() {
-        // Node type dropdown change
-        if (this.nodeTypeDropdown) {
-            this.nodeTypeDropdown.addEventListener('change', (e) => {
-                if (e.target.value) {
-                    this.createNode(e.target.value);
-                    e.target.value = ''; // Reset dropdown
-                }
-            });
-        }
+        // Node creation is now handled by Add button context menu system
         
         // Global mouse event listeners for drag and drop
         document.addEventListener('mousemove', (e) => this.handleMouseMove(e));
@@ -542,8 +533,7 @@ class NodeManager {
             isDragging: this.dragData.isDragging,
             draggedNodeId: this.dragData.node ? this.dragData.node.dataset.id : null,
             elementsLoaded: {
-                canvas: !!this.canvas,
-                nodeTypeDropdown: !!this.nodeTypeDropdown
+                canvas: !!this.canvas
             }
         };
     }
@@ -568,8 +558,8 @@ class NodeManager {
             }
         });
         
-        // Check optional elements
-        const optionalElements = ['nodeTypeDropdown'];
+        // Check optional elements - none currently required
+        const optionalElements = [];
         optionalElements.forEach(elementName => {
             if (!this[elementName]) {
                 result.warnings.push(`Missing optional element: ${elementName}`);

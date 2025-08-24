@@ -287,8 +287,8 @@ class ProcessFlowDesigner {
     initializeDOMElements() {
         // Get all required DOM elements through DOM service
         const elements = this.domService.getElements([
-            'contextMenu', 'taskContextMenu', 'canvas', 'nodeTypeDropdown', 'flowlineTypeDropdown',
-            'addTaskButton', 'taskModal', 'taskNameInput', 'taskModalCancel', 'taskModalCreate',
+            'contextMenu', 'taskContextMenu', 'canvas', 'flowlineTypeDropdown',
+            'addButton', 'addContextMenu', 'nodeTypeMenu', 'addTaskButton', 'taskModal', 'taskNameInput', 'taskModalCancel', 'taskModalCreate',
             'advanceTaskModal', 'advanceOptions', 'advanceModalCancel', 'saveWorkflowButton',
             'loadWorkflowButton', 'loadWorkflowInput', 'appendWorkflowButton', 'appendWorkflowInput', 'tagModal', 'currentTags',
             'tagCategoryDropdown', 'tagOptionDropdown', 'tagDateInput', 'tagDescriptionInput',
@@ -324,12 +324,14 @@ class ProcessFlowDesigner {
     
     initializeDropdowns() {
         // Populate dropdowns using configuration service
-        this.configService.populateDropdown(this.nodeTypeDropdown, 'nodeTypes');
         this.configService.populateDropdown(this.flowlineTypeDropdown, 'flowlineTypes');
         this.configService.populateDropdown(this.tagCategoryDropdown, 'tagSystem.categories');
         
         // Set default flowline type
         this.flowlineTypeDropdown.value = 'straight';
+        
+        // Populate node type menu for Add context menu
+        this.populateNodeTypeMenu();
     }
     
     setupEventListeners() {
@@ -395,7 +397,117 @@ class ProcessFlowDesigner {
         // Tag modal click outside listener is now handled by ModalManager
         
         // Note: Tag context menu event listeners are now handled by ContextMenuManager
+        
+        // Add button context menu event listeners
+        this.setupAddButtonEventListeners();
     }
+    
+    // ==================== ADD BUTTON CONTEXT MENU METHODS ====================
+    
+    setupAddButtonEventListeners() {
+        // Add button click to show context menu
+        this.addButton.addEventListener('click', (e) => this.showAddContextMenu(e));
+        
+        // Add context menu item clicks
+        this.addContextMenu.addEventListener('click', (e) => this.handleAddContextMenuClick(e));
+        
+        // Node type menu item clicks
+        this.nodeTypeMenu.addEventListener('click', (e) => this.handleNodeTypeMenuClick(e));
+        
+        // Global click to hide menus
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('#addButton') && 
+                !e.target.closest('#addContextMenu') && 
+                !e.target.closest('#nodeTypeMenu')) {
+                this.hideAllAddMenus();
+            }
+        });
+    }
+    
+    populateNodeTypeMenu() {
+        // Get node types from configuration
+        const nodeTypes = this.configService.getConfig('nodeTypes');
+        if (!nodeTypes || !this.nodeTypeMenu) return;
+        
+        // Clear existing content
+        this.nodeTypeMenu.innerHTML = '';
+        
+        // Add node type options
+        Object.entries(nodeTypes).forEach(([key, config]) => {
+            const menuItem = document.createElement('div');
+            menuItem.className = 'menu-item';
+            menuItem.dataset.nodeType = key;
+            menuItem.textContent = config.label || key.charAt(0).toUpperCase() + key.slice(1);
+            this.nodeTypeMenu.appendChild(menuItem);
+        });
+    }
+    
+    showAddContextMenu(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        
+        this.hideAllAddMenus();
+        
+        const rect = this.addButton.getBoundingClientRect();
+        this.addContextMenu.style.left = `${rect.left}px`;
+        this.addContextMenu.style.top = `${rect.bottom + 5}px`;
+        this.addContextMenu.style.display = 'block';
+    }
+    
+    handleAddContextMenuClick(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        
+        const menuItem = event.target.closest('.menu-item');
+        if (!menuItem) return;
+        
+        const addType = menuItem.dataset.addType;
+        
+        if (addType === 'node') {
+            this.showNodeTypeMenu();
+        }
+    }
+    
+    showNodeTypeMenu() {
+        if (!this.nodeTypeMenu) return;
+        
+        const contextMenuRect = this.addContextMenu.getBoundingClientRect();
+        this.nodeTypeMenu.style.left = `${contextMenuRect.right + 5}px`;
+        this.nodeTypeMenu.style.top = `${contextMenuRect.top}px`;
+        this.nodeTypeMenu.style.display = 'block';
+    }
+    
+    handleNodeTypeMenuClick(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        
+        const menuItem = event.target.closest('.menu-item');
+        if (!menuItem) return;
+        
+        const nodeType = menuItem.dataset.nodeType;
+        if (nodeType) {
+            // Create the node using NodeManager
+            if (this.nodeManager) {
+                this.nodeManager.createNode(nodeType);
+            } else {
+                // Fallback to legacy method
+                this.createNode(nodeType);
+            }
+        }
+        
+        this.hideAllAddMenus();
+    }
+    
+    hideAllAddMenus() {
+        if (this.addContextMenu) {
+            this.addContextMenu.style.display = 'none';
+        }
+        if (this.nodeTypeMenu) {
+            this.nodeTypeMenu.style.display = 'none';
+        }
+    }
+    
+    // ==================== END ADD BUTTON CONTEXT MENU METHODS ====================
     
     createSVGDefs() {
         const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
