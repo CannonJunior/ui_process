@@ -6,6 +6,7 @@
     <title>Process Flow Designer</title>
     <link rel="icon" type="image/x-icon" href="favicon.ico">
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="features/opportunity-view/opportunity-styles.css">
     
     <!-- D3.js for animations -->
     <script src="https://d3js.org/d3.v7.min.js"></script>
@@ -36,6 +37,8 @@
         <button id="toggleChatButton" class="toolbar-button chat-toggle">💬 Chat</button>
         
         <button id="eisenhowerToggle" class="toolbar-button">📊 Matrix</button>
+        
+        <button id="opportunityToggle" class="toolbar-button">💼 Opportunities</button>
         
         <!-- Service Health Indicators -->
         <div class="service-health">
@@ -329,6 +332,9 @@
     <!-- Feature Modules (Phase 7: Eisenhower Matrix Extraction) -->
     <script src="features/eisenhower-matrix/matrix-animations.js"></script>
     <script src="features/eisenhower-matrix/matrix-controller.js"></script>
+    
+    <!-- Feature Modules (Opportunity View System) -->
+    <script src="features/opportunity-view/opportunity-controller.js"></script>
     
     <!-- Feature Modules (Phase 8: Node Management System) -->
     <script src="features/node-management/node-factory.js"></script>

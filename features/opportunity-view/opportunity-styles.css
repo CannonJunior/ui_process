@@ -1,0 +1,317 @@
+/**
+ * Opportunity View Styles
+ * Simple, clean design for opportunity cards
+ */
+
+/* Opportunity View Container */
+.opportunity-view {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: #f8f9fa;
+    overflow-y: auto;
+    padding: 20px;
+    box-sizing: border-box;
+    z-index: 10;
+}
+
+/* Header */
+.opportunity-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #e9ecef;
+}
+
+.opportunity-header h2 {
+    margin: 0;
+    color: #343a40;
+    font-size: 28px;
+    font-weight: 600;
+}
+
+.opportunity-stats {
+    display: flex;
+    gap: 20px;
+}
+
+.stat-item {
+    background: #007bff;
+    color: white;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+/* Cards Container */
+.opportunity-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 25px;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+/* Individual Card */
+.opportunity-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    border: 1px solid #e9ecef;
+    position: relative;
+}
+
+.opportunity-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+/* Card Header */
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 15px;
+}
+
+.card-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #343a40;
+    flex: 1;
+    margin-right: 10px;
+    line-height: 1.3;
+}
+
+.card-status {
+    padding: 4px 12px;
+    border-radius: 16px;
+    font-size: 12px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.card-status.active {
+    background: #d4edda;
+    color: #155724;
+}
+
+.card-status.planning {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.card-status.negotiation {
+    background: #d1ecf1;
+    color: #0c5460;
+}
+
+.card-status.completed {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+/* Card Content */
+.card-content {
+    margin-bottom: 15px;
+}
+
+.card-description {
+    color: #6c757d;
+    font-size: 14px;
+    line-height: 1.5;
+    margin-bottom: 10px;
+}
+
+.card-meta {
+    font-size: 12px;
+    color: #adb5bd;
+}
+
+.card-date {
+    display: inline-block;
+}
+
+/* Card Tags */
+.card-tags {
+    margin-bottom: 20px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.card-tag {
+    background: #f8f9fa;
+    color: #495057;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 500;
+    border: 1px solid #e9ecef;
+}
+
+/* Card Actions */
+.card-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px solid #f1f3f4;
+}
+
+.card-btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+    flex: 1;
+}
+
+.card-btn:hover {
+    transform: translateY(-1px);
+}
+
+.card-btn.primary {
+    background: #007bff;
+    color: white;
+}
+
+.card-btn.primary:hover {
+    background: #0056b3;
+}
+
+.card-btn.secondary {
+    background: #f8f9fa;
+    color: #495057;
+    border: 1px solid #e9ecef;
+}
+
+.card-btn.secondary:hover {
+    background: #e9ecef;
+}
+
+/* Empty State */
+.opportunity-empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: #6c757d;
+}
+
+.opportunity-empty h3 {
+    margin: 0 0 10px 0;
+    color: #495057;
+}
+
+.opportunity-empty p {
+    margin: 0;
+    font-size: 14px;
+}
+
+/* Toggle Button Styles */
+#opportunityToggle {
+    position: relative;
+}
+
+#opportunityToggle.active {
+    background: #28a745;
+    color: white;
+}
+
+#opportunityToggle.active:hover {
+    background: #218838;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .opportunity-view {
+        padding: 15px;
+    }
+    
+    .opportunity-cards {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    
+    .opportunity-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
+    
+    .opportunity-header h2 {
+        font-size: 24px;
+    }
+    
+    .card-actions {
+        flex-direction: column;
+    }
+    
+    .card-btn {
+        flex: none;
+    }
+}
+
+/* Animation Classes */
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideOutDown {
+    from {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+}
+
+.opportunity-card {
+    animation: slideInUp 0.3s ease forwards;
+}
+
+.opportunity-card.removing {
+    animation: slideOutDown 0.3s ease forwards;
+}
+
+/* Loading State */
+.opportunity-loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 200px;
+    color: #6c757d;
+}
+
+.opportunity-loading::after {
+    content: "Loading opportunities...";
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}

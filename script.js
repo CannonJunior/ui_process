@@ -36,6 +36,9 @@ class ProcessFlowDesigner {
         this.matrixAnimations = new MatrixAnimations(this);
         this.matrixController = new MatrixController(this);
         
+        // Initialize opportunity view system
+        this.opportunityController = new OpportunityController(this);
+        
         // Initialize node modules (Phase 8: Node Management System)
         this.nodeFactory = new NodeFactory(this.configService);
         this.nodeManager = new NodeManager(this);
@@ -96,6 +99,25 @@ class ProcessFlowDesigner {
     
     analyzeTaskUrgencyImportance(tags) {
         return this.matrixController ? this.matrixController.analyzeTaskUrgencyImportance(tags) : { isUrgent: false, isImportant: false };
+    }
+    
+    // Opportunity mode interface - delegates to OpportunityController
+    toggleOpportunityMode() {
+        if (!this.opportunityController) return;
+        
+        const isCurrentlyInOpportunityMode = this.opportunityController.isInOpportunityMode();
+        
+        if (isCurrentlyInOpportunityMode) {
+            // Exit opportunity mode
+            document.dispatchEvent(new CustomEvent('toggleOpportunityMode', { 
+                detail: { enabled: false } 
+            }));
+        } else {
+            // Enter opportunity mode
+            document.dispatchEvent(new CustomEvent('toggleOpportunityMode', { 
+                detail: { enabled: true } 
+            }));
+        }
     }
     
     // Animation interface preservation - delegates to MatrixAnimations
@@ -271,7 +293,7 @@ class ProcessFlowDesigner {
             'loadWorkflowButton', 'loadWorkflowInput', 'appendWorkflowButton', 'appendWorkflowInput', 'tagModal', 'currentTags',
             'tagCategoryDropdown', 'tagOptionDropdown', 'tagDateInput', 'tagDescriptionInput',
             'tagLinkInput', 'tagCompletedInput', 'tagModalCancel', 'tagModalAdd', 'tagModalSave',
-            'tagContextMenu', 'tagAttributeMenu', 'tagDatePicker', 'eisenhowerToggle', 'eisenhowerMatrix',
+            'tagContextMenu', 'tagAttributeMenu', 'tagDatePicker', 'eisenhowerToggle', 'eisenhowerMatrix', 'opportunityToggle',
             'reassignTasksModal', 'reassignTasksList', 'reassignOptions', 'reassignModalCancel', 'reassignModalConfirm'
         ]);
         
@@ -359,6 +381,9 @@ class ProcessFlowDesigner {
         
         this.appendWorkflowButton.addEventListener('click', () => this.appendWorkflowInput.click());
         this.appendWorkflowInput.addEventListener('change', (e) => this.appendWorkflow(e));
+        
+        // Opportunity toggle event listener
+        this.opportunityToggle.addEventListener('click', () => this.toggleOpportunityMode());
         
         // Eisenhower Matrix toggle event listener is now handled by MatrixController
         
@@ -1947,4 +1972,7 @@ class ProcessFlowDesigner {
 // Initialize the application when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     window.processFlowDesigner = new ProcessFlowDesigner();
+    
+    // Make opportunity controller globally accessible for card actions
+    window.opportunityController = window.processFlowDesigner.opportunityController;
 });
