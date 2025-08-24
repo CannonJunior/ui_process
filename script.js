@@ -426,19 +426,21 @@ class ProcessFlowDesigner {
     
     populateNodeTypeMenu() {
         // Get node types from configuration
-        const nodeTypes = this.configService.getConfig('nodeTypes');
-        if (!nodeTypes || !this.nodeTypeMenu) return;
+        const nodeTypes = this.configService.getNodeTypes();
+        if (!nodeTypes || !Array.isArray(nodeTypes) || !this.nodeTypeMenu) return;
         
         // Clear existing content
         this.nodeTypeMenu.innerHTML = '';
         
-        // Add node type options
-        Object.entries(nodeTypes).forEach(([key, config]) => {
-            const menuItem = document.createElement('div');
-            menuItem.className = 'menu-item';
-            menuItem.dataset.nodeType = key;
-            menuItem.textContent = config.label || key.charAt(0).toUpperCase() + key.slice(1);
-            this.nodeTypeMenu.appendChild(menuItem);
+        // Add node type options (skip disabled "Select" option)
+        nodeTypes.forEach(nodeType => {
+            if (nodeType.value && !nodeType.disabled) {
+                const menuItem = document.createElement('div');
+                menuItem.className = 'menu-item';
+                menuItem.dataset.nodeType = nodeType.value;
+                menuItem.textContent = nodeType.label;
+                this.nodeTypeMenu.appendChild(menuItem);
+            }
         });
     }
     
