@@ -1,8 +1,8 @@
 {
-  "timestamp": "2025-08-20 21:59:18",
-  "total_commands": 151,
-  "passed_count": 141,
-  "failed_count": 10,
+  "timestamp": "2025-08-24 08:28:53",
+  "total_commands": 174,
+  "passed_count": 152,
+  "failed_count": 22,
   "passed_commands": [
     "/node-create process",
     "/node-create process \"Data Processing\"",
@@ -89,21 +89,6 @@
     "/workflow-export pdf",
     "/workflow-status",
     "/workflow-stats",
-    "/matrix-enter",
-    "/matrix-exit",
-    "/matrix-move \"Critical bug fix\" urgent-important",
-    "/matrix-move \"Documentation update\" not-urgent-not-important",
-    "/matrix-move task_123 urgent-not-important",
-    "/matrix-move CriticalFix urgent-important",
-    "/matrix-show",
-    "/matrix-show urgent-important",
-    "/matrix-show urgent-not-important",
-    "/matrix-show not-urgent-important",
-    "/matrix-show not-urgent-not-important",
-    "/view-center",
-    "/view-center \"Data Processing\"",
-    "/view-center \"Quality Check\"",
-    "/view-zoom 1.5",
     "/view-zoom fit",
     "/view-zoom reset",
     "/view-focus \"Data Processing\"",
@@ -126,6 +111,11 @@
     "/batch-connect \"Step*\" \"Next*\"",
     "/batch-tag \"Process*\" stage:development",
     "/batch-tag \"*Check*\" importance:critical",
+    "/find \"Data Processing\"",
+    "/find \"Quality Check\"",
+    "/find \"Process 1\"",
+    "/goto \"Data Processing\"",
+    "/goto \"Quality Check\"",
     "/goto \"Process Node\"",
     "/next",
     "/next node",
@@ -137,6 +127,27 @@
     "/help workflow-save",
     "/help task",
     "/help matrix",
+    "/opp-create \"Website Redesign Project\"",
+    "/opp-create \"Website Redesign Project - Complete overhaul with new branding\"",
+    "/opp-create \"Mobile App Development - iOS and Android native apps\"",
+    "/opp-create \"E-commerce Platform - Online store development\"",
+    "/opp-create \"Customer Portal Integration\"",
+    "/opp-list tag:web",
+    "/opp-list tag:development",
+    "/opp-list tag:mobile",
+    "/opp-search \"branding\"",
+    "/opp-search \"mobile\"",
+    "/opp-search \"development\"",
+    "/opp-search \"website\"",
+    "/opp-search \"integration\"",
+    "/opp-link opp-20241201-143022 \"Data Processing\"",
+    "/opp-link opp-20241201-143022 task_456",
+    "/opp-link opp-20241201-143022 \"Website Testing\"",
+    "/opp-link opp-20241201-143022 node_123",
+    "/note-link note-123 opp-20241201-143022",
+    "/note-link note-456 \"Data Processing\"",
+    "/note-link note-789 task_123",
+    "/note-link note-abc \"Quality Check\"",
     "/node-create process \"Start\"",
     "/node-create process \"Middle\"",
     "/node-create terminal \"End\"",
@@ -148,32 +159,72 @@
   ],
   "failed_commands": [
     {
+      "command": "/matrix-enter",
+      "error": "Not recognized: Rate limit exceeded. Please try again later."
+    },
+    {
+      "command": "/matrix-exit",
+      "error": "Not recognized: Rate limit exceeded. Please try again later."
+    },
+    {
+      "command": "/matrix-move \"Critical bug fix\" urgent-important",
+      "error": "Not recognized: Rate limit exceeded. Please try again later."
+    },
+    {
+      "command": "/matrix-move \"Documentation update\" not-urgent-not-important",
+      "error": "Not recognized: Rate limit exceeded. Please try again later."
+    },
+    {
+      "command": "/matrix-move task_123 urgent-not-important",
+      "error": "Not recognized: Rate limit exceeded. Please try again later."
+    },
+    {
+      "command": "/matrix-move CriticalFix urgent-important",
+      "error": "Not recognized: Rate limit exceeded. Please try again later."
+    },
+    {
+      "command": "/matrix-show",
+      "error": "Not recognized: Rate limit exceeded. Please try again later."
+    },
+    {
+      "command": "/matrix-show urgent-important",
+      "error": "Not recognized: Rate limit exceeded. Please try again later."
+    },
+    {
+      "command": "/matrix-show urgent-not-important",
+      "error": "Not recognized: Rate limit exceeded. Please try again later."
+    },
+    {
+      "command": "/matrix-show not-urgent-important",
+      "error": "Not recognized: Rate limit exceeded. Please try again later."
+    },
+    {
+      "command": "/matrix-show not-urgent-not-important",
+      "error": "Not recognized: Rate limit exceeded. Please try again later."
+    },
+    {
+      "command": "/view-center",
+      "error": "Not recognized: Rate limit exceeded. Please try again later."
+    },
+    {
+      "command": "/view-center \"Data Processing\"",
+      "error": "Not recognized: Rate limit exceeded. Please try again later."
+    },
+    {
+      "command": "/view-center \"Quality Check\"",
+      "error": "Not recognized: Rate limit exceeded. Please try again later."
+    },
+    {
+      "command": "/view-zoom 1.5",
+      "error": "Not recognized: Rate limit exceeded. Please try again later."
+    },
+    {
       "command": "/view-zoom in",
       "error": "Not recognized: Rate limit exceeded. Please try again later."
     },
     {
       "command": "/view-zoom out",
       "error": "Not recognized: Rate limit exceeded. Please try again later."
-    },
-    {
-      "command": "/find \"Data Processing\"",
-      "error": "Not recognized: Unknown error"
-    },
-    {
-      "command": "/find \"Quality Check\"",
-      "error": "Not recognized: Unknown error"
-    },
-    {
-      "command": "/find \"Process 1\"",
-      "error": "Not recognized: Unknown error"
-    },
-    {
-      "command": "/goto \"Data Processing\"",
-      "error": "Not recognized: Unknown error"
-    },
-    {
-      "command": "/goto \"Quality Check\"",
-      "error": "Not recognized: Unknown error"
     },
     {
       "command": "/help",
@@ -185,6 +236,14 @@
     },
     {
       "command": "/status",
+      "error": "Not recognized: Unknown error"
+    },
+    {
+      "command": "/opp-list",
+      "error": "Not recognized: Unknown error"
+    },
+    {
+      "command": "/opp-list status:active",
       "error": "Not recognized: Unknown error"
     }
   ],
@@ -332,6 +391,29 @@
     "/help matrix",
     "/commands",
     "/status",
+    "/opp-create \"Website Redesign Project\"",
+    "/opp-create \"Website Redesign Project - Complete overhaul with new branding\"",
+    "/opp-create \"Mobile App Development - iOS and Android native apps\"",
+    "/opp-create \"E-commerce Platform - Online store development\"",
+    "/opp-create \"Customer Portal Integration\"",
+    "/opp-list",
+    "/opp-list tag:web",
+    "/opp-list tag:development",
+    "/opp-list status:active",
+    "/opp-list tag:mobile",
+    "/opp-search \"branding\"",
+    "/opp-search \"mobile\"",
+    "/opp-search \"development\"",
+    "/opp-search \"website\"",
+    "/opp-search \"integration\"",
+    "/opp-link opp-20241201-143022 \"Data Processing\"",
+    "/opp-link opp-20241201-143022 task_456",
+    "/opp-link opp-20241201-143022 \"Website Testing\"",
+    "/opp-link opp-20241201-143022 node_123",
+    "/note-link note-123 opp-20241201-143022",
+    "/note-link note-456 \"Data Processing\"",
+    "/note-link note-789 task_123",
+    "/note-link note-abc \"Quality Check\"",
     "/node-create process \"Start\"",
     "/node-create process \"Middle\"",
     "/node-create terminal \"End\"",

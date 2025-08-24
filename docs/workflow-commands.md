@@ -673,6 +673,87 @@ Show system status and active features.
 
 ---
 
+## 🎯 Opportunity Management Commands
+
+Organize workflow elements under business opportunities for higher-level project management.
+
+### `/opp-create "<title>"`
+Create a new business opportunity.
+
+**Parameters:**
+- `"<title>"` - Opportunity title and description (must be in quotes)
+
+**Copy-Paste Examples:**
+```
+/opp-create "Website Redesign Project"
+/opp-create "Website Redesign Project - Complete overhaul with new branding"
+/opp-create "Mobile App Development - iOS and Android native apps"
+/opp-create "E-commerce Platform - Online store development"
+/opp-create "Customer Portal Integration"
+```
+
+### `/opp-list [filters]`
+List existing opportunities with optional filtering.
+
+**Parameters:**
+- `[filters]` - Optional: Filter criteria (tag:value, status:active, etc.)
+
+**Copy-Paste Examples:**
+```
+/opp-list
+/opp-list tag:web
+/opp-list tag:development
+/opp-list status:active
+/opp-list tag:mobile
+```
+
+### `/opp-search "<query>"`
+Search opportunities by keywords and content.
+
+**Parameters:**
+- `"<query>"` - Search query (must be in quotes)
+
+**Copy-Paste Examples:**
+```
+/opp-search "branding"
+/opp-search "mobile"
+/opp-search "development"
+/opp-search "website"
+/opp-search "integration"
+```
+
+### `/opp-link <opp_id> <target_id>`
+Link an opportunity to a workflow task or node.
+
+**Parameters:**
+- `<opp_id>` - Opportunity identifier (e.g., opp-20241201-143022)
+- `<target_id>` - Target task name, node name, or element ID
+
+**Copy-Paste Examples:**
+```
+/opp-link opp-20241201-143022 "Data Processing"
+/opp-link opp-20241201-143022 task_456
+/opp-link opp-20241201-143022 "Website Testing"
+/opp-link opp-20241201-143022 node_123
+```
+
+### `/note-link <note_id> <target_id>`
+Link a note to an opportunity or task.
+
+**Parameters:**
+- `<note_id>` - Note identifier
+- `<target_id>` - Target opportunity ID, task name, or node name
+
+**Copy-Paste Examples:**
+```
+/note-link note-123 opp-20241201-143022
+/note-link note-456 "Data Processing"
+/note-link note-789 task_123
+/note-link note-abc "Quality Check"
+```
+
+---
+
 ## 💡 Usage Tips
 
 ### **Quote Handling**

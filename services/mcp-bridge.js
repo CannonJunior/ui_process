@@ -191,6 +191,15 @@ class MCPBridge extends EventEmitter {
             case 'list_opportunities':
                 return await this.callMCPTool('note-taking', 'list_opportunities', parameters);
             
+            case 'search_opportunities':
+                return await this.callMCPTool('note-taking', 'search_opportunities', parameters);
+            
+            case 'link_opportunity':
+                return await this.callMCPTool('note-taking', 'link_opportunity', parameters);
+            
+            case 'link_note':
+                return await this.callMCPTool('note-taking', 'link_note', parameters);
+            
             case 'analyze_text':
                 return await this.callMCPTool('note-taking', 'analyze_text_for_associations', parameters);
             

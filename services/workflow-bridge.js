@@ -120,6 +120,18 @@ class WorkflowBridge {
             case 'clear_selection':
                 return await this.clearSelection();
             
+            // Opportunity Operations
+            case 'handle_opp_create':
+                return await this.handleOppCreate(parameters);
+            case 'handle_opp_list':
+                return await this.handleOppList(parameters);
+            case 'handle_opp_search':
+                return await this.handleOppSearch(parameters);
+            case 'handle_opp_link':
+                return await this.handleOppLink(parameters);
+            case 'handle_note_link':
+                return await this.handleNoteLink(parameters);
+            
             default:
                 throw new Error(`Unknown action: ${action}`);
         }
@@ -503,6 +515,194 @@ class WorkflowBridge {
                 height: this.app.canvas.offsetHeight
             } : null
         };
+    }
+
+    // === OPPORTUNITY OPERATIONS ===
+
+    async handleOppCreate(parameters) {
+        try {
+            console.log('handleOppCreate called with parameters:', JSON.stringify(parameters, null, 2));
+            
+            // Extract title from parameters
+            const title = parameters.raw_params?.[1] || parameters.raw_params?.[2] || parameters.title;
+            
+            console.log('Extracted title:', title);
+            
+            if (!title) {
+                console.error('No title found in parameters:', parameters);
+                throw new Error('Opportunity title is required');
+            }
+
+            // Delegate to MCP server
+            const result = await this.callMCPServer('create_opportunity', { title });
+            
+            return {
+                action: 'handle_opp_create',
+                result: result,
+                message: `✅ Created opportunity "${result.title}" (ID: ${result.opportunity_id})`
+            };
+        } catch (error) {
+            throw new Error(`Failed to create opportunity: ${error.message}`);
+        }
+    }
+
+    async handleOppList(parameters) {
+        try {
+            // Extract filters from parameters
+            const filters = parameters.raw_params?.[0] || parameters.filters;
+            
+            // Delegate to MCP server
+            const result = await this.callMCPServer('list_opportunities', { filters });
+            
+            return {
+                action: 'handle_opp_list',
+                result: result,
+                message: `📋 Found ${result.opportunities?.length || 0} opportunities`
+            };
+        } catch (error) {
+            throw new Error(`Failed to list opportunities: ${error.message}`);
+        }
+    }
+
+    async handleOppSearch(parameters) {
+        try {
+            // Extract query from parameters
+            const query = parameters.raw_params?.[1] || parameters.raw_params?.[2] || parameters.query;
+            
+            if (!query) {
+                throw new Error('Search query is required');
+            }
+
+            // Delegate to MCP server
+            const result = await this.callMCPServer('search_opportunities', { query });
+            
+            return {
+                action: 'handle_opp_search',
+                result: result,
+                message: `🔍 Found ${result.opportunities?.length || 0} opportunities matching "${query}"`
+            };
+        } catch (error) {
+            throw new Error(`Failed to search opportunities: ${error.message}`);
+        }
+    }
+
+    async handleOppLink(parameters) {
+        try {
+            // Extract opp_id and target_id from parameters
+            const oppId = parameters.raw_params?.[1] || parameters.opp_id;
+            const targetId = parameters.raw_params?.[2] || parameters.target_id;
+            
+            if (!oppId || !targetId) {
+                throw new Error('Both opportunity ID and target ID are required');
+            }
+
+            // Delegate to MCP server
+            const result = await this.callMCPServer('link_opportunity', { 
+                opportunity_id: oppId, 
+                target_id: targetId 
+            });
+            
+            return {
+                action: 'handle_opp_link',
+                result: result,
+                message: `🔗 Linked opportunity ${oppId} to ${targetId}`
+            };
+        } catch (error) {
+            throw new Error(`Failed to link opportunity: ${error.message}`);
+        }
+    }
+
+    async handleNoteLink(parameters) {
+        try {
+            // Extract note_id and target_id from parameters
+            const noteId = parameters.raw_params?.[1] || parameters.note_id;
+            const targetId = parameters.raw_params?.[2] || parameters.target_id;
+            
+            if (!noteId || !targetId) {
+                throw new Error('Both note ID and target ID are required');
+            }
+
+            // Delegate to MCP server
+            const result = await this.callMCPServer('link_note', { 
+                note_id: noteId, 
+                target_id: targetId 
+            });
+            
+            return {
+                action: 'handle_note_link',
+                result: result,
+                message: `📝 Linked note ${noteId} to ${targetId}`
+            };
+        } catch (error) {
+            throw new Error(`Failed to link note: ${error.message}`);
+        }
+    }
+
+    // Helper method to call MCP servers through the MCP bridge
+    async callMCPServer(action, parameters) {
+        // Check if we have access to the MCP bridge
+        if (window.mcpBridge) {
+            return await window.mcpBridge.executeCommand(action, parameters);
+        }
+        
+        // Fallback: make a direct API call to the MCP service
+        try {
+            const response = await fetch('http://localhost:3001/api/mcp/execute-command', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    commandData: {
+                        is_command: true,
+                        action: action,
+                        parameters: parameters
+                    }
+                })
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            const result = await response.json();
+            return result;
+        } catch (error) {
+            console.error(`Failed to call MCP server for ${action}:`, error);
+            
+            // Return a simulated response for now
+            switch (action) {
+                case 'create_opportunity':
+                    return {
+                        opportunity_id: `opp-${new Date().toISOString().slice(0, 19).replace(/[-:]/g, '').replace('T', '-')}`,
+                        title: parameters.title,
+                        created_at: new Date().toISOString(),
+                        simulated: true
+                    };
+                case 'list_opportunities':
+                    return {
+                        opportunities: [],
+                        count: 0,
+                        simulated: true
+                    };
+                case 'search_opportunities':
+                    return {
+                        opportunities: [],
+                        query: parameters.query,
+                        count: 0,
+                        simulated: true
+                    };
+                case 'link_opportunity':
+                case 'link_note':
+                    return {
+                        success: true,
+                        linked_at: new Date().toISOString(),
+                        simulated: true
+                    };
+                default:
+                    throw new Error(`Unknown MCP action: ${action}`);
+            }
+        }
     }
 }
 

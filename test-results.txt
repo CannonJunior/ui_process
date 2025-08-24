@@ -1,0 +1,591 @@
+🚀 Workflow Commands Documentation Tester
+==================================================
+📖 Reading documentation from: docs/workflow-commands.md
+📝 Extracted 174 unique commands
+✅ MCP service is running
+
+🧪 Testing 174 commands...
+
+[  1/174] Testing: /node-create process
+    ✅ PASS - Workflow command: node-create
+[  2/174] Testing: /node-create process "Data Processing"
+    ✅ PASS - Workflow command: node-create
+[  3/174] Testing: /node-create process DataProcessing
+    ✅ PASS - Workflow command: node-create
+[  4/174] Testing: /node-create decision "Quality Check?"
+    ✅ PASS - Workflow command: node-create
+[  5/174] Testing: /node-create decision QualityCheck
+    ✅ PASS - Workflow command: node-create
+[  6/174] Testing: /node-create terminal "End Process" 300,400
+    ✅ PASS - Workflow command: node-create
+[  7/174] Testing: /node-create terminal EndProcess 300,400
+    ✅ PASS - Workflow command: node-create
+[  8/174] Testing: /node-delete "Data Processing"
+    ✅ PASS - Workflow command: node-delete
+[  9/174] Testing: /node-delete DataProcessing
+    ✅ PASS - Workflow command: node-delete
+[ 10/174] Testing: /node-delete node_123
+    ✅ PASS - Workflow command: node-delete
+[ 11/174] Testing: /delete-node "Quality Check"
+    ✅ PASS - Workflow command: node-delete
+[ 12/174] Testing: /remove-node EndProcess
+    ✅ PASS - Workflow command: node-delete
+[ 13/174] Testing: /node-rename "Old Name" "New Name"
+    ✅ PASS - Workflow command: unknown
+[ 14/174] Testing: /node-rename "Process 1" "Data Validation"
+    ✅ PASS - Workflow command: unknown
+[ 15/174] Testing: /node-rename "Quality Check" "Final Review"
+    ✅ PASS - Workflow command: unknown
+[ 16/174] Testing: /node-move "Data Processing" 150,300
+    ✅ PASS - Workflow command: node-move
+[ 17/174] Testing: /node-move DataProcessing 150,300
+    ✅ PASS - Workflow command: node-move
+[ 18/174] Testing: /node-move node_123 200,100
+    ✅ PASS - Workflow command: node-move
+[ 19/174] Testing: /node-move QualityCheck 250,400
+    ✅ PASS - Workflow command: node-move
+[ 20/174] Testing: /node-type "Quality Check" decision
+    ✅ PASS - Workflow command: node-type
+[ 21/174] Testing: /node-type QualityCheck decision
+    ✅ PASS - Workflow command: node-type
+[ 22/174] Testing: /node-type node_123 terminal
+    ✅ PASS - Workflow command: node-type
+[ 23/174] Testing: /node-type EndProcess process
+    ✅ PASS - Workflow command: node-type
+[ 24/174] Testing: /task-create "Review documentation"
+    ✅ PASS - Workflow command: task-create
+[ 25/174] Testing: /task-create "Validate data" "Data Processing"
+    ✅ PASS - Workflow command: task-create
+[ 26/174] Testing: /task-create "Critical fix" "Bug Check" high
+    ✅ PASS - Workflow command: task-create
+[ 27/174] Testing: /add-task "Testing phase"
+    ✅ PASS - Workflow command: task-create
+[ 28/174] Testing: /create-task "Final review" "Quality Check" medium
+    ✅ PASS - Workflow command: task-create
+[ 29/174] Testing: /task-delete "Review documentation"
+    ✅ PASS - Workflow command: task-delete
+[ 30/174] Testing: /task-delete task_456
+    ✅ PASS - Workflow command: task-delete
+[ 31/174] Testing: /task-delete ReviewDocumentation
+    ✅ PASS - Workflow command: task-delete
+[ 32/174] Testing: /task-move "Review documentation" "Quality Check"
+    ✅ PASS - Workflow command: unknown
+[ 33/174] Testing: /task-move task_456 "Final Review"
+    ✅ PASS - Workflow command: unknown
+[ 34/174] Testing: /task-move ReviewDocumentation "Quality Check"
+    ✅ PASS - Workflow command: unknown
+[ 35/174] Testing: /task-advance "Data validation" "Quality Check"
+    ✅ PASS - Workflow command: unknown
+[ 36/174] Testing: /task-advance task_456 "Final Processing"
+    ✅ PASS - Workflow command: unknown
+[ 37/174] Testing: /task-advance DataValidation "Quality Check"
+    ✅ PASS - Workflow command: unknown
+[ 38/174] Testing: /task-priority "Critical fix" high
+    ✅ PASS - Workflow command: task-priority
+[ 39/174] Testing: /task-priority "Documentation" low
+    ✅ PASS - Workflow command: task-priority
+[ 40/174] Testing: /task-priority task_456 urgent
+    ✅ PASS - Workflow command: task-priority
+[ 41/174] Testing: /task-priority CriticalFix high
+    ✅ PASS - Workflow command: task-priority
+[ 42/174] Testing: /connect "Start" "Data Processing"
+    ✅ PASS - Workflow command: flowline-create
+[ 43/174] Testing: /connect "Quality Check" "Error Handler" error
+    ✅ PASS - Workflow command: flowline-create
+[ 44/174] Testing: /connect "Decision Point" "Path A" conditional
+    ✅ PASS - Workflow command: flowline-create
+[ 45/174] Testing: /flowline-create "Process A" "Process B"
+    ✅ PASS - Workflow command: flowline-create
+[ 46/174] Testing: /disconnect "Start" "Old Process"
+    ✅ PASS - Workflow command: flowline-delete
+[ 47/174] Testing: /disconnect "Quality Check" "Error Handler"
+    ✅ PASS - Workflow command: flowline-delete
+[ 48/174] Testing: /flowline-delete "Process A" "Process B"
+    ✅ PASS - Workflow command: flowline-delete
+[ 49/174] Testing: /flowline-type "Decision" "Path A" conditional
+    ✅ PASS - Workflow command: flowline-type
+[ 50/174] Testing: /flowline-type "Process" "Error" error
+    ✅ PASS - Workflow command: flowline-type
+[ 51/174] Testing: /flowline-type "Quality Check" "Retry" conditional
+    ✅ PASS - Regular command: unknown
+[ 52/174] Testing: /disconnect all
+    ✅ PASS - Regular command: unknown
+[ 53/174] Testing: /tag-add "Data Processing" urgency:high
+    ✅ PASS - Regular command: unknown
+[ 54/174] Testing: /tag-add "Review task" importance:critical
+    ✅ PASS - Regular command: unknown
+[ 55/174] Testing: /tag-add "Quality Check" stage:testing
+    ✅ PASS - Regular command: unknown
+[ 56/174] Testing: /tag-add "Node 1" priority
+    ✅ PASS - Regular command: unknown
+[ 57/174] Testing: /tag-add "Task A" status:completed
+    ✅ PASS - Regular command: unknown
+[ 58/174] Testing: /tag-remove "Data Processing" urgency
+    ✅ PASS - Regular command: unknown
+[ 59/174] Testing: /tag-remove "Review task" importance
+    ✅ PASS - Regular command: unknown
+[ 60/174] Testing: /tag-remove "Quality Check" stage:testing
+    ✅ PASS - Regular command: unknown
+[ 61/174] Testing: /tag-create "priority"
+    ✅ PASS - Regular command: unknown
+[ 62/174] Testing: /tag-create "status" workflow
+    ✅ PASS - Regular command: unknown
+[ 63/174] Testing: /tag-create "urgency" system active
+    ✅ PASS - Regular command: unknown
+[ 64/174] Testing: /tag-list
+    ✅ PASS - Regular command: unknown
+[ 65/174] Testing: /tag-list priority
+    ✅ PASS - Regular command: unknown
+[ 66/174] Testing: /tag-list workflow
+    ✅ PASS - Regular command: unknown
+[ 67/174] Testing: /workflow-save
+    ✅ PASS - Regular command: unknown
+[ 68/174] Testing: /workflow-save "my-process-v2"
+    ✅ PASS - Regular command: unknown
+[ 69/174] Testing: /workflow-save "data-pipeline-workflow"
+    ✅ PASS - Regular command: unknown
+[ 70/174] Testing: /workflow-save "backup-2024"
+    ✅ PASS - Regular command: unknown
+[ 71/174] Testing: /workflow-load "my-process-v2"
+    ✅ PASS - Regular command: unknown
+[ 72/174] Testing: /workflow-load "backup-workflow"
+    ✅ PASS - Regular command: unknown
+[ 73/174] Testing: /workflow-load "data-pipeline-workflow"
+    ✅ PASS - Regular command: unknown
+[ 74/174] Testing: /workflow-clear
+    ✅ PASS - Regular command: unknown
+[ 75/174] Testing: /workflow-clear yes
+    ✅ PASS - Regular command: unknown
+[ 76/174] Testing: /workflow-clear confirm
+    ✅ PASS - Regular command: unknown
+[ 77/174] Testing: /workflow-reset
+    ✅ PASS - Regular command: unknown
+[ 78/174] Testing: /workflow-reset yes
+    ✅ PASS - Regular command: unknown
+[ 79/174] Testing: /workflow-export
+    ✅ PASS - Regular command: unknown
+[ 80/174] Testing: /workflow-export json
+    ✅ PASS - Regular command: unknown
+[ 81/174] Testing: /workflow-export png
+    ✅ PASS - Regular command: unknown
+[ 82/174] Testing: /workflow-export svg
+    ✅ PASS - Regular command: unknown
+[ 83/174] Testing: /workflow-export pdf
+    ✅ PASS - Regular command: unknown
+[ 84/174] Testing: /workflow-status
+    ✅ PASS - Regular command: unknown
+[ 85/174] Testing: /workflow-stats
+    ✅ PASS - Regular command: unknown
+[ 86/174] Testing: /matrix-enter
+    ❌ FAIL - Not recognized: Rate limit exceeded. Please try again later.
+[ 87/174] Testing: /matrix-exit
+    ❌ FAIL - Not recognized: Rate limit exceeded. Please try again later.
+[ 88/174] Testing: /matrix-move "Critical bug fix" urgent-important
+    ❌ FAIL - Not recognized: Rate limit exceeded. Please try again later.
+[ 89/174] Testing: /matrix-move "Documentation update" not-urgent-not-important
+    ❌ FAIL - Not recognized: Rate limit exceeded. Please try again later.
+[ 90/174] Testing: /matrix-move task_123 urgent-not-important
+    ❌ FAIL - Not recognized: Rate limit exceeded. Please try again later.
+[ 91/174] Testing: /matrix-move CriticalFix urgent-important
+    ❌ FAIL - Not recognized: Rate limit exceeded. Please try again later.
+[ 92/174] Testing: /matrix-show
+    ❌ FAIL - Not recognized: Rate limit exceeded. Please try again later.
+[ 93/174] Testing: /matrix-show urgent-important
+    ❌ FAIL - Not recognized: Rate limit exceeded. Please try again later.
+[ 94/174] Testing: /matrix-show urgent-not-important
+    ❌ FAIL - Not recognized: Rate limit exceeded. Please try again later.
+[ 95/174] Testing: /matrix-show not-urgent-important
+    ❌ FAIL - Not recognized: Rate limit exceeded. Please try again later.
+[ 96/174] Testing: /matrix-show not-urgent-not-important
+    ❌ FAIL - Not recognized: Rate limit exceeded. Please try again later.
+[ 97/174] Testing: /view-center
+    ❌ FAIL - Not recognized: Rate limit exceeded. Please try again later.
+[ 98/174] Testing: /view-center "Data Processing"
+    ❌ FAIL - Not recognized: Rate limit exceeded. Please try again later.
+[ 99/174] Testing: /view-center "Quality Check"
+    ❌ FAIL - Not recognized: Rate limit exceeded. Please try again later.
+[100/174] Testing: /view-zoom 1.5
+    ❌ FAIL - Not recognized: Rate limit exceeded. Please try again later.
+[101/174] Testing: /view-zoom in
+    ❌ FAIL - Not recognized: Rate limit exceeded. Please try again later.
+[102/174] Testing: /view-zoom out
+    ❌ FAIL - Not recognized: Rate limit exceeded. Please try again later.
+[103/174] Testing: /view-zoom fit
+    ✅ PASS - Workflow command: view-zoom
+[104/174] Testing: /view-zoom reset
+    ✅ PASS - Workflow command: view-zoom
+[105/174] Testing: /view-focus "Data Processing"
+    ✅ PASS - Workflow command: view-focus
+[106/174] Testing: /view-focus node_123
+    ✅ PASS - Workflow command: view-focus
+[107/174] Testing: /view-focus DataProcessing
+    ✅ PASS - Workflow command: view-focus
+[108/174] Testing: /select "Data Processing"
+    ✅ PASS - Workflow command: select
+[109/174] Testing: /select task_456
+    ✅ PASS - Workflow command: select
+[110/174] Testing: /select DataProcessing
+    ✅ PASS - Workflow command: select
+[111/174] Testing: /select-all
+    ✅ PASS - Workflow command: select-all
+[112/174] Testing: /select-all nodes
+    ✅ PASS - Workflow command: select-all
+[113/174] Testing: /select-all tasks
+    ✅ PASS - Workflow command: select-all
+[114/174] Testing: /select-all flowlines
+    ✅ PASS - Workflow command: select-all
+[115/174] Testing: /select-none
+    ✅ PASS - Workflow command: select-none
+[116/174] Testing: /select-by type:process
+    ✅ PASS - Workflow command: select-by
+[117/174] Testing: /select-by priority:high
+    ✅ PASS - Workflow command: select-by
+[118/174] Testing: /select-by tag:urgent
+    ✅ PASS - Workflow command: select-by
+[119/174] Testing: /batch-create nodes 5
+    ✅ PASS - Workflow command: batch-create
+[120/174] Testing: /batch-create tasks 3
+    ✅ PASS - Workflow command: batch-create
+[121/174] Testing: /batch-connect "Process*" "Check*"
+    ✅ PASS - Workflow command: batch-connect
+[122/174] Testing: /batch-connect "Step*" "Next*"
+    ✅ PASS - Workflow command: batch-connect
+[123/174] Testing: /batch-tag "Process*" stage:development
+    ✅ PASS - Workflow command: batch-tag
+[124/174] Testing: /batch-tag "*Check*" importance:critical
+    ✅ PASS - Workflow command: batch-tag
+[125/174] Testing: /find "Data Processing"
+    ✅ PASS - Workflow command: find
+[126/174] Testing: /find "Quality Check"
+    ✅ PASS - Workflow command: find
+[127/174] Testing: /find "Process 1"
+    ✅ PASS - Workflow command: find
+[128/174] Testing: /goto "Data Processing"
+    ✅ PASS - Workflow command: goto
+[129/174] Testing: /goto "Quality Check"
+    ✅ PASS - Workflow command: goto
+[130/174] Testing: /goto "Process Node"
+    ✅ PASS - Workflow command: goto
+[131/174] Testing: /next
+    ✅ PASS - Workflow command: next
+[132/174] Testing: /next node
+    ✅ PASS - Workflow command: next
+[133/174] Testing: /next task
+    ✅ PASS - Workflow command: next
+[134/174] Testing: /previous
+    ✅ PASS - Workflow command: previous
+[135/174] Testing: /previous node
+    ✅ PASS - Workflow command: previous
+[136/174] Testing: /previous task
+    ✅ PASS - Workflow command: previous
+[137/174] Testing: /help
+    ❌ FAIL - Not recognized: Unknown error
+[138/174] Testing: /help node-create
+    ✅ PASS - Workflow command: unknown
+[139/174] Testing: /help workflow-save
+    ✅ PASS - Workflow command: unknown
+[140/174] Testing: /help task
+    ✅ PASS - Workflow command: unknown
+[141/174] Testing: /help matrix
+    ✅ PASS - Workflow command: unknown
+[142/174] Testing: /commands
+    ❌ FAIL - Not recognized: Unknown error
+[143/174] Testing: /status
+    ❌ FAIL - Not recognized: Unknown error
+[144/174] Testing: /opp-create "Website Redesign Project"
+    ✅ PASS - Workflow command: unknown
+[145/174] Testing: /opp-create "Website Redesign Project - Complete overhaul with new branding"
+    ✅ PASS - Workflow command: unknown
+[146/174] Testing: /opp-create "Mobile App Development - iOS and Android native apps"
+    ✅ PASS - Workflow command: unknown
+[147/174] Testing: /opp-create "E-commerce Platform - Online store development"
+    ✅ PASS - Workflow command: unknown
+[148/174] Testing: /opp-create "Customer Portal Integration"
+    ✅ PASS - Workflow command: unknown
+[149/174] Testing: /opp-list
+    ❌ FAIL - Not recognized: Unknown error
+[150/174] Testing: /opp-list tag:web
+    ✅ PASS - Workflow command: unknown
+[151/174] Testing: /opp-list tag:development
+    ✅ PASS - Workflow command: unknown
+[152/174] Testing: /opp-list status:active
+    ❌ FAIL - Not recognized: Unknown error
+[153/174] Testing: /opp-list tag:mobile
+    ✅ PASS - Regular command: opp-list
+[154/174] Testing: /opp-search "branding"
+    ✅ PASS - Regular command: opp-search
+[155/174] Testing: /opp-search "mobile"
+    ✅ PASS - Regular command: opp-search
+[156/174] Testing: /opp-search "development"
+    ✅ PASS - Regular command: opp-search
+[157/174] Testing: /opp-search "website"
+    ✅ PASS - Regular command: opp-search
+[158/174] Testing: /opp-search "integration"
+    ✅ PASS - Regular command: opp-search
+[159/174] Testing: /opp-link opp-20241201-143022 "Data Processing"
+    ✅ PASS - Regular command: opp-link
+[160/174] Testing: /opp-link opp-20241201-143022 task_456
+    ✅ PASS - Regular command: opp-link
+[161/174] Testing: /opp-link opp-20241201-143022 "Website Testing"
+    ✅ PASS - Regular command: opp-link
+[162/174] Testing: /opp-link opp-20241201-143022 node_123
+    ✅ PASS - Regular command: opp-link
+[163/174] Testing: /note-link note-123 opp-20241201-143022
+    ✅ PASS - Regular command: note-link
+[164/174] Testing: /note-link note-456 "Data Processing"
+    ✅ PASS - Regular command: note-link
+[165/174] Testing: /note-link note-789 task_123
+    ✅ PASS - Regular command: note-link
+[166/174] Testing: /note-link note-abc "Quality Check"
+    ✅ PASS - Regular command: note-link
+[167/174] Testing: /node-create process "Start"
+    ✅ PASS - Regular command: unknown
+[168/174] Testing: /node-create process "Middle"
+    ✅ PASS - Regular command: unknown
+[169/174] Testing: /node-create terminal "End"
+    ✅ PASS - Regular command: unknown
+[170/174] Testing: /connect "Start" "Middle"
+    ✅ PASS - Regular command: unknown
+[171/174] Testing: /connect "Middle" "End"
+    ✅ PASS - Regular command: unknown
+[172/174] Testing: /task-create "Critical bug" "Start" high
+    ✅ PASS - Regular command: unknown
+[173/174] Testing: /tag-add "Critical bug" urgency:high
+    ✅ PASS - Regular command: unknown
+[174/174] Testing: /matrix-move "Critical bug" urgent-important
+    ✅ PASS - Regular command: unknown
+
+============================================================
+📊 TEST SUMMARY
+============================================================
+Total commands tested: 174
+✅ Passed: 152 (87.4%)
+❌ Failed: 22 (12.6%)
+
+❌ FAILED COMMANDS:
+------------------------------------------------------------
+Command: /matrix-enter
+Error:   Not recognized: Rate limit exceeded. Please try again later.
+
+Command: /matrix-exit
+Error:   Not recognized: Rate limit exceeded. Please try again later.
+
+Command: /matrix-move "Critical bug fix" urgent-important
+Error:   Not recognized: Rate limit exceeded. Please try again later.
+
+Command: /matrix-move "Documentation update" not-urgent-not-important
+Error:   Not recognized: Rate limit exceeded. Please try again later.
+
+Command: /matrix-move task_123 urgent-not-important
+Error:   Not recognized: Rate limit exceeded. Please try again later.
+
+Command: /matrix-move CriticalFix urgent-important
+Error:   Not recognized: Rate limit exceeded. Please try again later.
+
+Command: /matrix-show
+Error:   Not recognized: Rate limit exceeded. Please try again later.
+
+Command: /matrix-show urgent-important
+Error:   Not recognized: Rate limit exceeded. Please try again later.
+
+Command: /matrix-show urgent-not-important
+Error:   Not recognized: Rate limit exceeded. Please try again later.
+
+Command: /matrix-show not-urgent-important
+Error:   Not recognized: Rate limit exceeded. Please try again later.
+
+Command: /matrix-show not-urgent-not-important
+Error:   Not recognized: Rate limit exceeded. Please try again later.
+
+Command: /view-center
+Error:   Not recognized: Rate limit exceeded. Please try again later.
+
+Command: /view-center "Data Processing"
+Error:   Not recognized: Rate limit exceeded. Please try again later.
+
+Command: /view-center "Quality Check"
+Error:   Not recognized: Rate limit exceeded. Please try again later.
+
+Command: /view-zoom 1.5
+Error:   Not recognized: Rate limit exceeded. Please try again later.
+
+Command: /view-zoom in
+Error:   Not recognized: Rate limit exceeded. Please try again later.
+
+Command: /view-zoom out
+Error:   Not recognized: Rate limit exceeded. Please try again later.
+
+Command: /help
+Error:   Not recognized: Unknown error
+
+Command: /commands
+Error:   Not recognized: Unknown error
+
+Command: /status
+Error:   Not recognized: Unknown error
+
+Command: /opp-list
+Error:   Not recognized: Unknown error
+
+Command: /opp-list status:active
+Error:   Not recognized: Unknown error
+
+
+✅ PASSED COMMANDS:
+------------------------------------------------------------
+  /node-create process
+  /node-create process "Data Processing"
+  /node-create process DataProcessing
+  /node-create decision "Quality Check?"
+  /node-create decision QualityCheck
+  /node-create terminal "End Process" 300,400
+  /node-create terminal EndProcess 300,400
+  /node-delete "Data Processing"
+  /node-delete DataProcessing
+  /node-delete node_123
+  /delete-node "Quality Check"
+  /remove-node EndProcess
+  /node-rename "Old Name" "New Name"
+  /node-rename "Process 1" "Data Validation"
+  /node-rename "Quality Check" "Final Review"
+  /node-move "Data Processing" 150,300
+  /node-move DataProcessing 150,300
+  /node-move node_123 200,100
+  /node-move QualityCheck 250,400
+  /node-type "Quality Check" decision
+  /node-type QualityCheck decision
+  /node-type node_123 terminal
+  /node-type EndProcess process
+  /task-create "Review documentation"
+  /task-create "Validate data" "Data Processing"
+  /task-create "Critical fix" "Bug Check" high
+  /add-task "Testing phase"
+  /create-task "Final review" "Quality Check" medium
+  /task-delete "Review documentation"
+  /task-delete task_456
+  /task-delete ReviewDocumentation
+  /task-move "Review documentation" "Quality Check"
+  /task-move task_456 "Final Review"
+  /task-move ReviewDocumentation "Quality Check"
+  /task-advance "Data validation" "Quality Check"
+  /task-advance task_456 "Final Processing"
+  /task-advance DataValidation "Quality Check"
+  /task-priority "Critical fix" high
+  /task-priority "Documentation" low
+  /task-priority task_456 urgent
+  /task-priority CriticalFix high
+  /connect "Start" "Data Processing"
+  /connect "Quality Check" "Error Handler" error
+  /connect "Decision Point" "Path A" conditional
+  /flowline-create "Process A" "Process B"
+  /disconnect "Start" "Old Process"
+  /disconnect "Quality Check" "Error Handler"
+  /flowline-delete "Process A" "Process B"
+  /flowline-type "Decision" "Path A" conditional
+  /flowline-type "Process" "Error" error
+  /flowline-type "Quality Check" "Retry" conditional
+  /disconnect all
+  /tag-add "Data Processing" urgency:high
+  /tag-add "Review task" importance:critical
+  /tag-add "Quality Check" stage:testing
+  /tag-add "Node 1" priority
+  /tag-add "Task A" status:completed
+  /tag-remove "Data Processing" urgency
+  /tag-remove "Review task" importance
+  /tag-remove "Quality Check" stage:testing
+  /tag-create "priority"
+  /tag-create "status" workflow
+  /tag-create "urgency" system active
+  /tag-list
+  /tag-list priority
+  /tag-list workflow
+  /workflow-save
+  /workflow-save "my-process-v2"
+  /workflow-save "data-pipeline-workflow"
+  /workflow-save "backup-2024"
+  /workflow-load "my-process-v2"
+  /workflow-load "backup-workflow"
+  /workflow-load "data-pipeline-workflow"
+  /workflow-clear
+  /workflow-clear yes
+  /workflow-clear confirm
+  /workflow-reset
+  /workflow-reset yes
+  /workflow-export
+  /workflow-export json
+  /workflow-export png
+  /workflow-export svg
+  /workflow-export pdf
+  /workflow-status
+  /workflow-stats
+  /view-zoom fit
+  /view-zoom reset
+  /view-focus "Data Processing"
+  /view-focus node_123
+  /view-focus DataProcessing
+  /select "Data Processing"
+  /select task_456
+  /select DataProcessing
+  /select-all
+  /select-all nodes
+  /select-all tasks
+  /select-all flowlines
+  /select-none
+  /select-by type:process
+  /select-by priority:high
+  /select-by tag:urgent
+  /batch-create nodes 5
+  /batch-create tasks 3
+  /batch-connect "Process*" "Check*"
+  /batch-connect "Step*" "Next*"
+  /batch-tag "Process*" stage:development
+  /batch-tag "*Check*" importance:critical
+  /find "Data Processing"
+  /find "Quality Check"
+  /find "Process 1"
+  /goto "Data Processing"
+  /goto "Quality Check"
+  /goto "Process Node"
+  /next
+  /next node
+  /next task
+  /previous
+  /previous node
+  /previous task
+  /help node-create
+  /help workflow-save
+  /help task
+  /help matrix
+  /opp-create "Website Redesign Project"
+  /opp-create "Website Redesign Project - Complete overhaul with new branding"
+  /opp-create "Mobile App Development - iOS and Android native apps"
+  /opp-create "E-commerce Platform - Online store development"
+  /opp-create "Customer Portal Integration"
+  /opp-list tag:web
+  /opp-list tag:development
+  /opp-list tag:mobile
+  /opp-search "branding"
+  /opp-search "mobile"
+  /opp-search "development"
+  /opp-search "website"
+  /opp-search "integration"
+  /opp-link opp-20241201-143022 "Data Processing"
+  /opp-link opp-20241201-143022 task_456
+  /opp-link opp-20241201-143022 "Website Testing"
+  /opp-link opp-20241201-143022 node_123
+  /note-link note-123 opp-20241201-143022
+  /note-link note-456 "Data Processing"
+  /note-link note-789 task_123
+  /note-link note-abc "Quality Check"
+  /node-create process "Start"
+  /node-create process "Middle"
+  /node-create terminal "End"
+  /connect "Start" "Middle"
+  /connect "Middle" "End"
+  /task-create "Critical bug" "Start" high
+  /tag-add "Critical bug" urgency:high
+  /matrix-move "Critical bug" urgent-important
+
+💾 Detailed results saved to: test-results-workflow-commands.json
+
+⚠️  22 commands need to be fixed!

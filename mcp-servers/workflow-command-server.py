@@ -102,6 +102,13 @@ class WorkflowCommandServer:
             'batch-create': r'^/batch[-_]?create\s+(\w+)\s+(.+)$',
             'batch-connect': r'^/batch[-_]?connect\s+(\w+)\s+(\w+)$',
             'batch-tag': r'^/batch[-_]?tag\s+(\w+)\s+(.+)$',
+            
+            # Opportunity Management Commands
+            'opp-create': r'^/opp[-_]?create\s+(?:"([^"]+)"|(.+))$',
+            'opp-list': r'^/opp[-_]?list(?:\s+(.+))?$',
+            'opp-search': r'^/opp[-_]?search\s+(?:"([^"]+)"|(.+))$',
+            'opp-link': r'^/opp[-_]?link\s+(\S+)\s+(.+)$',
+            'note-link': r'^/note[-_]?link\s+(\S+)\s+(.+)$',
         }
         
         # Command descriptions for help system
@@ -167,6 +174,13 @@ class WorkflowCommandServer:
             '/batch-create <type> <list>': 'Create multiple elements',
             '/batch-connect <sources> <targets>': 'Create multiple connections',
             '/batch-tag <tag> <elements>': 'Tag multiple elements',
+            
+            # Opportunity Commands
+            '/opp-create <title>': 'Create a new business opportunity',
+            '/opp-list [filters]': 'List existing opportunities',
+            '/opp-search <query>': 'Search opportunities by keywords',
+            '/opp-link <opp_id> <target_id>': 'Link opportunity to workflow element',
+            '/note-link <note_id> <target_id>': 'Link note to opportunity or task',
         }
         
         # Valid values for various parameters
@@ -219,7 +233,7 @@ class WorkflowCommandServer:
             # Check if it's a workflow-related command that doesn't match our patterns
             workflow_keywords = [
                 'node', 'task', 'flow', 'tag', 'workflow', 'matrix', 'select', 'view',
-                'create', 'delete', 'move', 'connect', 'save', 'load'
+                'create', 'delete', 'move', 'connect', 'save', 'load', 'opp', 'opportunity', 'note'
             ]
             
             if any(keyword in input_text.lower() for keyword in workflow_keywords):
@@ -380,7 +394,8 @@ class WorkflowCommandServer:
                     'View Commands': [cmd for cmd in self.command_descriptions.keys() if 'view' in cmd],
                     'Selection Commands': [cmd for cmd in self.command_descriptions.keys() if 'select' in cmd],
                     'Navigation Commands': [cmd for cmd in self.command_descriptions.keys() if any(x in cmd for x in ['goto', 'find', 'next', 'previous'])],
-                    'Batch Commands': [cmd for cmd in self.command_descriptions.keys() if 'batch' in cmd]
+                    'Batch Commands': [cmd for cmd in self.command_descriptions.keys() if 'batch' in cmd],
+                    'Opportunity Commands': [cmd for cmd in self.command_descriptions.keys() if any(x in cmd for x in ['opp', 'note-link'])]
                 }
                 
                 return {
@@ -437,6 +452,34 @@ class WorkflowCommandServer:
             # Prepare command data for WorkflowBridge execution
             action = command_data.get('action')
             parameters = command_data.get('parameters', {})
+            
+            # For opportunity commands, extract parameters from raw_params if parameters is empty
+            if not parameters and action and (action.startswith('handle_opp') or action == 'handle_note_link') and 'raw_params' in command_data:
+                raw_params = command_data.get('raw_params', [])
+                if action == 'handle_opp_create':
+                    # Extract title from raw_params[1] or raw_params[2] (quoted or unquoted)
+                    title = raw_params[1] if len(raw_params) > 1 and raw_params[1] else (raw_params[2] if len(raw_params) > 2 and raw_params[2] else None)
+                    if title:
+                        parameters = {'title': title}
+                elif action == 'handle_opp_search':
+                    # Extract query from raw_params[1] or raw_params[2]
+                    query = raw_params[1] if len(raw_params) > 1 and raw_params[1] else (raw_params[2] if len(raw_params) > 2 and raw_params[2] else None)
+                    if query:
+                        parameters = {'query': query}
+                elif action == 'handle_opp_list':
+                    # Extract filters from raw_params[0]
+                    filters = raw_params[0] if len(raw_params) > 0 and raw_params[0] else None
+                    if filters:
+                        parameters = {'filters': filters}
+                elif action in ['handle_opp_link', 'handle_note_link']:
+                    # Extract two parameters
+                    param1 = raw_params[0] if len(raw_params) > 0 else None
+                    param2 = raw_params[1] if len(raw_params) > 1 else None
+                    if param1 and param2:
+                        if action == 'handle_opp_link':
+                            parameters = {'opp_id': param1, 'target_id': param2}
+                        else:  # handle_note_link
+                            parameters = {'note_id': param1, 'target_id': param2}
             
             # Structure the command data for the browser WorkflowBridge
             workflow_command = {
