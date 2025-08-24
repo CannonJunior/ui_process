@@ -1000,6 +1000,64 @@ input.node-input {
     font-size: 14px;
 }
 
+/* Opportunity Form Styles */
+.opportunity-form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin: 15px 0;
+}
+
+.opportunity-form .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.opportunity-form .form-group label {
+    font-size: 13px;
+    font-weight: 500;
+    color: #333;
+}
+
+.opportunity-form .form-group input,
+.opportunity-form .form-group select,
+.opportunity-form .form-group textarea {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 13px;
+    font-family: inherit;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.opportunity-form .form-group textarea {
+    resize: vertical;
+    min-height: 60px;
+}
+
+.opportunity-form .form-group input:focus,
+.opportunity-form .form-group select:focus,
+.opportunity-form .form-group textarea:focus {
+    border-color: #007bff;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.opportunity-form .form-group input:invalid,
+.opportunity-form .form-group select:invalid,
+.opportunity-form .form-group textarea:invalid {
+    border-color: #dc3545;
+}
+
+.opportunity-form .form-group input:invalid:focus,
+.opportunity-form .form-group select:invalid:focus,
+.opportunity-form .form-group textarea:invalid:focus {
+    border-color: #dc3545;
+    box-shadow: 0 0 0 2px rgba(220, 53, 69, 0.25);
+}
+
 /* Modal Buttons */
 .modal-buttons {
     display: flex;

@@ -61,7 +61,7 @@ class OpportunityController {
         console.log('OpportunityController: Entering opportunity mode');
         this.isOpportunityMode = true;
         
-        // Load opportunities from MCP
+        // Load opportunities from MCP (this now preserves manual ones)
         await this.loadOpportunities();
         
         // Transition out workflow elements
@@ -106,6 +106,11 @@ class OpportunityController {
         try {
             console.log('OpportunityController: Loading opportunities from MCP');
             
+            // Store any manually created opportunities to preserve them
+            const manuallyCreatedOpportunities = this.opportunities.filter(opp => 
+                opp.metadata && opp.metadata.source === 'manual'
+            );
+            
             // Use the MCP client if available
             if (window.mcpClient) {
                 const commandData = {
@@ -115,13 +120,30 @@ class OpportunityController {
                 };
                 
                 const result = await window.mcpClient.executeNoteCommand(commandData);
-                this.opportunities = result.opportunities || [];
+                const mcpOpportunities = result.opportunities || [];
                 
-                console.log(`OpportunityController: Loaded ${this.opportunities.length} opportunities`);
+                // Merge MCP opportunities with manually created ones
+                this.opportunities = [...mcpOpportunities, ...manuallyCreatedOpportunities];
+                
+                console.log(`OpportunityController: Loaded ${mcpOpportunities.length} from MCP, preserved ${manuallyCreatedOpportunities.length} manual opportunities`);
             } else {
-                // Fallback: create sample data for development
-                this.opportunities = this.createSampleOpportunities();
-                console.log('OpportunityController: Using sample opportunities (MCP not available)');
+                // Fallback: use sample data + preserve manual opportunities
+                if (this.opportunities.length === 0) {
+                    // First time loading - add sample data
+                    this.opportunities = this.createSampleOpportunities();
+                    console.log('OpportunityController: Using sample opportunities (MCP not available, first load)');
+                } else {
+                    // Keep existing opportunities (including manually created ones)
+                    // Filter to preserve manual opportunities and add samples if none exist
+                    const manualOpportunities = this.opportunities.filter(opp => 
+                        opp.metadata && opp.metadata.source === 'manual'
+                    );
+                    const sampleOpportunities = manualOpportunities.length === 0 && this.opportunities.length === 0 ? 
+                        this.createSampleOpportunities() : [];
+                    
+                    // Don't overwrite - just preserve existing
+                    console.log(`OpportunityController: Preserving ${this.opportunities.length} existing opportunities (${manualOpportunities.length} manual) (MCP not available)`);
+                }
             }
             
             // Render opportunity cards
@@ -129,8 +151,18 @@ class OpportunityController {
             
         } catch (error) {
             console.error('OpportunityController: Error loading opportunities:', error);
-            // Use sample data as fallback
-            this.opportunities = this.createSampleOpportunities();
+            
+            // Store any manually created opportunities to preserve them
+            const manuallyCreatedOpportunities = this.opportunities.filter(opp => 
+                opp.metadata && opp.metadata.source === 'manual'
+            );
+            
+            // Use sample data as fallback but preserve manual ones
+            const sampleOpportunities = manuallyCreatedOpportunities.length === 0 ? this.createSampleOpportunities() : [];
+            this.opportunities = [...sampleOpportunities, ...manuallyCreatedOpportunities];
+            
+            console.log(`OpportunityController: Error fallback - using ${sampleOpportunities.length} sample + ${manuallyCreatedOpportunities.length} manual opportunities`);
+            
             this.renderOpportunityCards();
         }
     }
@@ -379,6 +411,74 @@ class OpportunityController {
      */
     getOpportunities() {
         return this.opportunities;
+    }
+    
+    /**
+     * Add a new opportunity to the collection
+     * @param {Object} opportunity - Opportunity data following the schema
+     */
+    addOpportunity(opportunity) {
+        if (!opportunity) {
+            console.error('OpportunityController: No opportunity data provided');
+            return;
+        }
+        
+        // Add to opportunities array
+        this.opportunities.push(opportunity);
+        
+        // Refresh the display if we're in opportunity mode
+        if (this.isOpportunityMode) {
+            this.renderOpportunityCards();
+        }
+        
+        console.log(`OpportunityController: Added opportunity "${opportunity.title}" (${opportunity.opportunity_id})`);
+        
+        // Dispatch event for other components
+        document.dispatchEvent(new CustomEvent('opportunityAdded', { 
+            detail: { opportunity } 
+        }));
+    }
+    
+    /**
+     * Remove an opportunity by ID
+     * @param {string} opportunityId - Opportunity ID to remove
+     */
+    removeOpportunity(opportunityId) {
+        const index = this.opportunities.findIndex(opp => opp.opportunity_id === opportunityId);
+        if (index !== -1) {
+            const removed = this.opportunities.splice(index, 1)[0];
+            
+            // Refresh the display if we're in opportunity mode
+            if (this.isOpportunityMode) {
+                this.renderOpportunityCards();
+            }
+            
+            console.log(`OpportunityController: Removed opportunity "${removed.title}"`);
+            
+            // Dispatch event for other components
+            document.dispatchEvent(new CustomEvent('opportunityRemoved', { 
+                detail: { opportunity: removed } 
+            }));
+        } else {
+            console.warn(`OpportunityController: Opportunity ${opportunityId} not found`);
+        }
+    }
+    
+    /**
+     * Get all opportunities
+     * @returns {Array} Array of opportunity objects
+     */
+    getAllOpportunities() {
+        return [...this.opportunities];
+    }
+    
+    /**
+     * Get opportunity by ID
+     * @param {string} opportunityId - Opportunity ID
+     * @returns {Object|null} Opportunity object or null if not found
+     */
+    getOpportunityById(opportunityId) {
+        return this.opportunities.find(opp => opp.opportunity_id === opportunityId) || null;
     }
 }
 

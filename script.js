@@ -294,7 +294,10 @@ class ProcessFlowDesigner {
             'tagCategoryDropdown', 'tagOptionDropdown', 'tagDateInput', 'tagDescriptionInput',
             'tagLinkInput', 'tagCompletedInput', 'tagModalCancel', 'tagModalAdd', 'tagModalSave',
             'tagContextMenu', 'tagAttributeMenu', 'tagDatePicker', 'eisenhowerToggle', 'eisenhowerMatrix', 'opportunityToggle',
-            'reassignTasksModal', 'reassignTasksList', 'reassignOptions', 'reassignModalCancel', 'reassignModalConfirm'
+            'reassignTasksModal', 'reassignTasksList', 'reassignOptions', 'reassignModalCancel', 'reassignModalConfirm',
+            'opportunityModal', 'opportunityTitle', 'opportunityDescription', 'opportunityStatus', 'opportunityTags',
+            'opportunityValue', 'opportunityPriority', 'opportunityDeadline', 'opportunityContact', 'opportunityNotes',
+            'opportunityModalCancel', 'opportunityModalExport', 'opportunityModalCreate'
         ]);
         
         // Assign elements to instance properties for backward compatibility
@@ -400,6 +403,9 @@ class ProcessFlowDesigner {
         
         // Add button context menu event listeners
         this.setupAddButtonEventListeners();
+        
+        // Opportunity modal event listeners
+        this.setupOpportunityModalEventListeners();
     }
     
     // ==================== ADD BUTTON CONTEXT MENU METHODS ====================
@@ -477,6 +483,12 @@ class ProcessFlowDesigner {
             } else {
                 console.warn('ModalManager or showTaskModal method not available');
             }
+        } else if (addType === 'opportunity') {
+            // Hide all context menus
+            this.hideAllAddMenus();
+            
+            // Show opportunity modal
+            this.showOpportunityModal();
         }
     }
     
@@ -520,6 +532,208 @@ class ProcessFlowDesigner {
     }
     
     // ==================== END ADD BUTTON CONTEXT MENU METHODS ====================
+    
+    // ==================== OPPORTUNITY MODAL METHODS ====================
+    
+    setupOpportunityModalEventListeners() {
+        // Opportunity modal buttons
+        if (this.opportunityModalCancel) {
+            this.opportunityModalCancel.addEventListener('click', () => this.hideOpportunityModal());
+        }
+        
+        if (this.opportunityModalCreate) {
+            this.opportunityModalCreate.addEventListener('click', () => this.createOpportunity());
+        }
+        
+        if (this.opportunityModalExport) {
+            this.opportunityModalExport.addEventListener('click', () => this.createAndExportOpportunity());
+        }
+        
+        // Modal backdrop click to close
+        if (this.opportunityModal) {
+            this.opportunityModal.addEventListener('click', (e) => {
+                if (e.target === this.opportunityModal) {
+                    this.hideOpportunityModal();
+                }
+            });
+        }
+    }
+    
+    showOpportunityModal() {
+        if (!this.opportunityModal) {
+            console.error('Opportunity modal not found');
+            return;
+        }
+        
+        // Reset form
+        this.resetOpportunityForm();
+        
+        // Show modal
+        this.opportunityModal.style.display = 'block';
+        
+        // Focus on title field
+        if (this.opportunityTitle) {
+            this.opportunityTitle.focus();
+        }
+    }
+    
+    hideOpportunityModal() {
+        if (this.opportunityModal) {
+            this.opportunityModal.style.display = 'none';
+        }
+    }
+    
+    resetOpportunityForm() {
+        // Reset all form fields
+        if (this.opportunityTitle) this.opportunityTitle.value = '';
+        if (this.opportunityDescription) this.opportunityDescription.value = '';
+        if (this.opportunityStatus) this.opportunityStatus.value = 'active';
+        if (this.opportunityTags) this.opportunityTags.value = '';
+        if (this.opportunityValue) this.opportunityValue.value = '';
+        if (this.opportunityPriority) this.opportunityPriority.value = 'medium';
+        if (this.opportunityDeadline) this.opportunityDeadline.value = '';
+        if (this.opportunityContact) this.opportunityContact.value = '';
+        if (this.opportunityNotes) this.opportunityNotes.value = '';
+    }
+    
+    validateOpportunityForm() {
+        const errors = [];
+        
+        // Required fields validation
+        if (!this.opportunityTitle || !this.opportunityTitle.value.trim()) {
+            errors.push('Title is required');
+        }
+        
+        if (!this.opportunityDescription || !this.opportunityDescription.value.trim()) {
+            errors.push('Description is required');
+        }
+        
+        if (!this.opportunityStatus || !this.opportunityStatus.value) {
+            errors.push('Status is required');
+        }
+        
+        return {
+            isValid: errors.length === 0,
+            errors: errors
+        };
+    }
+    
+    createOpportunityData() {
+        // Create opportunity object following the schema
+        const opportunity = {
+            opportunity_id: `opp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            title: this.opportunityTitle.value.trim(),
+            description: this.opportunityDescription.value.trim(),
+            status: this.opportunityStatus.value,
+            tags: this.opportunityTags.value ? this.opportunityTags.value.split(',').map(tag => tag.trim()).filter(tag => tag) : [],
+            created_at: new Date().toISOString(),
+            metadata: {
+                source: 'manual'  // Mark as manually created
+            }
+        };
+        
+        // Add optional metadata fields
+        if (this.opportunityValue.value) {
+            opportunity.metadata.value = parseFloat(this.opportunityValue.value);
+        }
+        
+        if (this.opportunityPriority.value) {
+            opportunity.metadata.priority = this.opportunityPriority.value;
+        }
+        
+        if (this.opportunityDeadline.value) {
+            opportunity.metadata.deadline = this.opportunityDeadline.value;
+        }
+        
+        if (this.opportunityContact.value.trim()) {
+            opportunity.metadata.contact_person = this.opportunityContact.value.trim();
+        }
+        
+        if (this.opportunityNotes.value.trim()) {
+            opportunity.metadata.notes = this.opportunityNotes.value.trim();
+        }
+        
+        return opportunity;
+    }
+    
+    createOpportunity() {
+        // Validate form
+        const validation = this.validateOpportunityForm();
+        if (!validation.isValid) {
+            alert('Please fix the following errors:\n' + validation.errors.join('\n'));
+            return;
+        }
+        
+        // Create opportunity data
+        const opportunity = this.createOpportunityData();
+        
+        // Add to opportunity controller
+        if (this.opportunityController && typeof this.opportunityController.addOpportunity === 'function') {
+            this.opportunityController.addOpportunity(opportunity);
+        } else {
+            console.warn('OpportunityController not available - opportunity created locally');
+        }
+        
+        // Hide modal
+        this.hideOpportunityModal();
+        
+        // Show success message
+        alert(`Opportunity "${opportunity.title}" created successfully!`);
+        
+        console.log('Created opportunity:', opportunity);
+    }
+    
+    createAndExportOpportunity() {
+        // Validate form
+        const validation = this.validateOpportunityForm();
+        if (!validation.isValid) {
+            alert('Please fix the following errors:\n' + validation.errors.join('\n'));
+            return;
+        }
+        
+        // Create opportunity data
+        const opportunity = this.createOpportunityData();
+        
+        // Add to opportunity controller
+        if (this.opportunityController && typeof this.opportunityController.addOpportunity === 'function') {
+            this.opportunityController.addOpportunity(opportunity);
+        } else {
+            console.warn('OpportunityController not available - opportunity created locally');
+        }
+        
+        // Export as JSON file
+        this.exportOpportunityAsJSON(opportunity);
+        
+        // Hide modal
+        this.hideOpportunityModal();
+        
+        // Show success message
+        alert(`Opportunity "${opportunity.title}" created and exported successfully!`);
+        
+        console.log('Created and exported opportunity:', opportunity);
+    }
+    
+    exportOpportunityAsJSON(opportunity) {
+        // Create JSON blob
+        const jsonContent = JSON.stringify(opportunity, null, 2);
+        const blob = new Blob([jsonContent], { type: 'application/json' });
+        
+        // Create download link
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `opportunity-${opportunity.opportunity_id}.json`;
+        
+        // Trigger download
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        // Clean up
+        URL.revokeObjectURL(url);
+    }
+    
+    // ==================== END OPPORTUNITY MODAL METHODS ====================
     
     createSVGDefs() {
         const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
