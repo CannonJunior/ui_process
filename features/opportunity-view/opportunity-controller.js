@@ -246,6 +246,7 @@ class OpportunityController {
             ...document.querySelectorAll('.node'),
             ...document.querySelectorAll('.task-node'),
             ...document.querySelectorAll('.flowline'),
+            ...document.querySelectorAll('.next-action-slot'),
             document.getElementById('eisenhowerMatrix')
         ];
         
@@ -269,7 +270,8 @@ class OpportunityController {
         const elements = [
             ...document.querySelectorAll('.node'),
             ...document.querySelectorAll('.task-node'),
-            ...document.querySelectorAll('.flowline')
+            ...document.querySelectorAll('.flowline'),
+            ...document.querySelectorAll('.next-action-slot')
         ];
         
         elements.forEach(element => {

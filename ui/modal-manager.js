@@ -35,7 +35,7 @@ class ModalManager {
         const inputElements = this.domService.getInputElements();
         const modalControls = this.domService.getElements([
             'taskModalCancel', 'taskModalCreate', 'advanceModalCancel',
-            'tagModalCancel', 'tagModalAdd', 'tagModalSave', 'addTaskButton',
+            'tagModalCancel', 'tagModalAdd', 'tagModalSave',
             'advanceOptions', 'currentTags'
         ]);
         
@@ -56,9 +56,7 @@ class ModalManager {
      */
     setupModalEventListeners() {
         // Task Modal Event Listeners
-        if (this.addTaskButton) {
-            this.addTaskButton.addEventListener('click', () => this.showTaskModal());
-        }
+        // Note: Add Task functionality now handled by Add button context menu
         
         if (this.taskModalCancel) {
             this.taskModalCancel.addEventListener('click', () => this.hideTaskModal());

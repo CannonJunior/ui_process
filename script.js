@@ -288,7 +288,7 @@ class ProcessFlowDesigner {
         // Get all required DOM elements through DOM service
         const elements = this.domService.getElements([
             'contextMenu', 'taskContextMenu', 'canvas', 'flowlineTypeDropdown',
-            'addButton', 'addContextMenu', 'nodeTypeMenu', 'addTaskButton', 'taskModal', 'taskNameInput', 'taskModalCancel', 'taskModalCreate',
+            'addButton', 'addContextMenu', 'nodeTypeMenu', 'taskModal', 'taskNameInput', 'taskModalCancel', 'taskModalCreate',
             'advanceTaskModal', 'advanceOptions', 'advanceModalCancel', 'saveWorkflowButton',
             'loadWorkflowButton', 'loadWorkflowInput', 'appendWorkflowButton', 'appendWorkflowInput', 'tagModal', 'currentTags',
             'tagCategoryDropdown', 'tagOptionDropdown', 'tagDateInput', 'tagDescriptionInput',
@@ -467,6 +467,16 @@ class ProcessFlowDesigner {
         
         if (addType === 'node') {
             this.showNodeTypeMenu();
+        } else if (addType === 'task') {
+            // Hide all context menus
+            this.hideAllAddMenus();
+            
+            // Show task modal using ModalManager
+            if (this.modalManager && typeof this.modalManager.showTaskModal === 'function') {
+                this.modalManager.showTaskModal();
+            } else {
+                console.warn('ModalManager or showTaskModal method not available');
+            }
         }
     }
     
