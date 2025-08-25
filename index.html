@@ -222,6 +222,70 @@
         </div>
     </div>
     
+    <div id="taskEditModal" class="modal">
+        <div class="modal-content">
+            <h3>Edit Task</h3>
+            <div class="task-edit-form">
+                <div class="form-group">
+                    <label for="taskEditName">Task Name (required):</label>
+                    <input type="text" id="taskEditName" placeholder="Enter task name..." maxlength="100" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="taskEditDescription">Description (optional):</label>
+                    <textarea id="taskEditDescription" placeholder="Enter task description..." rows="3" maxlength="500"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="taskEditStatus">Status:</label>
+                    <select id="taskEditStatus">
+                        <option value="not_started">Not Started</option>
+                        <option value="in_progress">In Progress</option>
+                        <option value="completed">Completed</option>
+                        <option value="on_hold">On Hold</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="taskEditPriority">Priority:</label>
+                    <select id="taskEditPriority">
+                        <option value="low">Low</option>
+                        <option value="medium" selected>Medium</option>
+                        <option value="high">High</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="taskEditDueDate">Due Date (optional):</label>
+                    <input type="date" id="taskEditDueDate">
+                </div>
+                
+                <div class="form-group">
+                    <label for="taskEditOpportunity">Linked Opportunity (optional):</label>
+                    <select id="taskEditOpportunity">
+                        <option value="">No opportunity linked</option>
+                        <!-- Opportunities will be populated dynamically -->
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="taskEditEstimatedHours">Estimated Hours (optional):</label>
+                    <input type="number" id="taskEditEstimatedHours" placeholder="Enter estimated hours..." min="0" step="0.5">
+                </div>
+                
+                <div class="form-group">
+                    <label for="taskEditAssignedTo">Assigned To (optional):</label>
+                    <input type="text" id="taskEditAssignedTo" placeholder="Enter assignee name..." maxlength="100">
+                </div>
+            </div>
+            
+            <div class="modal-buttons">
+                <button id="taskEditModalCancel" class="modal-button cancel">Cancel</button>
+                <button id="taskEditModalSave" class="modal-button create">Save Changes</button>
+            </div>
+        </div>
+    </div>
+    
     <div id="advanceTaskModal" class="modal">
         <div class="modal-content">
             <h3>Advance Task</h3>
@@ -395,6 +459,7 @@
     <!-- Service Modules (Phase 3: Configuration Management) -->
     <script src="services/config-service.js"></script>
     <script src="services/dom-service.js"></script>
+    <script src="services/relationship-tracker.js"></script>
     
     <!-- UI Modules (Phase 4: Modal System Extraction) -->
     <script src="ui/modal-manager.js"></script>

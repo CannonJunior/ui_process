@@ -53,10 +53,15 @@ interface Task {
   id: string;                      // Unique identifier
   type: 'task';                    // Always 'task'
   text: string;                    // Task name/description
+  description?: string;            // Optional detailed description
   anchoredTo: string;              // ID of anchored node
   previousAnchor?: string;         // Previous anchor for task movement
   slot: number;                    // Slot position relative to anchor
   tags: TaskTag[];                 // Array of associated tags
+  opportunityId?: string;          // Optional linked opportunity ID
+  priority?: 'low' | 'medium' | 'high'; // Optional priority level
+  dueDate?: string;                // Optional due date (ISO string)
+  status?: 'not_started' | 'in_progress' | 'completed' | 'on_hold'; // Task status
   position: {
     left: number;                  // X coordinate
     top: number;                   // Y coordinate
@@ -68,6 +73,11 @@ interface Task {
   containerPosition?: {            // Task container position
     left: number;
     top: number;
+  };
+  metadata?: {                     // Additional custom properties
+    estimatedHours?: number;
+    assignedTo?: string;
+    [key: string]: any;
   };
 }
 ```

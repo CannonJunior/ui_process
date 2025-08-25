@@ -236,6 +236,33 @@ class OpportunityController {
     }
     
     /**
+     * Get tasks linked to a specific opportunity
+     * @param {string} opportunityId - The opportunity ID
+     * @returns {Array} Array of task objects linked to the opportunity
+     */
+    getLinkedTasks(opportunityId) {
+        if (!this.app || !this.app.taskNodes) return [];
+        
+        const linkedTasks = [];
+        this.app.taskNodes.forEach(taskNode => {
+            if (taskNode.dataset.opportunityId === opportunityId) {
+                const taskTextElement = taskNode.querySelector('.task-text') || taskNode.querySelector('.node-text');
+                const taskName = taskTextElement ? taskTextElement.textContent.trim() : 'Unnamed Task';
+                
+                linkedTasks.push({
+                    id: taskNode.dataset.id,
+                    name: taskName,
+                    status: taskNode.dataset.status || 'not_started',
+                    priority: taskNode.dataset.priority || 'medium',
+                    node: taskNode
+                });
+            }
+        });
+        
+        return linkedTasks;
+    }
+
+    /**
      * Create a single opportunity card
      */
     createOpportunityCard(opportunity) {
@@ -245,6 +272,25 @@ class OpportunityController {
         
         // Format date
         const createdDate = new Date(opportunity.created_at).toLocaleDateString();
+        
+        // Get linked tasks for this opportunity
+        const linkedTasks = this.getLinkedTasks(opportunity.opportunity_id);
+        const linkedTasksHtml = linkedTasks.length > 0 ? `
+            <div class="card-linked-tasks">
+                <div class="linked-tasks-header">Linked Tasks (${linkedTasks.length})</div>
+                <div class="linked-tasks-list">
+                    ${linkedTasks.map(task => `
+                        <div class="linked-task-item" data-task-id="${task.id}">
+                            <div class="task-name">${task.name}</div>
+                            <div class="task-meta">
+                                <span class="task-status ${task.status}">${task.status.replace('_', ' ')}</span>
+                                <span class="task-priority priority-${task.priority}">${task.priority}</span>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        ` : '<div class="card-linked-tasks"><div class="no-linked-tasks">No linked tasks</div></div>';
         
         // Create card content
         card.innerHTML = `
@@ -257,6 +303,7 @@ class OpportunityController {
                 <div class="card-meta">
                     <span class="card-date">Created: ${createdDate}</span>
                 </div>
+                ${linkedTasksHtml}
             </div>
             <div class="card-tags">
                 ${(opportunity.tags || []).map(tag => `<span class="card-tag">${tag}</span>`).join('')}

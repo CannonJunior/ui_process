@@ -15,11 +15,11 @@ class DOMService {
         this.elementGroups = {
             canvas: ['canvas'],
             contextMenus: ['contextMenu', 'taskContextMenu', 'tagContextMenu', 'tagAttributeMenu'],
-            modals: ['taskModal', 'advanceTaskModal', 'tagModal'],
+            modals: ['taskModal', 'taskEditModal', 'advanceTaskModal', 'tagModal'],
             buttons: ['addTaskButton', 'saveWorkflowButton', 'loadWorkflowButton', 'eisenhowerToggle'],
             dropdowns: ['nodeTypeDropdown', 'flowlineTypeDropdown', 'tagCategoryDropdown', 'tagOptionDropdown'],
-            inputs: ['taskNameInput', 'tagDateInput', 'tagDescriptionInput', 'tagLinkInput', 'tagCompletedInput', 'loadWorkflowInput'],
-            modalControls: ['taskModalCancel', 'taskModalCreate', 'advanceModalCancel', 'tagModalCancel', 'tagModalAdd', 'tagModalSave'],
+            inputs: ['taskNameInput', 'taskEditName', 'taskEditDescription', 'taskEditStatus', 'taskEditPriority', 'taskEditDueDate', 'taskEditOpportunity', 'taskEditEstimatedHours', 'taskEditAssignedTo', 'tagDateInput', 'tagDescriptionInput', 'tagLinkInput', 'tagCompletedInput', 'loadWorkflowInput'],
+            modalControls: ['taskModalCancel', 'taskModalCreate', 'taskEditModalCancel', 'taskEditModalSave', 'advanceModalCancel', 'tagModalCancel', 'tagModalAdd', 'tagModalSave'],
             matrix: ['eisenhowerMatrix', 'eisenhowerToggle'],
             tags: ['currentTags', 'tagDatePicker'],
             options: ['advanceOptions']

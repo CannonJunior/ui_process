@@ -21,6 +21,7 @@ class ProcessFlowDesigner {
         // Initialize services
         this.domService = getDOMService();
         this.configService = getConfigService();
+        this.relationshipTracker = new RelationshipTracker();
         
         // Cache DOM element references using DOM service
         this.initializeDOMElements();
@@ -297,7 +298,10 @@ class ProcessFlowDesigner {
             'reassignTasksModal', 'reassignTasksList', 'reassignOptions', 'reassignModalCancel', 'reassignModalConfirm',
             'opportunityModal', 'opportunityTitle', 'opportunityDescription', 'opportunityStatus', 'opportunityTags',
             'opportunityValue', 'opportunityPriority', 'opportunityDeadline', 'opportunityContact', 'opportunityNotes',
-            'opportunityModalCancel', 'opportunityModalExport', 'opportunityModalCreate'
+            'opportunityModalCancel', 'opportunityModalExport', 'opportunityModalCreate',
+            'taskEditModal', 'taskEditName', 'taskEditDescription', 'taskEditStatus', 'taskEditPriority',
+            'taskEditDueDate', 'taskEditOpportunity', 'taskEditEstimatedHours', 'taskEditAssignedTo',
+            'taskEditModalCancel', 'taskEditModalSave'
         ]);
         
         // Assign elements to instance properties for backward compatibility
@@ -406,6 +410,9 @@ class ProcessFlowDesigner {
         
         // Opportunity modal event listeners
         this.setupOpportunityModalEventListeners();
+        
+        // Task edit modal event listeners
+        this.setupTaskEditModalEventListeners();
     }
     
     // ==================== ADD BUTTON CONTEXT MENU METHODS ====================
@@ -735,6 +742,297 @@ class ProcessFlowDesigner {
     
     // ==================== END OPPORTUNITY MODAL METHODS ====================
     
+    // ==================== TASK EDIT MODAL METHODS ====================
+    
+    setupTaskEditModalEventListeners() {
+        // Task edit modal buttons
+        if (this.taskEditModalCancel) {
+            this.taskEditModalCancel.addEventListener('click', () => this.hideTaskEditModal());
+        }
+        
+        if (this.taskEditModalSave) {
+            this.taskEditModalSave.addEventListener('click', () => this.saveTaskEdit());
+        }
+        
+        // Modal backdrop click to close
+        if (this.taskEditModal) {
+            this.taskEditModal.addEventListener('click', (e) => {
+                if (e.target === this.taskEditModal) {
+                    this.hideTaskEditModal();
+                }
+            });
+        }
+    }
+    
+    showTaskEditModal(taskNode) {
+        if (!this.taskEditModal) {
+            console.error('Task edit modal not found');
+            return;
+        }
+        
+        if (!taskNode) {
+            console.error('No task node provided for editing');
+            return;
+        }
+        
+        // Store reference to the task being edited
+        this.editingTaskNode = taskNode;
+        
+        // Populate form with current task data
+        this.populateTaskEditForm(taskNode);
+        
+        // Populate opportunities dropdown
+        this.populateOpportunityDropdown();
+        
+        // Show modal
+        this.taskEditModal.style.display = 'block';
+        
+        // Focus on name field
+        if (this.taskEditName) {
+            this.taskEditName.focus();
+            this.taskEditName.select();
+        }
+    }
+    
+    hideTaskEditModal() {
+        if (this.taskEditModal) {
+            this.taskEditModal.style.display = 'none';
+        }
+        this.editingTaskNode = null;
+    }
+    
+    populateTaskEditForm(taskNode) {
+        // Get current task text
+        const taskTextElement = taskNode.querySelector('.task-text') || taskNode.querySelector('.node-text');
+        const currentText = taskTextElement ? taskTextElement.textContent.trim() : '';
+        
+        // Populate basic fields
+        if (this.taskEditName) this.taskEditName.value = currentText;
+        if (this.taskEditDescription) this.taskEditDescription.value = taskNode.dataset.description || '';
+        if (this.taskEditStatus) this.taskEditStatus.value = taskNode.dataset.status || 'not_started';
+        if (this.taskEditPriority) this.taskEditPriority.value = taskNode.dataset.priority || 'medium';
+        if (this.taskEditDueDate) this.taskEditDueDate.value = taskNode.dataset.dueDate || '';
+        if (this.taskEditOpportunity) this.taskEditOpportunity.value = taskNode.dataset.opportunityId || '';
+        if (this.taskEditEstimatedHours) this.taskEditEstimatedHours.value = taskNode.dataset.estimatedHours || '';
+        if (this.taskEditAssignedTo) this.taskEditAssignedTo.value = taskNode.dataset.assignedTo || '';
+    }
+    
+    populateOpportunityDropdown() {
+        if (!this.taskEditOpportunity) return;
+        
+        // Clear existing options except the first one
+        this.taskEditOpportunity.innerHTML = '<option value="">No opportunity linked</option>';
+        
+        // Get opportunities from OpportunityController
+        const opportunities = this.opportunityController ? this.opportunityController.getAllOpportunities() : [];
+        
+        // Add opportunity options
+        opportunities.forEach(opportunity => {
+            const option = document.createElement('option');
+            option.value = opportunity.opportunity_id;
+            option.textContent = `${opportunity.title} (${opportunity.status})`;
+            this.taskEditOpportunity.appendChild(option);
+        });
+        
+        console.log(`TaskEdit: Populated ${opportunities.length} opportunities in dropdown`);
+    }
+    
+    validateTaskEditForm() {
+        const errors = [];
+        
+        // Required field validation
+        if (!this.taskEditName || !this.taskEditName.value.trim()) {
+            errors.push('Task name is required');
+        }
+        
+        return {
+            isValid: errors.length === 0,
+            errors: errors
+        };
+    }
+    
+    saveTaskEdit() {
+        // Validate form
+        const validation = this.validateTaskEditForm();
+        if (!validation.isValid) {
+            alert('Please fix the following errors:\n' + validation.errors.join('\n'));
+            return;
+        }
+        
+        if (!this.editingTaskNode) {
+            console.error('No task node being edited');
+            return;
+        }
+        
+        // Update task with new data
+        this.updateTaskData(this.editingTaskNode);
+        
+        // Hide modal
+        this.hideTaskEditModal();
+        
+        // Show success message
+        const taskName = this.taskEditName.value.trim();
+        alert(`Task "${taskName}" updated successfully!`);
+        
+        console.log('Updated task:', this.editingTaskNode);
+    }
+    
+    updateTaskData(taskNode) {
+        // Update task text in DOM
+        const taskTextElement = taskNode.querySelector('.task-text') || taskNode.querySelector('.node-text');
+        if (taskTextElement) {
+            taskTextElement.textContent = this.taskEditName.value.trim();
+        }
+        
+        // Update data attributes
+        taskNode.dataset.description = this.taskEditDescription.value.trim();
+        taskNode.dataset.status = this.taskEditStatus.value;
+        taskNode.dataset.priority = this.taskEditPriority.value;
+        taskNode.dataset.dueDate = this.taskEditDueDate.value;
+        taskNode.dataset.opportunityId = this.taskEditOpportunity.value;
+        taskNode.dataset.estimatedHours = this.taskEditEstimatedHours.value;
+        taskNode.dataset.assignedTo = this.taskEditAssignedTo.value.trim();
+        
+        // Update last modified timestamp
+        taskNode.dataset.lastModified = new Date().toISOString();
+        
+        // Update opportunity link display
+        this.updateOpportunityLinkDisplay(taskNode);
+        
+        // Update relationships in relationship tracker
+        this.syncTaskRelationships(taskNode);
+        
+        // Dispatch event for other components
+        document.dispatchEvent(new CustomEvent('taskUpdated', { 
+            detail: { taskNode, opportunityId: this.taskEditOpportunity.value } 
+        }));
+    }
+    
+    
+    /**
+     * Synchronize task relationships with the relationship tracker
+     * @param {HTMLElement} taskNode - The task node element
+     */
+    syncTaskRelationships(taskNode) {
+        if (!this.relationshipTracker || !taskNode) return;
+        
+        const taskId = taskNode.dataset.id;
+        if (!taskId) return;
+        
+        // Remove existing relationships for this task
+        const existingRelationships = this.relationshipTracker.getEntityRelationships(
+            this.relationshipTracker.entityTypes.TASK, 
+            taskId
+        );
+        
+        existingRelationships.forEach(rel => {
+            if (rel.metadata && rel.metadata.system) {
+                this.relationshipTracker.removeRelationship(
+                    rel.sourceType, rel.sourceId,
+                    rel.targetType, rel.targetId,
+                    rel.relationshipType
+                );
+            }
+        });
+        
+        // Add current relationships
+        
+        // Task anchored to node
+        if (taskNode.dataset.anchoredTo) {
+            this.relationshipTracker.addRelationship(
+                this.relationshipTracker.entityTypes.TASK, taskId,
+                this.relationshipTracker.entityTypes.NODE, taskNode.dataset.anchoredTo,
+                this.relationshipTracker.relationshipTypes.ANCHORED_TO,
+                { system: true }
+            );
+        }
+        
+        // Task linked to opportunity
+        if (taskNode.dataset.opportunityId) {
+            this.relationshipTracker.addRelationship(
+                this.relationshipTracker.entityTypes.TASK, taskId,
+                this.relationshipTracker.entityTypes.OPPORTUNITY, taskNode.dataset.opportunityId,
+                this.relationshipTracker.relationshipTypes.LINKED_TO,
+                { system: true }
+            );
+        }
+        
+        // Task tags
+        if (taskNode.dataset.tags) {
+            try {
+                const tags = JSON.parse(taskNode.dataset.tags);
+                tags.forEach((tag, index) => {
+                    const tagId = `${taskId}_tag_${index}`;
+                    this.relationshipTracker.addRelationship(
+                        this.relationshipTracker.entityTypes.TASK, taskId,
+                        this.relationshipTracker.entityTypes.TAG, tagId,
+                        this.relationshipTracker.relationshipTypes.TAGGED_WITH,
+                        { 
+                            system: true,
+                            tagData: tag,
+                            tagIndex: index
+                        }
+                    );
+                });
+            } catch (error) {
+                console.warn('syncTaskRelationships: Error parsing task tags:', error);
+            }
+        }
+    }
+    
+    /**
+     * Synchronize all relationships from current application state
+     */
+    syncAllRelationships() {
+        if (!this.relationshipTracker) return;
+        
+        console.log('ProcessFlowDesigner: Synchronizing all relationships');
+        
+        // Build application state object
+        const appState = {
+            taskNodes: this.taskNodes,
+            flowlines: this.flowlineManager ? this.flowlineManager.getFlowlines() : [],
+            opportunities: this.opportunityController ? this.opportunityController.getAllOpportunities() : []
+        };
+        
+        // Sync with relationship tracker
+        this.relationshipTracker.syncFromApplicationState(appState);
+        
+        // Log statistics
+        const stats = this.relationshipTracker.getStats();
+        console.log('Relationship Statistics:', stats);
+    }
+    
+    /**
+     * Get relationship statistics for debugging and analysis
+     */
+    getRelationshipStats() {
+        if (!this.relationshipTracker) return null;
+        return this.relationshipTracker.getStats();
+    }
+    
+    /**
+     * Export all relationship data
+     */
+    exportRelationshipData() {
+        if (!this.relationshipTracker) return null;
+        return this.relationshipTracker.exportRelationships();
+    }
+    
+    /**
+     * Find entities related to a given entity
+     * @param {string} entityType - Type of the source entity
+     * @param {string} entityId - ID of the source entity  
+     * @param {string} targetEntityType - Type of entities to find
+     * @param {string} relationshipType - Optional relationship type filter
+     */
+    findRelatedEntities(entityType, entityId, targetEntityType, relationshipType = null) {
+        if (!this.relationshipTracker) return [];
+        return this.relationshipTracker.findRelatedEntities(entityType, entityId, targetEntityType, relationshipType);
+    }
+
+    // ==================== END TASK EDIT MODAL METHODS ====================
+    
     createSVGDefs() {
         const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         svg.style.position = 'absolute';
@@ -913,6 +1211,99 @@ class ProcessFlowDesigner {
         this.modalManager.createTaskFromModal();
     }
     
+    /**
+     * Create opportunity link display div for a task
+     * @param {HTMLElement} taskBanner - The task banner element
+     * @returns {HTMLElement|null} Opportunity link div or null if no opportunity linked
+     */
+    createOpportunityLinkDisplay(taskBanner) {
+        if (!taskBanner || !taskBanner.dataset.opportunityId) {
+            return null;
+        }
+        
+        const opportunityId = taskBanner.dataset.opportunityId;
+        const opportunity = this.opportunityController ? this.opportunityController.getOpportunityById(opportunityId) : null;
+        
+        if (!opportunity) {
+            console.warn(`Task ${taskBanner.dataset.id} linked to non-existent opportunity ${opportunityId}`);
+            return null;
+        }
+        
+        const opportunityLinkDiv = document.createElement('div');
+        opportunityLinkDiv.className = 'task-opportunity-link';
+        opportunityLinkDiv.dataset.opportunityId = opportunityId;
+        
+        // Create opportunity indicator with name and status
+        opportunityLinkDiv.innerHTML = `
+            <div class="opportunity-indicator">
+                <div class="opportunity-icon">🔗</div>
+                <div class="opportunity-info">
+                    <div class="opportunity-name">${opportunity.title}</div>
+                    <div class="opportunity-status">${opportunity.status || 'active'}</div>
+                </div>
+            </div>
+        `;
+        
+        // Add click handler to navigate to opportunity
+        opportunityLinkDiv.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.navigateToOpportunity(opportunityId);
+        });
+        
+        return opportunityLinkDiv;
+    }
+    
+    /**
+     * Navigate to opportunity view and highlight specific opportunity
+     * @param {string} opportunityId - The opportunity ID to highlight
+     */
+    navigateToOpportunity(opportunityId) {
+        // Switch to opportunity view if not already there
+        if (!this.opportunityController || !this.opportunityController.isInOpportunityMode()) {
+            const opportunityToggle = document.getElementById('opportunityToggle');
+            if (opportunityToggle) {
+                opportunityToggle.click();
+            }
+        }
+        
+        // Highlight the specific opportunity card after a short delay
+        setTimeout(() => {
+            const opportunityCard = document.querySelector(`[data-opportunity-id="${opportunityId}"]`);
+            if (opportunityCard) {
+                opportunityCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                opportunityCard.classList.add('highlighted');
+                setTimeout(() => opportunityCard.classList.remove('highlighted'), 2000);
+            }
+        }, 600);
+    }
+    
+    /**
+     * Update opportunity link display for a task
+     * @param {HTMLElement} taskBanner - The task banner element
+     */
+    updateOpportunityLinkDisplay(taskBanner) {
+        if (!taskBanner) return;
+        
+        const taskContainer = taskBanner.parentNode;
+        if (!taskContainer) return;
+        
+        // Remove existing opportunity link
+        const existingLink = taskContainer.querySelector('.task-opportunity-link');
+        if (existingLink) {
+            existingLink.remove();
+        }
+        
+        // Create new opportunity link if needed
+        const opportunityLinkDiv = this.createOpportunityLinkDisplay(taskBanner);
+        if (opportunityLinkDiv) {
+            // Insert between task-banner and task-tags-area
+            const tagsArea = taskContainer.querySelector('.task-tags-area');
+            if (tagsArea) {
+                taskContainer.insertBefore(opportunityLinkDiv, tagsArea);
+            }
+        }
+    }
+
     createTaskNode(taskName) {
         const taskContainer = document.createElement('div');
         taskContainer.className = 'task-container';
@@ -940,8 +1331,14 @@ class ProcessFlowDesigner {
         tagsContainer.className = 'task-tags';
         tagsArea.appendChild(tagsContainer);
         
-        // Add vertical structure: banner on top, tags area below
+        // Create opportunity link display (between banner and tags)
+        const opportunityLinkDiv = this.createOpportunityLinkDisplay(taskBanner);
+        
+        // Add vertical structure: banner on top, opportunity link, tags area below
         taskContainer.appendChild(taskBanner);
+        if (opportunityLinkDiv) {
+            taskContainer.appendChild(opportunityLinkDiv);
+        }
         taskContainer.appendChild(tagsArea);
         
         // Create Next Action slot (positioned to right of task-container)
@@ -2047,8 +2444,14 @@ class ProcessFlowDesigner {
             tagsContainer.className = 'task-tags';
             tagsArea.appendChild(tagsContainer);
             
-            // Add vertical structure: banner on top, tags area below
+            // Create opportunity link display (between banner and tags)
+            const opportunityLinkDiv = this.createOpportunityLinkDisplay(taskBanner);
+            
+            // Add vertical structure: banner on top, opportunity link, tags area below
             taskContainer.appendChild(taskBanner);
+            if (opportunityLinkDiv) {
+                taskContainer.appendChild(opportunityLinkDiv);
+            }
             taskContainer.appendChild(tagsArea);
             
             // Create Next Action slot (positioned separately)
@@ -2310,6 +2713,13 @@ class ProcessFlowDesigner {
 // Initialize the application when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     window.processFlowDesigner = new ProcessFlowDesigner();
+    
+    // Initialize relationship tracking after a short delay to ensure all components are loaded
+    setTimeout(() => {
+        if (window.processFlowDesigner.syncAllRelationships) {
+            window.processFlowDesigner.syncAllRelationships();
+        }
+    }, 500);
     
     // Make opportunity controller globally accessible for card actions
     window.opportunityController = window.processFlowDesigner.opportunityController;

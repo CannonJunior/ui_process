@@ -476,7 +476,7 @@ class ContextMenuManager {
                 this.app.showTagModal();
                 break;
             case 'rename':
-                this.app.renameNode();
+                this.app.showTaskEditModal(this.app.selectedNode);
                 break;
             case 'delete':
                 this.app.deleteTaskNode();
