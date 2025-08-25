@@ -14,11 +14,11 @@ class DOMService {
         // Element groups for organized access
         this.elementGroups = {
             canvas: ['canvas'],
-            contextMenus: ['contextMenu', 'taskContextMenu', 'tagContextMenu', 'tagAttributeMenu'],
+            contextMenus: ['contextMenu', 'taskContextMenu', 'tagContextMenu', 'tagAttributeMenu', 'addContextMenu', 'workflowContextMenu', 'nodeTypeMenu'],
             modals: ['taskModal', 'taskEditModal', 'advanceTaskModal', 'tagModal'],
-            buttons: ['addTaskButton', 'saveWorkflowButton', 'loadWorkflowButton', 'eisenhowerToggle'],
-            dropdowns: ['nodeTypeDropdown', 'flowlineTypeDropdown', 'tagCategoryDropdown', 'tagOptionDropdown'],
-            inputs: ['taskNameInput', 'taskEditName', 'taskEditDescription', 'taskEditStatus', 'taskEditPriority', 'taskEditDueDate', 'taskEditOpportunity', 'taskEditEstimatedHours', 'taskEditAssignedTo', 'tagDateInput', 'tagDescriptionInput', 'tagLinkInput', 'tagCompletedInput', 'loadWorkflowInput'],
+            buttons: ['addButton', 'workflowButton', 'eisenhowerToggle'],
+            dropdowns: ['flowlineTypeDropdown', 'tagCategoryDropdown', 'tagOptionDropdown'],
+            inputs: ['taskNameInput', 'taskEditName', 'taskEditDescription', 'taskEditStatus', 'taskEditPriority', 'taskEditDueDate', 'taskEditOpportunity', 'taskEditEstimatedHours', 'taskEditAssignedTo', 'tagDateInput', 'tagDescriptionInput', 'tagLinkInput', 'tagCompletedInput', 'loadWorkflowInput', 'appendWorkflowInput'],
             modalControls: ['taskModalCancel', 'taskModalCreate', 'taskEditModalCancel', 'taskEditModalSave', 'advanceModalCancel', 'tagModalCancel', 'tagModalAdd', 'tagModalSave'],
             matrix: ['eisenhowerMatrix', 'eisenhowerToggle'],
             tags: ['currentTags', 'tagDatePicker'],

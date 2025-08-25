@@ -19,10 +19,8 @@
             <img src="robobrain.svg" alt="Process Flow Designer" class="logo-image">
         </div>
         <button id="addButton" class="toolbar-button">Add</button>
+        <button id="workflowButton" class="toolbar-button">Workflow</button>
         
-        <button id="saveWorkflowButton" class="toolbar-button">Save Workflow</button>
-        <button id="appendWorkflowButton" class="toolbar-button">Append Workflow</button>
-        <button id="loadWorkflowButton" class="toolbar-button">Load Workflow</button>
         <input type="file" id="loadWorkflowInput" accept=".json" style="display: none;">
         <input type="file" id="appendWorkflowInput" accept=".json" style="display: none;">
         
@@ -153,6 +151,13 @@
         <div class="menu-item" data-add-type="node">Node</div>
         <div class="menu-item" data-add-type="task">Task</div>
         <div class="menu-item" data-add-type="opportunity">Opportunity</div>
+    </div>
+    
+    <!-- Workflow Context Menu -->
+    <div id="workflowContextMenu" class="context-menu workflow-context-menu">
+        <div class="menu-item" data-workflow-action="save">Save Workflow</div>
+        <div class="menu-item" data-workflow-action="load">Load Workflow</div>
+        <div class="menu-item" data-workflow-action="append">Append Workflow</div>
     </div>
     
     <!-- Node Type Menu -->

@@ -670,6 +670,10 @@ input.node-input {
     min-width: 100px;
 }
 
+.workflow-context-menu {
+    min-width: 140px;
+}
+
 .node-type-menu {
     min-width: 120px;
     max-height: 200px;

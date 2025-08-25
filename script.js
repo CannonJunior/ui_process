@@ -289,9 +289,10 @@ class ProcessFlowDesigner {
         // Get all required DOM elements through DOM service
         const elements = this.domService.getElements([
             'contextMenu', 'taskContextMenu', 'canvas', 'flowlineTypeDropdown',
-            'addButton', 'addContextMenu', 'nodeTypeMenu', 'taskModal', 'taskNameInput', 'taskModalCancel', 'taskModalCreate',
-            'advanceTaskModal', 'advanceOptions', 'advanceModalCancel', 'saveWorkflowButton',
-            'loadWorkflowButton', 'loadWorkflowInput', 'appendWorkflowButton', 'appendWorkflowInput', 'tagModal', 'currentTags',
+            'addButton', 'addContextMenu', 'nodeTypeMenu', 'workflowButton', 'workflowContextMenu',
+            'taskModal', 'taskNameInput', 'taskModalCancel', 'taskModalCreate',
+            'advanceTaskModal', 'advanceOptions', 'advanceModalCancel',
+            'loadWorkflowInput', 'appendWorkflowInput', 'tagModal', 'currentTags',
             'tagCategoryDropdown', 'tagOptionDropdown', 'tagDateInput', 'tagDescriptionInput',
             'tagLinkInput', 'tagCompletedInput', 'tagModalCancel', 'tagModalAdd', 'tagModalSave',
             'tagContextMenu', 'tagAttributeMenu', 'tagDatePicker', 'eisenhowerToggle', 'eisenhowerMatrix', 'opportunityToggle',
@@ -383,12 +384,11 @@ class ProcessFlowDesigner {
         
         // Modal event listeners are now handled by ModalManager
         
-        // Save/Load workflow event listeners
-        this.saveWorkflowButton.addEventListener('click', () => this.saveWorkflow());
-        this.loadWorkflowButton.addEventListener('click', () => this.loadWorkflowInput.click());
-        this.loadWorkflowInput.addEventListener('change', (e) => this.loadWorkflow(e));
+        // Workflow button and context menu event listeners
+        this.setupWorkflowButtonEventListeners();
         
-        this.appendWorkflowButton.addEventListener('click', () => this.appendWorkflowInput.click());
+        // File input event listeners (still needed for actual file loading)
+        this.loadWorkflowInput.addEventListener('change', (e) => this.loadWorkflow(e));
         this.appendWorkflowInput.addEventListener('change', (e) => this.appendWorkflow(e));
         
         // Opportunity toggle event listener
@@ -539,6 +539,76 @@ class ProcessFlowDesigner {
     }
     
     // ==================== END ADD BUTTON CONTEXT MENU METHODS ====================
+    
+    // ==================== WORKFLOW BUTTON CONTEXT MENU METHODS ====================
+    
+    setupWorkflowButtonEventListeners() {
+        // Workflow button click to show context menu
+        this.workflowButton.addEventListener('click', (e) => this.showWorkflowContextMenu(e));
+        
+        // Workflow context menu item clicks
+        this.workflowContextMenu.addEventListener('click', (e) => this.handleWorkflowContextMenuClick(e));
+        
+        // Global click to hide workflow menu
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('#workflowButton') && 
+                !e.target.closest('#workflowContextMenu')) {
+                this.hideWorkflowContextMenu();
+            }
+        });
+    }
+    
+    showWorkflowContextMenu(event) {
+        event.stopPropagation();
+        
+        // Hide other menus first
+        this.hideAllAddMenus();
+        
+        const rect = this.workflowButton.getBoundingClientRect();
+        this.workflowContextMenu.style.left = `${rect.left}px`;
+        this.workflowContextMenu.style.top = `${rect.bottom + 5}px`;
+        this.workflowContextMenu.style.display = 'block';
+        
+        console.log('ProcessFlowDesigner: Workflow context menu shown');
+    }
+    
+    hideWorkflowContextMenu() {
+        if (this.workflowContextMenu) {
+            this.workflowContextMenu.style.display = 'none';
+        }
+    }
+    
+    handleWorkflowContextMenuClick(event) {
+        event.stopPropagation();
+        
+        const menuItem = event.target.closest('.menu-item');
+        if (!menuItem) return;
+        
+        const action = menuItem.dataset.workflowAction;
+        
+        // Hide menu immediately
+        this.hideWorkflowContextMenu();
+        
+        // Handle the action
+        switch (action) {
+            case 'save':
+                this.saveWorkflow();
+                break;
+            case 'load':
+                this.loadWorkflowInput.click();
+                break;
+            case 'append':
+                this.appendWorkflowInput.click();
+                break;
+            default:
+                console.warn('ProcessFlowDesigner: Unknown workflow action:', action);
+                break;
+        }
+        
+        console.log(`ProcessFlowDesigner: Workflow action "${action}" executed`);
+    }
+    
+    // ==================== END WORKFLOW BUTTON CONTEXT MENU METHODS ====================
     
     // ==================== OPPORTUNITY MODAL METHODS ====================
     
