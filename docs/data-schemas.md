@@ -53,15 +53,23 @@ interface Task {
   id: string;                      // Unique identifier
   type: 'task';                    // Always 'task'
   text: string;                    // Task name/description
-  description?: string;            // Optional detailed description
+  description?: string;            // Optional detailed description (NEW)
   anchoredTo: string;              // ID of anchored node
   previousAnchor?: string;         // Previous anchor for task movement
   slot: number;                    // Slot position relative to anchor
   tags: TaskTag[];                 // Array of associated tags
+  
+  // New opportunity linking fields
   opportunityId?: string;          // Optional linked opportunity ID
-  priority?: 'low' | 'medium' | 'high'; // Optional priority level
+  
+  // Enhanced task management fields (NEW)
+  priority?: 'low' | 'medium' | 'high'; // Task priority level
   dueDate?: string;                // Optional due date (ISO string)
   status?: 'not_started' | 'in_progress' | 'completed' | 'on_hold'; // Task status
+  estimatedHours?: number;         // Estimated work hours
+  assignedTo?: string;             // Person assigned to task
+  lastModified?: string;           // Last modification timestamp (ISO string)
+  
   position: {
     left: number;                  // X coordinate
     top: number;                   // Y coordinate
@@ -75,8 +83,6 @@ interface Task {
     top: number;
   };
   metadata?: {                     // Additional custom properties
-    estimatedHours?: number;
-    assignedTo?: string;
     [key: string]: any;
   };
 }
@@ -127,18 +133,48 @@ interface Flowline {
 ```typescript
 interface Workflow {
   name: string;                    // Workflow name
-  version: string;                 // Version number
+  version: string;                 // Version number (updated for new features)
   created_at: string;              // Creation timestamp
   updated_at: string;              // Last update timestamp
   nodes: Node[];                   // All nodes in workflow
-  tasks: Task[];                   // All tasks in workflow
+  tasks: Task[];                   // All tasks in workflow (with enhanced fields)
   flowlines: Flowline[];           // All flowlines in workflow
-  opportunities?: Opportunity[];   // Associated opportunities
+  opportunities: Opportunity[];    // Associated opportunities (NEW - now required)
+  relationships?: {                // Relationship tracking data (NEW)
+    data: RelationshipExport;
+    version: string;
+  };
   metadata?: {
     description?: string;
     author?: string;
+    taskOpportunityLinks?: number; // Count of task-opportunity relationships
+    totalRelationships?: number;   // Total relationship count
+    exportedFeatures?: string[];   // List of features included in export
     [key: string]: any;
   };
+}
+
+interface RelationshipExport {
+  relationships: Array<{
+    key: string;
+    sourceType: string;
+    sourceId: string;
+    targetType: string; 
+    targetId: string;
+    relationshipType: string;
+    strength: number;
+    metadata: any;
+    created: string;
+    updated: string;
+  }>;
+  stats: {
+    totalRelationships: number;
+    relationshipsByType: Record<string, number>;
+    entitiesByType: Record<string, number>;
+    lastUpdated: string;
+  };
+  exported: string;
+  version: string;
 }
 ```
 
@@ -197,4 +233,32 @@ interface AppConfig {
 ### File Export Formats
 - **JSON**: Complete object with all fields
 - **CSV**: Flattened structure for opportunities and tasks
-- **Workflow Files**: Complete workflow with all associated objects
+- **Workflow Files**: Complete workflow with all associated objects including opportunities and relationships
+
+## Recent Schema Updates
+
+### Version 2.0.0 Changes (Current Session)
+1. **Task Schema Enhancements**:
+   - Added `description`, `priority`, `dueDate`, `status`, `estimatedHours`, `assignedTo`, `lastModified` fields
+   - Enhanced opportunity linking with `opportunityId` field
+   - Moved metadata fields to top-level for better access
+
+2. **Workflow Schema Enhancements**:
+   - Made `opportunities` array required (was optional)
+   - Added `relationships` object for relationship tracking data
+   - Enhanced metadata with relationship statistics and feature tracking
+
+3. **New Relationship Tracking**:
+   - Added `RelationshipExport` interface for comprehensive relationship data
+   - Supports 11 different relationship types (structural, semantic, temporal)
+   - Includes statistics and metadata for relationship analysis
+
+4. **Opportunity Integration**:
+   - Full integration with task system via `opportunityId` linking
+   - Support for manual opportunity creation with comprehensive metadata
+   - Visual relationship tracking in both Workflow and Opportunity views
+
+### Migration Notes
+- Existing workflow files without opportunities will auto-migrate by creating empty opportunities array
+- Task nodes without enhanced fields will use default values
+- Relationship data is optional and will be generated if missing

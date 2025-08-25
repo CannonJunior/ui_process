@@ -1857,9 +1857,22 @@ class ProcessFlowDesigner {
         
         console.log(`\n📝 SAVE: Starting node processing...`)
         
+        // Get opportunities data
+        const opportunities = this.opportunityController ? this.opportunityController.getAllOpportunities() : [];
+        
+        // Get relationships data
+        const relationshipData = this.relationshipTracker ? this.relationshipTracker.exportRelationships() : null;
+        
+        // Count task-opportunity links
+        const taskOpportunityLinks = [...new Set([...this.nodes, ...this.taskNodes])]
+            .filter(node => node.dataset.opportunityId)
+            .length;
+        
         const workflow = {
-            version: "1.1",
-            timestamp: new Date().toISOString(),
+            name: `Workflow ${new Date().toLocaleDateString()}`,
+            version: "2.0.0", // Updated for new features
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
             nodeCounter: this.nodeCounter,
             nodes: [...new Set([...this.nodes, ...this.taskNodes])].map((node, index) => {
                 console.log(`\n📝 SAVE: Processing node ${index + 1}/${[...new Set([...this.nodes, ...this.taskNodes])].length}`);
@@ -1882,6 +1895,17 @@ class ProcessFlowDesigner {
                     className: node.className,
                     width: node.offsetWidth,
                     height: node.offsetHeight,
+                    
+                    // Enhanced task fields (new in v2.0)
+                    description: node.dataset.description || null,
+                    opportunityId: node.dataset.opportunityId || null,
+                    priority: node.dataset.priority || null,
+                    dueDate: node.dataset.dueDate || null,
+                    status: node.dataset.status || null,
+                    estimatedHours: node.dataset.estimatedHours ? parseFloat(node.dataset.estimatedHours) : null,
+                    assignedTo: node.dataset.assignedTo || null,
+                    lastModified: node.dataset.lastModified || null,
+                    
                     computedStyles: {
                         transform: window.getComputedStyle(node).transform,
                         borderRadius: window.getComputedStyle(node).borderRadius,
@@ -1918,6 +1942,32 @@ class ProcessFlowDesigner {
                 targetId: flowline.target.dataset.id,
                 type: flowline.type || 'straight'
             })),
+            // Opportunities data (NEW in v2.0)
+            opportunities: opportunities,
+            
+            // Relationship tracking data (NEW in v2.0)
+            relationships: relationshipData ? {
+                data: relationshipData,
+                version: relationshipData.version || '1.0.0'
+            } : null,
+            
+            // Enhanced metadata (NEW in v2.0)
+            metadata: {
+                description: 'Process flow workflow with opportunities and relationship tracking',
+                author: 'Process Flow Designer',
+                taskOpportunityLinks: taskOpportunityLinks,
+                totalRelationships: relationshipData ? relationshipData.stats.totalRelationships : 0,
+                exportedFeatures: [
+                    'nodes',
+                    'tasks',
+                    'flowlines',
+                    'opportunities',
+                    'relationships',
+                    'enhanced_task_fields',
+                    'task_opportunity_linking'
+                ]
+            },
+            
             settings: {
                 flowlineType: this.flowlineTypeDropdown.value
             },
@@ -1925,13 +1975,26 @@ class ProcessFlowDesigner {
             structured: {
                 tasks: this.taskNodes.map(node => ({
                     id: node.dataset.id,
+                    type: 'task',
                     text: this.extractNodeText(node),
+                    description: node.dataset.description || null,
                     tags: node.dataset.tags ? JSON.parse(node.dataset.tags) : [],
+                    
+                    // Enhanced task fields (NEW in v2.0)
+                    opportunityId: node.dataset.opportunityId || null,
+                    priority: node.dataset.priority || 'medium',
+                    dueDate: node.dataset.dueDate || null,
+                    status: node.dataset.status || 'not_started',
+                    estimatedHours: node.dataset.estimatedHours ? parseFloat(node.dataset.estimatedHours) : null,
+                    assignedTo: node.dataset.assignedTo || null,
+                    lastModified: node.dataset.lastModified || null,
+                    
                     position: {
                         left: parseInt(node.style.left) || 0,
                         top: parseInt(node.style.top) || 0
                     },
                     anchoredTo: node.dataset.anchoredTo || null,
+                    previousAnchor: node.dataset.previousAnchor || null,
                     slot: node.dataset.slot ? parseInt(node.dataset.slot) : null,
                     containerPosition: (() => {
                         const taskContainer = node.closest('.task-container');
@@ -1978,11 +2041,14 @@ class ProcessFlowDesigner {
                     taskCount: this.taskNodes.length,
                     regularNodeCount: this.nodes.length - this.taskNodes.length,
                     flowlineCount: this.getAllFlowlines().length,
+                    opportunityCount: opportunities.length,
+                    taskOpportunityLinks: taskOpportunityLinks,
                     totalTagCount: this.taskNodes.reduce((count, node) => {
                         const tags = node.dataset.tags ? JSON.parse(node.dataset.tags) : [];
                         console.log(`Debug: Task ${node.dataset.id} has ${tags.length} tags:`, tags);
                         return count + tags.length;
-                    }, 0)
+                    }, 0),
+                    relationshipCount: relationshipData ? relationshipData.stats.totalRelationships : 0
                 }
             }
         };
@@ -2001,20 +2067,36 @@ class ProcessFlowDesigner {
         // Provide detailed save information
         const summary = workflow.structured.summary;
         
-        console.log(`\n🎉 SAVE COMPLETED - Workflow saved successfully (v1.1 format)`);
-        console.log(`📈 SAVE SUMMARY: ${summary.totalNodes} nodes, ${summary.taskCount} tasks, ${summary.totalTagCount} tags, ${summary.flowlineCount} flowlines`);
+        console.log(`\n🎉 SAVE COMPLETED - Workflow saved successfully (v2.0.0 format)`);
+        console.log(`📈 SAVE SUMMARY: ${summary.totalNodes} nodes, ${summary.taskCount} tasks, ${summary.opportunityCount} opportunities, ${summary.taskOpportunityLinks} task-opportunity links, ${summary.totalTagCount} tags, ${summary.flowlineCount} flowlines, ${summary.relationshipCount} relationships`);
         
         // Show final text values that were saved
         console.log(`\n📋 FINAL SAVED NODE TEXTS:`);
         workflow.nodes.forEach((nodeData, index) => {
-            console.log(`  Node ${index + 1}: ID=${nodeData.id}, Type=${nodeData.type}, Text="${nodeData.text}"`);
+            console.log(`  Node ${index + 1}: ID=${nodeData.id}, Type=${nodeData.type}, Text="${nodeData.text}", OpportunityId=${nodeData.opportunityId || 'None'}`);
         });
+        
+        if (opportunities.length > 0) {
+            console.log(`\n💼 SAVED OPPORTUNITIES:`);
+            opportunities.forEach((opp, index) => {
+                console.log(`  Opportunity ${index + 1}: ID=${opp.opportunity_id}, Title="${opp.title}", Status=${opp.status}`);
+            });
+        }
         
         console.log(`\n🔚 SAVE WORKFLOW ENDED`);
         
         // Provide user feedback
         setTimeout(() => {
-            alert(`Workflow saved successfully!\n${summary.totalNodes} nodes, ${summary.taskCount} tasks, ${summary.totalTagCount} tags, ${summary.flowlineCount} flowlines`);
+            const message = `Workflow saved successfully (v2.0.0)!\n\n` +
+                          `📊 Summary:\n` +
+                          `• ${summary.totalNodes} total nodes\n` +
+                          `• ${summary.taskCount} tasks\n` +
+                          `• ${summary.opportunityCount} opportunities\n` +
+                          `• ${summary.taskOpportunityLinks} task-opportunity links\n` +
+                          `• ${summary.totalTagCount} tags\n` +
+                          `• ${summary.flowlineCount} flowlines\n` +
+                          `• ${summary.relationshipCount} relationships`;
+            alert(message);
         }, 100);
     }
     
@@ -2032,12 +2114,9 @@ class ProcessFlowDesigner {
                     throw new Error('Missing workflow version');
                 }
                 
-                if (workflow.version === '2.0') {
-                    throw new Error('Version 2.0 workflows require the new module system (not yet loaded)');
-                }
-                
-                if (workflow.version !== '1.1') {
-                    throw new Error(`Unsupported workflow version: ${workflow.version}`);
+                const supportedVersions = ['1.1', '2.0.0'];
+                if (!supportedVersions.includes(workflow.version)) {
+                    throw new Error(`Unsupported workflow version: ${workflow.version}. Supported versions: ${supportedVersions.join(', ')}`);
                 }
                 
                 this.clearWorkflow();
@@ -2050,10 +2129,24 @@ class ProcessFlowDesigner {
                 const tagCount = workflow.structured ? workflow.structured.summary.totalTagCount : 
                     (workflow.nodes ? workflow.nodes.reduce((count, node) => count + (node.tags ? node.tags.length : 0), 0) : 0);
                 const flowlineCount = workflow.flowlines ? workflow.flowlines.length : 0;
+                const opportunityCount = workflow.opportunities ? workflow.opportunities.length : 0;
+                const taskOpportunityLinks = workflow.metadata ? workflow.metadata.taskOpportunityLinks : 
+                    (workflow.nodes ? workflow.nodes.filter(n => n.opportunityId).length : 0);
+                const relationshipCount = workflow.relationships ? workflow.relationships.data.stats.totalRelationships : 0;
                 
-                console.log('Workflow loaded successfully (v1.1 format)');
-                console.log(`Loaded: ${nodeCount} nodes, ${taskCount} tasks, ${tagCount} tags, ${flowlineCount} flowlines`);
-                alert(`Workflow loaded successfully!\n${nodeCount} nodes, ${taskCount} tasks, ${tagCount} tags, ${flowlineCount} flowlines`);
+                console.log(`Workflow loaded successfully (${workflow.version} format)`);
+                console.log(`Loaded: ${nodeCount} nodes, ${taskCount} tasks, ${opportunityCount} opportunities, ${taskOpportunityLinks} task-opportunity links, ${tagCount} tags, ${flowlineCount} flowlines, ${relationshipCount} relationships`);
+                
+                const message = `Workflow loaded successfully (${workflow.version})!\n\n` +
+                              `📊 Loaded:\n` +
+                              `• ${nodeCount} total nodes\n` +
+                              `• ${taskCount} tasks\n` +
+                              `• ${opportunityCount} opportunities\n` +
+                              `• ${taskOpportunityLinks} task-opportunity links\n` +
+                              `• ${tagCount} tags\n` +
+                              `• ${flowlineCount} flowlines\n` +
+                              `• ${relationshipCount} relationships`;
+                alert(message);
             } catch (error) {
                 let errorMessage = error.message || 'Invalid file format';
                 alert(`Error loading workflow: ${errorMessage}`);
@@ -2206,6 +2299,21 @@ class ProcessFlowDesigner {
         this.selectedNode = null;
         this.startNode = null;
         
+        // Clear opportunities (NEW in v2.0.0)
+        if (this.opportunityController) {
+            console.log('Debug: Clearing opportunities...');
+            // Clear the opportunities array but preserve the controller
+            this.opportunityController.opportunities = [];
+        }
+        
+        // Clear relationships (NEW in v2.0.0)  
+        if (this.relationshipTracker) {
+            console.log('Debug: Clearing relationships...');
+            this.relationshipTracker.relationships.clear();
+            this.relationshipTracker.relationshipMetadata.clear();
+            this.relationshipTracker.updateStats();
+        }
+        
         // Verify canvas is empty
         const remainingElements = this.canvas.children.length;
         console.log(`Debug: Canvas cleanup complete. Remaining elements: ${remainingElements}`);
@@ -2252,12 +2360,27 @@ class ProcessFlowDesigner {
             }
         });
         
+        // Load opportunities (NEW in v2.0.0)
+        if (workflow.opportunities && this.opportunityController) {
+            console.log(`Loading ${workflow.opportunities.length} opportunities`);
+            workflow.opportunities.forEach(opportunityData => {
+                this.opportunityController.addOpportunity(opportunityData);
+            });
+        }
+        
+        // Load relationships (NEW in v2.0.0)
+        if (workflow.relationships && this.relationshipTracker) {
+            console.log('Loading relationship data');
+            this.relationshipTracker.importRelationships(workflow.relationships.data);
+        }
+        
         // Reposition all task nodes according to their anchoring after everything is loaded
         console.log(`Debug: After loading, taskNodes array has ${this.taskNodes.length} elements:`, this.taskNodes.map(n => ({ id: n.dataset.id, type: n.dataset.type })));
         this.taskNodes.forEach(taskNode => {
             console.log(`Debug: Processing task ${taskNode.dataset.id}:`);
             console.log(`  - anchoredTo: ${taskNode.dataset.anchoredTo}`);
             console.log(`  - slot: ${taskNode.dataset.slot}`);
+            console.log(`  - opportunityId: ${taskNode.dataset.opportunityId}`);
             
             // Always reposition task nodes relative to their anchor nodes (ignore saved positions)
             if (taskNode.dataset.anchoredTo) {
@@ -2267,10 +2390,23 @@ class ProcessFlowDesigner {
                 console.log(`Debug: Task ${taskNode.dataset.id} has no anchor, keeping saved position`);
             }
             
+            // Update opportunity link display for loaded task nodes
+            if (taskNode.dataset.opportunityId) {
+                this.updateOpportunityLinkDisplay(taskNode);
+            }
+            
             // Update tags display for loaded task nodes
             console.log(`Debug: Updating tags display for task ${taskNode.dataset.id}, tags:`, taskNode.dataset.tags);
             this.updateTaskTagsDisplay(taskNode);
         });
+        
+        // Refresh relationships after all nodes are loaded
+        if (this.relationshipTracker) {
+            setTimeout(() => {
+                this.syncAllRelationships();
+                console.log('Synchronized relationships after workflow load');
+            }, 100);
+        }
         
         this.updateFlowlines();
     }
@@ -2428,6 +2564,32 @@ class ProcessFlowDesigner {
             // Restore tag information
             if (nodeData.tags) {
                 taskBanner.dataset.tags = JSON.stringify(nodeData.tags);
+            }
+            
+            // Restore enhanced task fields (NEW in v2.0.0)
+            if (nodeData.description) {
+                taskBanner.dataset.description = nodeData.description;
+            }
+            if (nodeData.opportunityId) {
+                taskBanner.dataset.opportunityId = nodeData.opportunityId;
+            }
+            if (nodeData.priority) {
+                taskBanner.dataset.priority = nodeData.priority;
+            }
+            if (nodeData.dueDate) {
+                taskBanner.dataset.dueDate = nodeData.dueDate;
+            }
+            if (nodeData.status) {
+                taskBanner.dataset.status = nodeData.status;
+            }
+            if (nodeData.estimatedHours) {
+                taskBanner.dataset.estimatedHours = nodeData.estimatedHours.toString();
+            }
+            if (nodeData.assignedTo) {
+                taskBanner.dataset.assignedTo = nodeData.assignedTo;
+            }
+            if (nodeData.lastModified) {
+                taskBanner.dataset.lastModified = nodeData.lastModified;
             }
             
             // Create task banner content
