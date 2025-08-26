@@ -1,0 +1,97 @@
+/**
+ * Search Routes
+ * Vector and text search functionality
+ */
+
+import express from 'express';
+import Joi from 'joi';
+import { query, vectorOps } from '../config/database.js';
+import { searchRateLimiterMiddleware } from '../middleware/rateLimiter.js';
+import { ValidationError } from '../middleware/errorHandler.js';
+
+const router = express.Router();
+
+const searchSchema = Joi.object({
+    query: Joi.string().min(1).required(),
+    entityTypes: Joi.array().items(Joi.string().valid('workflow', 'node', 'task', 'opportunity')).optional(),
+    workflowId: Joi.string().uuid().optional(),
+    limit: Joi.number().min(1).max(50).default(10)
+});
+
+// POST /api/v1/search/text
+router.post('/text', searchRateLimiterMiddleware, async (req, res, next) => {
+    try {
+        const { error, value } = searchSchema.validate(req.body);
+        if (error) {
+            throw new ValidationError(error.details[0].message);
+        }
+
+        const { query: searchQuery, entityTypes, workflowId, limit } = value;
+        const organizationId = req.user.organization_id;
+        const searchTerm = `%${searchQuery}%`;
+
+        const results = [];
+
+        // Search workflows
+        if (!entityTypes || entityTypes.includes('workflow')) {
+            const workflowResults = await query(`
+                SELECT 'workflow' as type, id, name as title, description, 
+                       ts_rank(to_tsvector('english', name || ' ' || COALESCE(description, '')), 
+                               plainto_tsquery('english', $2)) as rank
+                FROM workflows 
+                WHERE organization_id = $1 
+                  AND (name ILIKE $2 OR description ILIKE $2)
+                ORDER BY rank DESC
+                LIMIT $3
+            `, [organizationId, searchTerm, Math.ceil(limit / (entityTypes?.length || 4))]);
+            
+            results.push(...workflowResults.rows);
+        }
+
+        // Search nodes
+        if (!entityTypes || entityTypes.includes('node')) {
+            let nodeQuery = `
+                SELECT 'node' as type, n.id, n.text as title, n.type as description,
+                       w.name as workflow_name, w.id as workflow_id
+                FROM nodes n
+                JOIN workflows w ON n.workflow_id = w.id
+                WHERE w.organization_id = $1 AND n.text ILIKE $2
+            `;
+            let nodeParams = [organizationId, searchTerm];
+            
+            if (workflowId) {
+                nodeQuery += ` AND w.id = $3`;
+                nodeParams.push(workflowId);
+            }
+            
+            nodeQuery += ` LIMIT $${nodeParams.length + 1}`;
+            nodeParams.push(Math.ceil(limit / (entityTypes?.length || 4)));
+            
+            const nodeResults = await query(nodeQuery, nodeParams);
+            results.push(...nodeResults.rows);
+        }
+
+        res.json({
+            results: results.slice(0, limit),
+            total: results.length,
+            query: searchQuery
+        });
+    } catch (error) {
+        next(error);
+    }
+});
+
+// POST /api/v1/search/semantic (placeholder for future vector search)
+router.post('/semantic', searchRateLimiterMiddleware, async (req, res, next) => {
+    try {
+        res.json({
+            message: 'Semantic search not yet implemented',
+            fallbackTo: 'text search',
+            results: []
+        });
+    } catch (error) {
+        next(error);
+    }
+});
+
+export default router;
