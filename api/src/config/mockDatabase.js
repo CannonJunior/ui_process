@@ -74,6 +74,38 @@ export async function query(text, params = []) {
         return { rows: data.workflows };
     }
     
+    if (textLower.includes('from opportunities')) {
+        // Handle opportunities with filters
+        let filteredOpportunities = [...data.opportunities];
+        
+        // Simple filtering for query parameters
+        if (textLower.includes('where') && textLower.includes('description')) {
+            const descriptionFilter = extractQueryFilter(text, 'description');
+            if (descriptionFilter) {
+                filteredOpportunities = filteredOpportunities.filter(opp => 
+                    opp.description && opp.description.toLowerCase().includes(descriptionFilter.toLowerCase())
+                );
+            }
+        }
+        
+        // Return with mock workflow names
+        const enrichedOpportunities = filteredOpportunities.map(opp => ({
+            ...opp,
+            workflow_name: data.workflows.find(w => w.id === opp.workflow_id)?.name || 'Unknown Workflow',
+            linked_task_count: 0 // Mock count
+        }));
+        
+        return { rows: enrichedOpportunities };
+    }
+    
+    if (textLower.includes('from nodes')) {
+        return { rows: data.nodes };
+    }
+    
+    if (textLower.includes('from tasks')) {
+        return { rows: data.tasks };
+    }
+    
     if (textLower.includes('from users') && textLower.includes('where email')) {
         const email = extractParamValue(text, params, 0);
         const user = data.users.find(u => u.email === email);
@@ -108,6 +140,68 @@ export async function query(text, params = []) {
         return { rows: [workflow] };
     }
     
+    if (textLower.includes('insert into opportunities')) {
+        const opportunity = {
+            id: uuidv4(),
+            organization_id: extractParamValue(text, params, 0),
+            workflow_id: extractParamValue(text, params, 1),
+            title: extractParamValue(text, params, 2),
+            description: extractParamValue(text, params, 3),
+            status: extractParamValue(text, params, 4) || 'active',
+            tags: extractParamValue(text, params, 5) || [],
+            value: extractParamValue(text, params, 6),
+            priority: extractParamValue(text, params, 7) || 'medium',
+            deadline: extractParamValue(text, params, 8),
+            contact_person: extractParamValue(text, params, 9),
+            notes: extractParamValue(text, params, 10),
+            source: extractParamValue(text, params, 11) || 'manual',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        };
+        data.opportunities.push(opportunity);
+        return { rows: [opportunity] };
+    }
+    
+    if (textLower.includes('insert into nodes')) {
+        const node = {
+            id: uuidv4(),
+            workflow_id: extractParamValue(text, params, 0),
+            type: extractParamValue(text, params, 1),
+            text: extractParamValue(text, params, 2),
+            position_x: parseFloat(extractParamValue(text, params, 3)) || 0,
+            position_y: parseFloat(extractParamValue(text, params, 4)) || 0,
+            style: JSON.parse(extractParamValue(text, params, 5) || '{}'),
+            metadata: JSON.parse(extractParamValue(text, params, 6) || '{}'),
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        };
+        data.nodes.push(node);
+        return { rows: [node] };
+    }
+    
+    if (textLower.includes('insert into tasks')) {
+        const task = {
+            id: uuidv4(),
+            workflow_id: extractParamValue(text, params, 0),
+            anchored_to: extractParamValue(text, params, 1),
+            opportunity_id: extractParamValue(text, params, 2),
+            text: extractParamValue(text, params, 3),
+            description: extractParamValue(text, params, 4),
+            status: extractParamValue(text, params, 5) || 'not_started',
+            priority: extractParamValue(text, params, 6) || 'medium',
+            due_date: extractParamValue(text, params, 7),
+            estimated_hours: parseFloat(extractParamValue(text, params, 8)),
+            assigned_to: extractParamValue(text, params, 9),
+            position_x: parseFloat(extractParamValue(text, params, 10)) || 0,
+            position_y: parseFloat(extractParamValue(text, params, 11)) || 0,
+            slot: parseInt(extractParamValue(text, params, 12)) || 0,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        };
+        data.tasks.push(task);
+        return { rows: [task] };
+    }
+    
     // Default response for unhandled queries
     console.log(`⚠️  Mock database: Unhandled query: ${textLower.substring(0, 100)}...`);
     return { rows: [], rowCount: 0 };
@@ -116,6 +210,13 @@ export async function query(text, params = []) {
 // Helper function to extract parameter values
 function extractParamValue(text, params, index) {
     return params[index] !== undefined ? params[index] : null;
+}
+
+// Helper function to extract query filters from URL parameters
+function extractQueryFilter(text, field) {
+    const regex = new RegExp(`${field}\\s*=\\s*([^&\\s]+)`, 'i');
+    const match = text.match(regex);
+    return match ? decodeURIComponent(match[1]) : null;
 }
 
 // Mock transaction function
