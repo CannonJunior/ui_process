@@ -52,6 +52,9 @@ class ProcessFlowDesigner {
         this.workflowBridge = new WorkflowBridge();
         this.workflowBridge.initialize(this);
         
+        // Initialize workflow ingestion service (Phase 3: Vector Search Integration)
+        this.workflowIngestion = null;
+        
         this.init();
     }
     
@@ -328,6 +331,9 @@ class ProcessFlowDesigner {
         
         // Initialize modal manager after all setup is complete
         this.modalManager.initialize();
+        
+        // Initialize workflow ingestion service (Phase 3: Vector Search Integration)
+        this.initializeWorkflowIngestion();
     }
     
     initializeDropdowns() {
@@ -2175,7 +2181,7 @@ class ProcessFlowDesigner {
         if (!file) return;
         
         const reader = new FileReader();
-        reader.onload = (e) => {
+        reader.onload = async (e) => {
             try {
                 const workflow = JSON.parse(e.target.result);
                 
@@ -2191,6 +2197,11 @@ class ProcessFlowDesigner {
                 
                 this.clearWorkflow();
                 this.deserializeWorkflow(workflow);
+                
+                // Ingest workflow for vector search
+                if (this.workflowIngestion) {
+                    await this.workflowIngestion.ingestWorkflow(workflow);
+                }
                 
                 // Provide detailed loading information
                 const nodeCount = workflow.nodes ? workflow.nodes.length : 0;
@@ -2234,7 +2245,7 @@ class ProcessFlowDesigner {
         if (!file) return;
         
         const reader = new FileReader();
-        reader.onload = (e) => {
+        reader.onload = async (e) => {
             try {
                 const workflow = JSON.parse(e.target.result);
                 
@@ -2257,6 +2268,11 @@ class ProcessFlowDesigner {
                 
                 // Do NOT call clearWorkflow() - this is the key difference from loadWorkflow
                 this.appendDeserializeWorkflow(workflow);
+                
+                // Ingest appended workflow for vector search
+                if (this.workflowIngestion) {
+                    await this.workflowIngestion.ingestWorkflow(workflow);
+                }
                 
                 // Provide detailed loading information
                 const appendedNodeCount = workflow.nodes ? workflow.nodes.length : 0;
@@ -2290,6 +2306,11 @@ class ProcessFlowDesigner {
         console.log('Debug: Starting clearWorkflow...');
         console.log(`Current state - this.nodes: ${this.nodes.length} elements`, this.nodes.map(n => ({id: n.dataset.id, type: n.dataset.type})));
         console.log(`Current state - this.taskNodes: ${this.taskNodes.length} elements`, this.taskNodes.map(n => ({id: n.dataset.id, type: n.dataset.type})));
+        
+        // Clear workflow ingestion data
+        if (this.workflowIngestion) {
+            this.workflowIngestion.clearSession();
+        }
         
         // First, clear managers if they exist (this should handle regular nodes)
         if (this.nodeManager) {
@@ -2940,6 +2961,40 @@ class ProcessFlowDesigner {
             this.configService.getUIConfig()
         );
     }
+    
+    // ==================== WORKFLOW INGESTION (Phase 3) ====================
+    
+    /**
+     * Initialize workflow ingestion service for vector search
+     */
+    async initializeWorkflowIngestion() {
+        try {
+            console.log('🔄 Initializing workflow ingestion for vector search...');
+            
+            // Import and initialize ingestion service
+            const { getWorkflowIngestionService } = await import('./services/workflow-ingestion-service.js');
+            this.workflowIngestion = getWorkflowIngestionService();
+            
+            // Initialize the service
+            await this.workflowIngestion.initialize();
+            
+            console.log('✅ Workflow ingestion service ready');
+            
+        } catch (error) {
+            console.warn('⚠️ Workflow ingestion initialization failed:', error);
+            // Create fallback service
+            this.workflowIngestion = {
+                ingestWorkflow: async () => console.log('🔍 Ingestion service not available'),
+                updateObject: async () => {},
+                removeObject: () => {},
+                searchSessionData: async () => ({ results: [], total: 0 }),
+                clearSession: () => {},
+                getSessionStats: () => ({ totalObjects: 0 })
+            };
+        }
+    }
+    
+    // ==================== END WORKFLOW INGESTION ====================
 }
 
 // Initialize the application when DOM is loaded

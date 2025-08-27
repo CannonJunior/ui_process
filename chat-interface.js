@@ -16,6 +16,10 @@ class ChatInterface {
         // Health manager for service status
         this.healthManager = null;
         
+        // Vector search service for enhanced context
+        this.searchService = null;
+        this.apiClient = null;
+        
         // UI Elements
         this.chatSidebar = document.getElementById('chatSidebar');
         this.toggleButton = document.getElementById('toggleChatButton');
@@ -44,6 +48,7 @@ class ChatInterface {
         
         await this.checkOllamaConnection();
         await this.initializeMCPBridge();
+        await this.initializeVectorSearch();
         this.updateUI();
     }
     
@@ -183,6 +188,44 @@ class ChatInterface {
             }
         } catch (error) {
             this.addMessage('error', `Reconnection failed: ${error.message}`);
+        }
+    }
+    
+    async initializeVectorSearch() {
+        try {
+            console.log('🔍 Initializing vector search for chat enhancement...');
+            
+            // Import search services
+            const { getSearchService } = await import('./services/search-service.js');
+            const { getAPIClient } = await import('./services/api-client.js');
+            
+            // Initialize services
+            this.searchService = getSearchService();
+            this.apiClient = getAPIClient();
+            
+            // Test connection to search API
+            const status = await this.searchService.getStatus();
+            if (status.status === 'operational') {
+                console.log('✅ Vector search services connected for chat enhancement');
+                console.log(`   Provider: ${status.embeddingService?.provider || 'unknown'}`);
+                console.log(`   Dimensions: ${status.embeddingService?.dimensions || 'unknown'}`);
+            } else {
+                throw new Error('Search service not operational');
+            }
+            
+        } catch (error) {
+            console.warn('Vector search initialization failed:', error);
+            
+            // Create fallback handlers
+            this.searchService = {
+                search: async () => ({ results: [], total: 0, searchType: 'disabled' }),
+                semanticSearch: async () => ({ results: [], total: 0, searchType: 'disabled' }),
+                isAvailable: () => false
+            };
+            
+            this.apiClient = {
+                isConnected: () => false
+            };
         }
     }
     
@@ -558,11 +601,14 @@ class ChatInterface {
         // Get application context
         const context = this.getApplicationContext();
         
+        // Get vector search results for enhanced context
+        const vectorSearchResults = await this.performVectorSearch(message);
+        
         // Get relevant documents based on the message
         const relevantDocs = this.findRelevantDocuments(message);
         
-        // Prepare enhanced prompt with context and RAG
-        const enhancedPrompt = this.buildEnhancedPrompt(message, context, relevantDocs);
+        // Prepare enhanced prompt with context, vector search results, and RAG
+        const enhancedPrompt = this.buildEnhancedPrompt(message, context, relevantDocs, vectorSearchResults);
         
         // Send to Ollama
         const response = await this.callOllama(enhancedPrompt);
@@ -877,12 +923,88 @@ class ChatInterface {
         return relevantDocs.sort((a, b) => b.score - a.score).slice(0, 2);
     }
     
-    buildEnhancedPrompt(userMessage, context, relevantDocs) {
+    async performVectorSearch(message) {
+        try {
+            console.log(`🔍 Performing vector search for chat context: "${message.slice(0, 50)}..."`);
+            
+            // First try to search session data (current workflow objects)
+            const sessionResults = await this.searchSessionData(message);
+            if (sessionResults && sessionResults.total > 0) {
+                console.log(`✅ Session vector search completed: ${sessionResults.total} results found`);
+                return sessionResults;
+            }
+            
+            // Fallback to API search if no session data or search service available
+            if (!this.searchService || !this.searchService.isAvailable()) {
+                console.log('🔍 Vector search not available and no session data, skipping...');
+                return { results: [], total: 0, searchType: 'disabled' };
+            }
+            
+            // Perform hybrid search to get the best relevant context from API
+            const searchResults = await this.searchService.search(message, {
+                limit: 5, // Limit results for LLM context
+                entityTypes: ['workflow', 'opportunity', 'node', 'task'] // Search all entity types
+            });
+            
+            console.log(`✅ API vector search completed: ${searchResults.total} results found`);
+            if (searchResults.breakdown) {
+                console.log(`   📊 Breakdown: ${searchResults.breakdown.semantic} semantic, ${searchResults.breakdown.text} text`);
+            }
+            
+            return searchResults;
+            
+        } catch (error) {
+            console.warn('Vector search failed:', error);
+            return { results: [], total: 0, searchType: 'error', error: error.message };
+        }
+    }
+    
+    async searchSessionData(message) {
+        try {
+            // Access the main app's workflow ingestion service
+            const mainApp = window.app || window.processFlowDesigner;
+            if (!mainApp || !mainApp.workflowIngestion) {
+                console.log('🔍 No workflow ingestion service available');
+                return { results: [], total: 0, searchType: 'no_session_service' };
+            }
+            
+            // Search through session data
+            const results = await mainApp.workflowIngestion.searchSessionData(message, {
+                limit: 5,
+                entityTypes: ['workflow', 'node', 'task', 'opportunity'],
+                threshold: 0.7
+            });
+            
+            if (results.total > 0) {
+                console.log(`🎯 Found ${results.total} results in session data`);
+                if (results.sessionStats) {
+                    console.log(`   📊 Session contains: ${results.sessionStats.totalObjects} total objects`);
+                }
+            }
+            
+            return results;
+            
+        } catch (error) {
+            console.warn('Session data search failed:', error);
+            return { results: [], total: 0, searchType: 'session_error', error: error.message };
+        }
+    }
+    
+    buildEnhancedPrompt(userMessage, context, relevantDocs, vectorSearchResults = null) {
         let prompt = `You are a helpful assistant for the Process Flow Designer application. `;
         prompt += `You help users create, manage, and understand process flow diagrams with nodes, tasks, and flowlines.\\n\\n`;
         
         // Add application context
         prompt += `CURRENT APPLICATION STATE:\\n${context}\\n`;
+        
+        // Add vector search results for enhanced context
+        if (vectorSearchResults && vectorSearchResults.results && vectorSearchResults.results.length > 0) {
+            prompt += `RELATED CONTENT FROM YOUR WORKFLOWS:\\n`;
+            vectorSearchResults.results.forEach(result => {
+                const formatted = this.formatSearchResultForPrompt(result);
+                prompt += `${formatted}\\n\\n`;
+            });
+        }
         
         // Add relevant documentation
         if (relevantDocs.length > 0) {
@@ -907,6 +1029,71 @@ class ChatInterface {
         prompt += `specific features, reference their current workflow state when relevant.\\n\\nAssistant:`;
         
         return prompt;
+    }
+    
+    formatSearchResultForPrompt(result) {
+        let formatted = '';
+        
+        switch (result.type) {
+            case 'workflow':
+                formatted = `📋 Workflow: "${result.title || result.name}"`;
+                if (result.description) {
+                    formatted += `\\n   Description: ${result.description}`;
+                }
+                if (result.version) {
+                    formatted += `\\n   Version: ${result.version}`;
+                }
+                break;
+                
+            case 'opportunity':
+                formatted = `💼 Opportunity: "${result.title}"`;
+                if (result.description) {
+                    formatted += `\\n   Description: ${result.description}`;
+                }
+                if (result.status) {
+                    formatted += `\\n   Status: ${result.status}`;
+                }
+                if (result.priority) {
+                    formatted += `\\n   Priority: ${result.priority}`;
+                }
+                break;
+                
+            case 'node':
+                formatted = `🔹 Node: "${result.title || result.text}"`;
+                if (result.type) {
+                    formatted += `\\n   Type: ${result.type}`;
+                }
+                if (result.workflow_name) {
+                    formatted += `\\n   Workflow: ${result.workflow_name}`;
+                }
+                break;
+                
+            case 'task':
+                formatted = `✅ Task: "${result.title || result.text}"`;
+                if (result.description) {
+                    formatted += `\\n   Description: ${result.description}`;
+                }
+                if (result.status) {
+                    formatted += `\\n   Status: ${result.status}`;
+                }
+                if (result.priority) {
+                    formatted += `\\n   Priority: ${result.priority}`;
+                }
+                break;
+                
+            default:
+                formatted = `📄 ${result.type}: "${result.title || result.name || 'Unknown'}"`;
+                if (result.description) {
+                    formatted += `\\n   ${result.description}`;
+                }
+        }
+        
+        // Add similarity score if available (for semantic search results)
+        if (result.similarity && result.similarity > 0.7) {
+            formatted += `\\n   (Highly relevant: ${Math.round(result.similarity * 100)}% match)`;
+        }
+        
+        return formatted;
     }
     
     addMessage(type, content) {

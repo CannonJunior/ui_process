@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Workflow Ingestion for Vector Search</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 20px;
+            background: #f8fafc;
+        }
+        
+        .test-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .test-section {
+            margin-bottom: 24px;
+            padding: 16px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+        }
+        
+        .test-section h3 {
+            margin-top: 0;
+            color: #2d3748;
+        }
+        
+        .logs {
+            background: #1a202c;
+            color: #e2e8f0;
+            padding: 12px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 13px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .log-entry {
+            margin-bottom: 4px;
+        }
+        
+        .log-timestamp {
+            color: #9ca3af;
+        }
+        
+        .log-success {
+            color: #10b981;
+        }
+        
+        .log-error {
+            color: #ef4444;
+        }
+        
+        .log-info {
+            color: #3b82f6;
+        }
+        
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-right: 8px;
+            margin-bottom: 8px;
+        }
+        
+        button:hover {
+            background: #2563eb;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-online {
+            background: #10b981;
+        }
+        
+        .status-offline {
+            background: #ef4444;
+        }
+        
+        .status-unknown {
+            background: #6b7280;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 12px;
+            margin-top: 12px;
+        }
+        
+        .stat-item {
+            background: #f7fafc;
+            padding: 8px;
+            border-radius: 4px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2d3748;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #718096;
+            text-transform: uppercase;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🧠 Workflow Ingestion for Vector Search Test</h1>
+        <p>Testing the ingestion of workflow objects and their integration with vector search for chat enhancement.</p>
+        
+        <div class="test-section">
+            <h3>📊 Session Statistics</h3>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-value" id="stat-workflows">0</div>
+                    <div class="stat-label">Workflows</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="stat-nodes">0</div>
+                    <div class="stat-label">Nodes</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="stat-tasks">0</div>
+                    <div class="stat-label">Tasks</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="stat-opportunities">0</div>
+                    <div class="stat-label">Opportunities</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="stat-embeddings">0</div>
+                    <div class="stat-label">Embeddings</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h3>🔍 Ingestion Service Status</h3>
+            <p>
+                <span class="status-indicator status-unknown" id="ingestion-status-indicator"></span>
+                <span id="ingestion-status-text">Checking...</span>
+            </p>
+        </div>
+        
+        <div class="test-section">
+            <h3>🧪 Test Actions</h3>
+            <button onclick="testServiceInitialization()">Test Service Initialization</button>
+            <button onclick="testWorkflowIngestion()">Test Workflow Ingestion</button>
+            <button onclick="testVectorSearch()">Test Vector Search</button>
+            <button onclick="testChatIntegration()">Test Chat Integration</button>
+            <button onclick="refreshStats()">Refresh Stats</button>
+            <button onclick="clearSession()">Clear Session</button>
+            <button onclick="clearLogs()">Clear Logs</button>
+        </div>
+        
+        <div class="test-section">
+            <h3>📋 Test Logs</h3>
+            <div class="logs" id="logs"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        let ingestionService = null;
+        
+        // Test workflow data
+        const sampleWorkflow = {
+            version: "2.0.0",
+            metadata: {
+                id: "test-workflow-001",
+                name: "Sample Test Workflow",
+                description: "A test workflow for vector search ingestion testing",
+                created: new Date().toISOString()
+            },
+            nodes: [
+                {
+                    id: "node-1",
+                    type: "process",
+                    text: "Initial Planning",
+                    x: 100,
+                    y: 100,
+                    metadata: {
+                        description: "Planning phase for project initiation"
+                    }
+                },
+                {
+                    id: "task-1",
+                    type: "task",
+                    text: "Research Requirements",
+                    x: 200,
+                    y: 150,
+                    metadata: {
+                        description: "Gather and analyze project requirements",
+                        priority: "high",
+                        status: "pending"
+                    }
+                },
+                {
+                    id: "decision-1",
+                    type: "decision",
+                    text: "Approve Requirements?",
+                    x: 300,
+                    y: 100,
+                    metadata: {
+                        description: "Decision point for requirement approval"
+                    }
+                }
+            ],
+            opportunities: [
+                {
+                    id: "opp-1",
+                    title: "Process Optimization Opportunity",
+                    description: "Opportunity to streamline the planning process and reduce time to market",
+                    status: "active",
+                    priority: "high",
+                    tags: ["optimization", "efficiency", "planning"],
+                    value: 50000,
+                    contact_person: "John Smith"
+                }
+            ]
+        };
+        
+        // Initialize test environment
+        async function initialize() {
+            log('🚀 Initializing workflow ingestion test environment...', 'info');
+            
+            try {
+                // Import the ingestion service
+                const { getWorkflowIngestionService } = await import('./services/workflow-ingestion-service.js');
+                ingestionService = getWorkflowIngestionService();
+                
+                // Initialize the service
+                await ingestionService.initialize();
+                
+                updateIngestionStatus('Online', 'status-online');
+                log('✅ Workflow ingestion service initialized', 'success');
+                
+                // Initial stats refresh
+                await refreshStats();
+                
+            } catch (error) {
+                log(`❌ Initialization failed: ${error.message}`, 'error');
+                console.error('Initialization error:', error);
+                updateIngestionStatus('Error', 'status-offline');
+            }
+        }
+        
+        // Test functions
+        window.testServiceInitialization = async function() {
+            log('🧪 Testing ingestion service initialization...', 'info');
+            
+            try {
+                if (!ingestionService) {
+                    throw new Error('Ingestion service not available');
+                }
+                
+                if (!ingestionService.isInitialized) {
+                    throw new Error('Ingestion service not initialized');
+                }
+                
+                log('✅ Service initialization test passed', 'success');
+                
+                // Test session stats
+                const stats = ingestionService.getSessionStats();
+                log(`📊 Session stats: ${stats.totalObjects} total objects`, 'info');
+                
+            } catch (error) {
+                log(`❌ Service initialization test failed: ${error.message}`, 'error');
+            }
+        };
+        
+        window.testWorkflowIngestion = async function() {
+            log('🧪 Testing workflow ingestion...', 'info');
+            
+            try {
+                if (!ingestionService) {
+                    throw new Error('Ingestion service not available');
+                }
+                
+                log('📥 Ingesting sample workflow...', 'info');
+                await ingestionService.ingestWorkflow(sampleWorkflow);
+                
+                const stats = ingestionService.getSessionStats();
+                log(`✅ Workflow ingestion test passed`, 'success');
+                log(`   📊 Ingested: ${stats.workflows} workflows, ${stats.nodes} nodes, ${stats.tasks} tasks, ${stats.opportunities} opportunities`, 'info');
+                log(`   🧮 Generated: ${stats.embeddings} embeddings`, 'info');
+                
+                await refreshStats();
+                
+            } catch (error) {
+                log(`❌ Workflow ingestion test failed: ${error.message}`, 'error');
+            }
+        };
+        
+        window.testVectorSearch = async function() {
+            log('🧪 Testing vector search on ingested data...', 'info');
+            
+            try {
+                if (!ingestionService) {
+                    throw new Error('Ingestion service not available');
+                }
+                
+                // Test different search queries
+                const queries = [
+                    'planning process',
+                    'research requirements task',
+                    'optimization opportunity',
+                    'project decision making'
+                ];
+                
+                for (const query of queries) {
+                    log(`🔍 Searching: "${query}"`, 'info');
+                    
+                    const results = await ingestionService.searchSessionData(query, {
+                        limit: 3,
+                        threshold: 0.5
+                    });
+                    
+                    if (results.total > 0) {
+                        log(`   ✅ Found ${results.total} results`, 'success');
+                        results.results.forEach((result, index) => {
+                            const similarity = (result.similarity * 100).toFixed(1);
+                            log(`   ${index + 1}. ${result.type}: "${result.title || result.text || result.name}" (${similarity}% match)`, 'info');
+                        });
+                    } else {
+                        log(`   ℹ️ No results found`, 'info');
+                    }
+                }
+                
+                log('✅ Vector search test completed', 'success');
+                
+            } catch (error) {
+                log(`❌ Vector search test failed: ${error.message}`, 'error');
+            }
+        };
+        
+        window.testChatIntegration = async function() {
+            log('🧪 Testing chat integration with session data...', 'info');
+            
+            try {
+                if (!ingestionService) {
+                    throw new Error('Ingestion service not available');
+                }
+                
+                // Create a mock chat interface to test integration
+                const mockChatInterface = {
+                    async searchSessionData(message) {
+                        // Access ingestion service directly (simulating the chat interface access pattern)
+                        return await ingestionService.searchSessionData(message, {
+                            limit: 5,
+                            entityTypes: ['workflow', 'node', 'task', 'opportunity'],
+                            threshold: 0.7
+                        });
+                    }
+                };
+                
+                const testMessage = "How can I optimize my planning workflow?";
+                log(`💬 Testing chat query: "${testMessage}"`, 'info');
+                
+                const sessionResults = await mockChatInterface.searchSessionData(testMessage);
+                
+                if (sessionResults && sessionResults.total > 0) {
+                    log(`✅ Chat integration test passed`, 'success');
+                    log(`   🎯 Chat would receive ${sessionResults.total} relevant results from session data`, 'info');
+                    log(`   📊 Search type: ${sessionResults.searchType}`, 'info');
+                    
+                    if (sessionResults.sessionStats) {
+                        log(`   🗂️ Session contains ${sessionResults.sessionStats.totalObjects} objects for context`, 'info');
+                    }
+                } else {
+                    log(`ℹ️ No session results found - chat would fall back to API search`, 'info');
+                }
+                
+            } catch (error) {
+                log(`❌ Chat integration test failed: ${error.message}`, 'error');
+            }
+        };
+        
+        window.refreshStats = async function() {
+            try {
+                if (ingestionService) {
+                    const stats = ingestionService.getSessionStats();
+                    
+                    document.getElementById('stat-workflows').textContent = stats.workflows || 0;
+                    document.getElementById('stat-nodes').textContent = stats.nodes || 0;
+                    document.getElementById('stat-tasks').textContent = stats.tasks || 0;
+                    document.getElementById('stat-opportunities').textContent = stats.opportunities || 0;
+                    document.getElementById('stat-embeddings').textContent = stats.embeddings || 0;
+                    
+                    log(`📊 Stats refreshed: ${stats.totalObjects} total objects`, 'info');
+                } else {
+                    log('⚠️ Cannot refresh stats - service not available', 'error');
+                }
+            } catch (error) {
+                log(`❌ Stats refresh failed: ${error.message}`, 'error');
+            }
+        };
+        
+        window.clearSession = async function() {
+            try {
+                if (ingestionService) {
+                    ingestionService.clearSession();
+                    await refreshStats();
+                    log('🗑️ Session data cleared', 'info');
+                } else {
+                    log('⚠️ Cannot clear session - service not available', 'error');
+                }
+            } catch (error) {
+                log(`❌ Session clear failed: ${error.message}`, 'error');
+            }
+        };
+        
+        // Utility functions
+        function updateIngestionStatus(status, className) {
+            document.getElementById('ingestion-status-text').textContent = status;
+            document.getElementById('ingestion-status-indicator').className = 'status-indicator ' + className;
+        }
+        
+        function log(message, level = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry';
+            logEntry.innerHTML = `
+                <span class="log-timestamp">[${timestamp}]</span>
+                <span class="log-${level}">${message}</span>
+            `;
+            
+            const logsContainer = document.getElementById('logs');
+            logsContainer.appendChild(logEntry);
+            logsContainer.scrollTop = logsContainer.scrollHeight;
+        }
+        
+        window.clearLogs = function() {
+            document.getElementById('logs').innerHTML = '';
+        };
+        
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', initialize);
+        
+    </script>
+</body>
+</html>

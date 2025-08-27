@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Chat with Vector Search</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 20px;
+            background: #f8fafc;
+        }
+        
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .test-section {
+            margin-bottom: 24px;
+            padding: 16px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+        }
+        
+        .test-section h3 {
+            margin-top: 0;
+            color: #2d3748;
+        }
+        
+        .logs {
+            background: #1a202c;
+            color: #e2e8f0;
+            padding: 12px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 13px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .log-entry {
+            margin-bottom: 4px;
+        }
+        
+        .log-timestamp {
+            color: #9ca3af;
+        }
+        
+        .log-success {
+            color: #10b981;
+        }
+        
+        .log-error {
+            color: #ef4444;
+        }
+        
+        .log-info {
+            color: #3b82f6;
+        }
+        
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-right: 8px;
+            margin-bottom: 8px;
+        }
+        
+        button:hover {
+            background: #2563eb;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-online {
+            background: #10b981;
+        }
+        
+        .status-offline {
+            background: #ef4444;
+        }
+        
+        .status-unknown {
+            background: #6b7280;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🤖 Chat with Vector Search Integration Test</h1>
+        <p>Testing the integration of vector search capabilities into the chat LLM for enhanced responses.</p>
+        
+        <div class="test-section">
+            <h3>🔍 Search Service Status</h3>
+            <p>
+                <span class="status-indicator status-unknown" id="search-status-indicator"></span>
+                <span id="search-status-text">Checking...</span>
+            </p>
+            <p>Provider: <span id="search-provider">-</span></p>
+            <p>Model: <span id="search-model">-</span></p>
+            <p>Dimensions: <span id="search-dimensions">-</span></p>
+        </div>
+        
+        <div class="test-section">
+            <h3>🧠 Chat Interface Status</h3>
+            <p>
+                <span class="status-indicator status-unknown" id="chat-status-indicator"></span>
+                <span id="chat-status-text">Initializing...</span>
+            </p>
+        </div>
+        
+        <div class="test-section">
+            <h3>🧪 Integration Tests</h3>
+            <button onclick="testSearchServiceInit()">Test Search Service Initialization</button>
+            <button onclick="testVectorSearch()">Test Vector Search</button>
+            <button onclick="testChatPromptEnhancement()">Test Chat Prompt Enhancement</button>
+            <button onclick="testFullIntegration()">Test Full Chat Integration</button>
+            <button onclick="clearLogs()">Clear Logs</button>
+        </div>
+        
+        <div class="test-section">
+            <h3>📋 Test Logs</h3>
+            <div class="logs" id="logs"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        // Import the chat interface to test integration
+        let chatInterface;
+        let testResults = {
+            searchInit: false,
+            vectorSearch: false,
+            promptEnhancement: false,
+            fullIntegration: false
+        };
+        
+        // Initialize test environment
+        async function initialize() {
+            log('🚀 Initializing chat vector search test environment...', 'info');
+            
+            try {
+                // Create a mock DOM environment for ChatInterface
+                createMockChatElements();
+                
+                // Import and initialize ChatInterface
+                const ChatInterfaceModule = await import('./chat-interface.js');
+                chatInterface = new ChatInterfaceModule.default();
+                
+                log('✅ Chat interface initialized', 'success');
+                updateChatStatus('Online', 'status-online');
+                
+                // Test search service status
+                await updateSearchServiceStatus();
+                
+            } catch (error) {
+                log(`❌ Initialization failed: ${error.message}`, 'error');
+                console.error('Initialization error:', error);
+                updateChatStatus('Error', 'status-offline');
+            }
+        }
+        
+        function createMockChatElements() {
+            // Create mock DOM elements that ChatInterface expects
+            const mockElements = [
+                'chatSidebar', 'toggleChatButton', 'closeChatButton', 'chatMessages',
+                'chatInput', 'sendChatButton', 'statusIndicator', 'statusText',
+                'charCount', 'sendButtonText', 'sendButtonLoader', 'canvas'
+            ];
+            
+            mockElements.forEach(id => {
+                if (!document.getElementById(id)) {
+                    const element = document.createElement('div');
+                    element.id = id;
+                    if (id === 'chatInput') {
+                        const textarea = document.createElement('textarea');
+                        textarea.id = id;
+                        document.body.appendChild(textarea);
+                    } else {
+                        document.body.appendChild(element);
+                    }
+                }
+            });
+        }
+        
+        async function updateSearchServiceStatus() {
+            try {
+                if (chatInterface && chatInterface.searchService) {
+                    const status = await chatInterface.searchService.getStatus();
+                    
+                    if (status.status === 'operational') {
+                        updateSearchStatus('Online', 'status-online');
+                        document.getElementById('search-provider').textContent = status.embeddingService?.provider || 'unknown';
+                        document.getElementById('search-model').textContent = status.embeddingService?.model || 'unknown';
+                        document.getElementById('search-dimensions').textContent = status.embeddingService?.dimensions || 'unknown';
+                        
+                        log(`✅ Search service operational: ${status.embeddingService?.provider}`, 'success');
+                    } else {
+                        throw new Error('Search service not operational');
+                    }
+                } else {
+                    throw new Error('Search service not initialized');
+                }
+            } catch (error) {
+                updateSearchStatus('Offline', 'status-offline');
+                log(`❌ Search service status check failed: ${error.message}`, 'error');
+            }
+        }
+        
+        // Test functions
+        window.testSearchServiceInit = async function() {
+            log('🧪 Testing search service initialization...', 'info');
+            
+            try {
+                if (!chatInterface) {
+                    throw new Error('Chat interface not initialized');
+                }
+                
+                if (!chatInterface.searchService || !chatInterface.apiClient) {
+                    throw new Error('Search services not initialized');
+                }
+                
+                const isAvailable = chatInterface.searchService.isAvailable();
+                const isConnected = chatInterface.apiClient.isConnected();
+                
+                if (isAvailable && isConnected) {
+                    log('✅ Search service initialization test passed', 'success');
+                    testResults.searchInit = true;
+                } else {
+                    throw new Error(`Search available: ${isAvailable}, API connected: ${isConnected}`);
+                }
+                
+            } catch (error) {
+                log(`❌ Search service initialization test failed: ${error.message}`, 'error');
+                testResults.searchInit = false;
+            }
+        };
+        
+        window.testVectorSearch = async function() {
+            log('🧪 Testing vector search functionality...', 'info');
+            
+            try {
+                if (!chatInterface || !chatInterface.searchService) {
+                    throw new Error('Search service not available');
+                }
+                
+                const testQuery = 'workflow management and task creation';
+                log(`🔍 Performing vector search: "${testQuery}"`, 'info');
+                
+                const results = await chatInterface.performVectorSearch(testQuery);
+                
+                if (results && results.total >= 0) {
+                    log(`✅ Vector search test passed: ${results.total} results, type: ${results.searchType}`, 'success');
+                    
+                    if (results.results && results.results.length > 0) {
+                        log(`   📊 Sample result: ${results.results[0].type} - "${results.results[0].title || results.results[0].name}"`, 'info');
+                    }
+                    
+                    testResults.vectorSearch = true;
+                } else {
+                    throw new Error('Invalid search results');
+                }
+                
+            } catch (error) {
+                log(`❌ Vector search test failed: ${error.message}`, 'error');
+                testResults.vectorSearch = false;
+            }
+        };
+        
+        window.testChatPromptEnhancement = async function() {
+            log('🧪 Testing chat prompt enhancement...', 'info');
+            
+            try {
+                if (!chatInterface) {
+                    throw new Error('Chat interface not available');
+                }
+                
+                const testMessage = 'How do I create a new task in my workflow?';
+                const mockContext = 'Current workflow: Test Workflow, Nodes: 3, Tasks: 2';
+                const mockDocs = [];
+                const mockSearchResults = {
+                    results: [
+                        {
+                            type: 'task',
+                            title: 'Sample Task',
+                            description: 'This is a test task',
+                            similarity: 0.85
+                        }
+                    ],
+                    total: 1,
+                    searchType: 'semantic'
+                };
+                
+                const enhancedPrompt = chatInterface.buildEnhancedPrompt(
+                    testMessage, 
+                    mockContext, 
+                    mockDocs, 
+                    mockSearchResults
+                );
+                
+                if (enhancedPrompt && enhancedPrompt.includes('RELATED CONTENT FROM YOUR WORKFLOWS') && 
+                    enhancedPrompt.includes('Sample Task')) {
+                    log('✅ Chat prompt enhancement test passed', 'success');
+                    log('   📝 Enhanced prompt includes vector search results', 'info');
+                    testResults.promptEnhancement = true;
+                } else {
+                    throw new Error('Enhanced prompt does not include search results');
+                }
+                
+            } catch (error) {
+                log(`❌ Chat prompt enhancement test failed: ${error.message}`, 'error');
+                testResults.promptEnhancement = false;
+            }
+        };
+        
+        window.testFullIntegration = async function() {
+            log('🧪 Testing full chat integration...', 'info');
+            
+            try {
+                if (!chatInterface) {
+                    throw new Error('Chat interface not available');
+                }
+                
+                // Test the full handleLLMMessage flow (without actually calling Ollama)
+                const testMessage = 'Help me understand workflow tasks';
+                
+                // Mock the callOllama method to avoid requiring Ollama
+                const originalCallOllama = chatInterface.callOllama;
+                chatInterface.callOllama = async (prompt) => {
+                    log('   🔗 LLM would receive enhanced prompt with vector search context', 'info');
+                    
+                    // Verify the prompt contains search results
+                    if (prompt.includes('RELATED CONTENT FROM YOUR WORKFLOWS')) {
+                        return 'Mock LLM response based on enhanced prompt with vector search results.';
+                    } else {
+                        throw new Error('Prompt does not include vector search context');
+                    }
+                };
+                
+                // Mock conversation history and addMessage to avoid DOM dependencies
+                chatInterface.conversationHistory = [];
+                chatInterface.addMessage = (type, content) => {
+                    log(`   💬 ${type}: ${content.slice(0, 100)}...`, 'info');
+                };
+                
+                // Test the enhanced message handling
+                await chatInterface.handleLLMMessage(testMessage);
+                
+                // Restore original method
+                chatInterface.callOllama = originalCallOllama;
+                
+                log('✅ Full chat integration test passed', 'success');
+                log('   🎯 Chat successfully uses vector search for context enhancement', 'info');
+                testResults.fullIntegration = true;
+                
+            } catch (error) {
+                log(`❌ Full chat integration test failed: ${error.message}`, 'error');
+                testResults.fullIntegration = false;
+            }
+        };
+        
+        // Utility functions
+        function updateSearchStatus(status, className) {
+            document.getElementById('search-status-text').textContent = status;
+            document.getElementById('search-status-indicator').className = 'status-indicator ' + className;
+        }
+        
+        function updateChatStatus(status, className) {
+            document.getElementById('chat-status-text').textContent = status;
+            document.getElementById('chat-status-indicator').className = 'status-indicator ' + className;
+        }
+        
+        function log(message, level = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry';
+            logEntry.innerHTML = `
+                <span class="log-timestamp">[${timestamp}]</span>
+                <span class="log-${level}">${message}</span>
+            `;
+            
+            const logsContainer = document.getElementById('logs');
+            logsContainer.appendChild(logEntry);
+            logsContainer.scrollTop = logsContainer.scrollHeight;
+        }
+        
+        window.clearLogs = function() {
+            document.getElementById('logs').innerHTML = '';
+        };
+        
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', initialize);
+        
+    </script>
+</body>
+</html>

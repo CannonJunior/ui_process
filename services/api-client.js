@@ -376,6 +376,94 @@ class APIClient {
         });
     }
     
+    async generateEmbedding(text, entityType = 'text') {
+        return this.makeRequest('/search/generate-embedding', {
+            method: 'POST',
+            body: JSON.stringify({ text, entityType })
+        });
+    }
+    
+    async getSearchStatus() {
+        return this.makeRequest('/search/status');
+    }
+    
+    async hybridSearch(query, options = {}) {
+        const { 
+            includeTextSearch = true, 
+            includeSemanticSearch = true,
+            limit = 10,
+            ...otherOptions 
+        } = options;
+        
+        const promises = [];
+        
+        if (includeTextSearch) {
+            promises.push(
+                this.textSearch(query, { limit: Math.ceil(limit / 2), ...otherOptions })
+                    .then(results => ({ ...results, searchType: 'text' }))
+                    .catch(err => ({ results: [], total: 0, error: err.message, searchType: 'text' }))
+            );
+        }
+        
+        if (includeSemanticSearch) {
+            promises.push(
+                this.semanticSearch(query, { limit: Math.ceil(limit / 2), ...otherOptions })
+                    .then(results => ({ ...results, searchType: 'semantic' }))
+                    .catch(err => ({ results: [], total: 0, error: err.message, searchType: 'semantic' }))
+            );
+        }
+        
+        if (promises.length === 0) {
+            return { results: [], total: 0, query, searchType: 'hybrid' };
+        }
+        
+        try {
+            const searchResults = await Promise.all(promises);
+            
+            // Combine and deduplicate results
+            const combinedResults = [];
+            const seenIds = new Set();
+            
+            // Add semantic results first (higher relevance)
+            const semanticResults = searchResults.find(r => r.searchType === 'semantic');
+            if (semanticResults && semanticResults.results) {
+                semanticResults.results.forEach(result => {
+                    if (!seenIds.has(result.id)) {
+                        combinedResults.push({ ...result, searchType: 'semantic' });
+                        seenIds.add(result.id);
+                    }
+                });
+            }
+            
+            // Add text results
+            const textResults = searchResults.find(r => r.searchType === 'text');
+            if (textResults && textResults.results) {
+                textResults.results.forEach(result => {
+                    if (!seenIds.has(result.id)) {
+                        combinedResults.push({ ...result, searchType: 'text' });
+                        seenIds.add(result.id);
+                    }
+                });
+            }
+            
+            return {
+                results: combinedResults.slice(0, limit),
+                total: combinedResults.length,
+                query,
+                searchType: 'hybrid',
+                breakdown: {
+                    semantic: semanticResults?.results?.length || 0,
+                    text: textResults?.results?.length || 0,
+                    errors: searchResults.filter(r => r.error).map(r => ({ type: r.searchType, error: r.error }))
+                }
+            };
+            
+        } catch (error) {
+            console.error('Hybrid search failed:', error);
+            throw error;
+        }
+    }
+    
     // ===== UTILITY METHODS =====
     
     isConnected() {

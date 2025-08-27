@@ -15,7 +15,10 @@ const data = {
     tasks: [],
     flowlines: [],
     taskTags: [],
-    entityRelationships: []
+    entityRelationships: [],
+    documentChunks: [],
+    chatConversations: [],
+    chatMessages: []
 };
 
 // Initialize with default data
@@ -104,6 +107,32 @@ export async function query(text, params = []) {
     
     if (textLower.includes('from tasks')) {
         return { rows: data.tasks };
+    }
+    
+    if (textLower.includes('from document_chunks')) {
+        // Handle vector similarity queries
+        if (textLower.includes('<=>') || textLower.includes('vector')) {
+            // Mock vector search results with realistic similarity scores
+            const mockVectorResults = data.documentChunks.map(chunk => ({
+                ...chunk,
+                distance: Math.random() * 0.5, // Random distance 0-0.5
+                similarity: 1 - (Math.random() * 0.5) // Random similarity 0.5-1.0
+            }))
+            // Sort by similarity (descending)
+            .sort((a, b) => b.similarity - a.similarity);
+            
+            return { rows: mockVectorResults };
+        }
+        
+        return { rows: data.documentChunks };
+    }
+    
+    if (textLower.includes('from chat_conversations')) {
+        return { rows: data.chatConversations };
+    }
+    
+    if (textLower.includes('from chat_messages')) {
+        return { rows: data.chatMessages };
     }
     
     if (textLower.includes('from users') && textLower.includes('where email')) {
@@ -202,6 +231,52 @@ export async function query(text, params = []) {
         return { rows: [task] };
     }
     
+    if (textLower.includes('insert into document_chunks')) {
+        const chunk = {
+            id: uuidv4(),
+            organization_id: extractParamValue(text, params, 0),
+            source_entity_type: extractParamValue(text, params, 1),
+            source_entity_id: extractParamValue(text, params, 2),
+            chunk_text: extractParamValue(text, params, 3),
+            chunk_index: parseInt(extractParamValue(text, params, 4)) || 0,
+            metadata: JSON.parse(extractParamValue(text, params, 5) || '{}'),
+            embedding: JSON.parse(extractParamValue(text, params, 6) || '[]'),
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        };
+        data.documentChunks.push(chunk);
+        return { rows: [chunk] };
+    }
+    
+    if (textLower.includes('insert into chat_conversations')) {
+        const conversation = {
+            id: uuidv4(),
+            organization_id: extractParamValue(text, params, 0),
+            user_id: extractParamValue(text, params, 1),
+            workflow_id: extractParamValue(text, params, 2),
+            title: extractParamValue(text, params, 3),
+            metadata: JSON.parse(extractParamValue(text, params, 4) || '{}'),
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        };
+        data.chatConversations.push(conversation);
+        return { rows: [conversation] };
+    }
+    
+    if (textLower.includes('insert into chat_messages')) {
+        const message = {
+            id: uuidv4(),
+            conversation_id: extractParamValue(text, params, 0),
+            role: extractParamValue(text, params, 1),
+            content: extractParamValue(text, params, 2),
+            metadata: JSON.parse(extractParamValue(text, params, 3) || '{}'),
+            embedding: JSON.parse(extractParamValue(text, params, 4) || '[]'),
+            created_at: new Date().toISOString()
+        };
+        data.chatMessages.push(message);
+        return { rows: [message] };
+    }
+    
     // Default response for unhandled queries
     console.log(`⚠️  Mock database: Unhandled query: ${textLower.substring(0, 100)}...`);
     return { rows: [], rowCount: 0 };
@@ -247,11 +322,138 @@ export async function closePool() {
 // Vector operations (mock)
 export const vectorOps = {
     createVector: (array) => `[${array.join(',')}]`,
-    cosineSimilarity: async (vector1, vector2) => 0.8, // Mock similarity
-    findSimilar: async (tableName, vectorColumn, queryVector, limit = 10) => []
+    
+    cosineSimilarity: async (vector1, vector2) => {
+        // Mock cosine similarity calculation with some variance
+        const baseSimilarity = 0.8;
+        const variance = (Math.random() - 0.5) * 0.4; // ±0.2 variance
+        return Math.max(0, Math.min(1, baseSimilarity + variance));
+    },
+    
+    findSimilar: async (tableName, vectorColumn, queryVector, limit = 10) => {
+        console.log(`🔍 Mock vector search in ${tableName} for ${vectorColumn}`);
+        
+        // Get relevant data based on table name
+        let tableData = [];
+        switch (tableName) {
+            case 'document_chunks':
+                tableData = data.documentChunks;
+                break;
+            case 'workflows':
+                tableData = data.workflows;
+                break;
+            case 'opportunities':
+                tableData = data.opportunities;
+                break;
+            case 'nodes':
+                tableData = data.nodes;
+                break;
+            case 'tasks':
+                tableData = data.tasks;
+                break;
+            default:
+                return [];
+        }
+        
+        // Generate mock similarity scores and sort by similarity
+        const results = tableData
+            .map(item => ({
+                ...item,
+                similarity: Math.random() * 0.4 + 0.6, // Random similarity 0.6-1.0
+                distance: Math.random() * 0.4 // Random distance 0-0.4
+            }))
+            .sort((a, b) => b.similarity - a.similarity)
+            .slice(0, limit);
+            
+        console.log(`✅ Mock vector search found ${results.length} results`);
+        return results;
+    },
+    
+    // Embedding generation mock
+    generateEmbedding: async (text) => {
+        console.log(`🧠 Mock embedding generation for: ${text.slice(0, 50)}...`);
+        
+        // Generate deterministic mock embedding
+        const embedding = [];
+        const hash = text.split('').reduce((a, b) => {
+            a = ((a << 5) - a) + b.charCodeAt(0);
+            return a & a;
+        }, 0);
+        
+        for (let i = 0; i < 1536; i++) {
+            const value = Math.sin(hash * (i + 1)) * 0.5;
+            embedding.push(value);
+        }
+        
+        return embedding;
+    },
+    
+    // Store document chunks with embeddings
+    storeChunk: async (chunk) => {
+        console.log(`📄 Storing document chunk: ${chunk.source_entity_type}/${chunk.source_entity_id}`);
+        
+        // Generate embedding if not provided
+        if (!chunk.embedding) {
+            chunk.embedding = await vectorOps.generateEmbedding(chunk.chunk_text);
+        }
+        
+        // Add to mock database
+        const chunkWithId = {
+            id: uuidv4(),
+            ...chunk,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        };
+        
+        data.documentChunks.push(chunkWithId);
+        return chunkWithId;
+    },
+    
+    // Initialize with sample data
+    initializeSampleData: () => {
+        console.log('📊 Initializing sample vector data...');
+        
+        // Add some sample document chunks for testing
+        const sampleChunks = [
+            {
+                organization_id: 'dev-org-id',
+                source_entity_type: 'workflow',
+                source_entity_id: 'sample-workflow-001',
+                chunk_text: 'This is a sample workflow for processing business opportunities and managing tasks efficiently.',
+                chunk_index: 0,
+                metadata: { sample: true, type: 'workflow_description' }
+            },
+            {
+                organization_id: 'dev-org-id',
+                source_entity_type: 'opportunity',
+                source_entity_id: 'sample-opp-001',
+                chunk_text: 'A promising business opportunity in the technology sector with high potential for growth and scalability.',
+                chunk_index: 0,
+                metadata: { sample: true, type: 'opportunity_description' }
+            },
+            {
+                organization_id: 'dev-org-id',
+                source_entity_type: 'task',
+                source_entity_id: 'sample-task-001',
+                chunk_text: 'Complete the implementation of the vector search functionality for the workflow management system.',
+                chunk_index: 0,
+                metadata: { sample: true, type: 'task_description' }
+            }
+        ];
+        
+        // Store sample chunks
+        sampleChunks.forEach(chunk => {
+            vectorOps.storeChunk(chunk);
+        });
+        
+        console.log(`✅ Initialized ${sampleChunks.length} sample document chunks`);
+    }
 };
 
 // Initialize mock data
 initializeMockData();
+
+// Initialize sample vector data for Phase 3
+vectorOps.initializeSampleData();
 
 export default { query, transaction, testConnection, getClient, closePool, vectorOps };

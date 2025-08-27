@@ -1,0 +1,962 @@
+{
+  "name": "Workflow 8/25/2025",
+  "version": "2.0.0",
+  "created_at": "2025-08-25T21:44:49.370Z",
+  "updated_at": "2025-08-25T21:44:49.370Z",
+  "nodeCounter": null,
+  "nodes": [
+    {
+      "id": "1",
+      "type": "terminal",
+      "text": "Start",
+      "left": 104,
+      "top": 247,
+      "anchoredTo": null,
+      "previousAnchor": null,
+      "slot": null,
+      "tags": [],
+      "isTaskNode": false,
+      "className": "node terminal",
+      "width": 120,
+      "height": 50,
+      "description": null,
+      "opportunityId": null,
+      "priority": null,
+      "dueDate": null,
+      "status": null,
+      "estimatedHours": null,
+      "assignedTo": null,
+      "lastModified": null,
+      "computedStyles": {
+        "transform": "none",
+        "borderRadius": "25px",
+        "backgroundColor": "rgb(255, 255, 255)",
+        "borderColor": "rgb(51, 51, 51)",
+        "boxShadow": ""
+      }
+    },
+    {
+      "id": "6",
+      "type": "decision",
+      "text": "Fed BD",
+      "left": 365,
+      "top": 123,
+      "anchoredTo": null,
+      "previousAnchor": null,
+      "slot": null,
+      "tags": [],
+      "isTaskNode": false,
+      "className": "node decision",
+      "width": 100,
+      "height": 100,
+      "description": null,
+      "opportunityId": null,
+      "priority": null,
+      "dueDate": null,
+      "status": null,
+      "estimatedHours": null,
+      "assignedTo": null,
+      "lastModified": null,
+      "computedStyles": {
+        "transform": "matrix(0.707107, 0.707107, -0.707107, 0.707107, 0, 0)",
+        "borderRadius": "0px",
+        "backgroundColor": "rgb(255, 255, 255)",
+        "borderColor": "rgb(51, 51, 51)",
+        "boxShadow": ""
+      }
+    },
+    {
+      "id": "7",
+      "type": "decision",
+      "text": "Comm BD",
+      "left": 364,
+      "top": 325,
+      "anchoredTo": null,
+      "previousAnchor": null,
+      "slot": null,
+      "tags": [],
+      "isTaskNode": false,
+      "className": "node decision",
+      "width": 100,
+      "height": 100,
+      "description": null,
+      "opportunityId": null,
+      "priority": null,
+      "dueDate": null,
+      "status": null,
+      "estimatedHours": null,
+      "assignedTo": null,
+      "lastModified": null,
+      "computedStyles": {
+        "transform": "matrix(0.707107, 0.707107, -0.707107, 0.707107, 0, 0)",
+        "borderRadius": "0px",
+        "backgroundColor": "rgb(255, 255, 255)",
+        "borderColor": "rgb(51, 51, 51)",
+        "boxShadow": ""
+      }
+    },
+    {
+      "id": "8",
+      "type": "decision",
+      "text": "Goldenrod",
+      "left": 522,
+      "top": 229,
+      "anchoredTo": null,
+      "previousAnchor": null,
+      "slot": null,
+      "tags": [],
+      "isTaskNode": false,
+      "className": "node decision",
+      "width": 100,
+      "height": 100,
+      "description": null,
+      "opportunityId": null,
+      "priority": null,
+      "dueDate": null,
+      "status": null,
+      "estimatedHours": null,
+      "assignedTo": null,
+      "lastModified": null,
+      "computedStyles": {
+        "transform": "matrix(0.707107, 0.707107, -0.707107, 0.707107, 0, 0)",
+        "borderRadius": "0px",
+        "backgroundColor": "rgb(255, 255, 255)",
+        "borderColor": "rgb(51, 51, 51)",
+        "boxShadow": ""
+      }
+    },
+    {
+      "id": "9",
+      "type": "terminal",
+      "text": "terminal 9",
+      "left": 646,
+      "top": 137,
+      "anchoredTo": null,
+      "previousAnchor": null,
+      "slot": null,
+      "tags": [],
+      "isTaskNode": false,
+      "className": "node terminal",
+      "width": 120,
+      "height": 50,
+      "description": null,
+      "opportunityId": null,
+      "priority": null,
+      "dueDate": null,
+      "status": null,
+      "estimatedHours": null,
+      "assignedTo": null,
+      "lastModified": null,
+      "computedStyles": {
+        "transform": "none",
+        "borderRadius": "25px",
+        "backgroundColor": "rgb(255, 255, 255)",
+        "borderColor": "rgb(51, 51, 51)",
+        "boxShadow": ""
+      }
+    },
+    {
+      "id": "10",
+      "type": "terminal",
+      "text": "terminal 10",
+      "left": 642,
+      "top": 374,
+      "anchoredTo": null,
+      "previousAnchor": null,
+      "slot": null,
+      "tags": [],
+      "isTaskNode": false,
+      "className": "node terminal",
+      "width": 120,
+      "height": 50,
+      "description": null,
+      "opportunityId": null,
+      "priority": null,
+      "dueDate": null,
+      "status": null,
+      "estimatedHours": null,
+      "assignedTo": null,
+      "lastModified": null,
+      "computedStyles": {
+        "transform": "none",
+        "borderRadius": "25px",
+        "backgroundColor": "rgb(255, 255, 255)",
+        "borderColor": "rgb(51, 51, 51)",
+        "boxShadow": ""
+      }
+    },
+    {
+      "id": "node_13",
+      "type": "terminal",
+      "text": "BNB",
+      "left": 902,
+      "top": 31,
+      "anchoredTo": null,
+      "previousAnchor": null,
+      "slot": null,
+      "tags": [],
+      "isTaskNode": false,
+      "className": "node terminal",
+      "width": 120,
+      "height": 50,
+      "description": null,
+      "opportunityId": null,
+      "priority": null,
+      "dueDate": null,
+      "status": null,
+      "estimatedHours": null,
+      "assignedTo": null,
+      "lastModified": null,
+      "computedStyles": {
+        "transform": "none",
+        "borderRadius": "25px",
+        "backgroundColor": "rgb(255, 255, 255)",
+        "borderColor": "rgb(51, 51, 51)",
+        "boxShadow": ""
+      }
+    },
+    {
+      "id": "node_14",
+      "type": "decision",
+      "text": "Decision 3",
+      "left": 1135,
+      "top": 231,
+      "anchoredTo": null,
+      "previousAnchor": null,
+      "slot": null,
+      "tags": [],
+      "isTaskNode": false,
+      "className": "node decision",
+      "width": 100,
+      "height": 100,
+      "description": null,
+      "opportunityId": null,
+      "priority": null,
+      "dueDate": null,
+      "status": null,
+      "estimatedHours": null,
+      "assignedTo": null,
+      "lastModified": null,
+      "computedStyles": {
+        "transform": "matrix(0.707107, 0.707107, -0.707107, 0.707107, 0, 0)",
+        "borderRadius": "0px",
+        "backgroundColor": "rgb(255, 255, 255)",
+        "borderColor": "rgb(51, 51, 51)",
+        "boxShadow": ""
+      }
+    },
+    {
+      "id": "node_15",
+      "type": "terminal",
+      "text": "Terminal 4",
+      "left": 1223,
+      "top": 351,
+      "anchoredTo": null,
+      "previousAnchor": null,
+      "slot": null,
+      "tags": [],
+      "isTaskNode": false,
+      "className": "node terminal",
+      "width": 120,
+      "height": 50,
+      "description": null,
+      "opportunityId": null,
+      "priority": null,
+      "dueDate": null,
+      "status": null,
+      "estimatedHours": null,
+      "assignedTo": null,
+      "lastModified": null,
+      "computedStyles": {
+        "transform": "none",
+        "borderRadius": "25px",
+        "backgroundColor": "rgb(255, 255, 255)",
+        "borderColor": "rgb(51, 51, 51)",
+        "boxShadow": ""
+      }
+    },
+    {
+      "id": "2",
+      "type": "task",
+      "text": "Old Opportunity",
+      "left": 0,
+      "top": 0,
+      "anchoredTo": "node_13",
+      "previousAnchor": "1",
+      "slot": 0,
+      "tags": [
+        {
+          "category": "bnb",
+          "option": "no-bid",
+          "date": "2025-07-31"
+        },
+        {
+          "category": "urgency",
+          "option": "not-urgent"
+        },
+        {
+          "category": "importance",
+          "option": "not-important"
+        }
+      ],
+      "isTaskNode": true,
+      "className": "task-banner",
+      "width": 127,
+      "height": 30,
+      "description": null,
+      "opportunityId": null,
+      "priority": null,
+      "dueDate": null,
+      "status": null,
+      "estimatedHours": null,
+      "assignedTo": null,
+      "lastModified": null,
+      "computedStyles": {
+        "transform": "none",
+        "borderRadius": "6px",
+        "backgroundColor": "rgb(248, 249, 250)",
+        "borderColor": "rgb(51, 51, 51)",
+        "boxShadow": ""
+      },
+      "containerPosition": {
+        "left": 902,
+        "top": 111
+      },
+      "nextActionSlotPosition": {
+        "left": 1032,
+        "top": 111
+      }
+    },
+    {
+      "id": "3",
+      "type": "task",
+      "text": "New Opportunity",
+      "left": 0,
+      "top": 0,
+      "anchoredTo": "1",
+      "previousAnchor": "null",
+      "slot": 0,
+      "tags": [
+        {
+          "category": "bnb",
+          "option": "draft",
+          "date": "2025-09-30"
+        },
+        {
+          "category": "urgency",
+          "option": "urgent"
+        },
+        {
+          "category": "importance",
+          "option": "important"
+        }
+      ],
+      "isTaskNode": true,
+      "className": "task-banner",
+      "width": 121,
+      "height": 30,
+      "description": null,
+      "opportunityId": "opp-1756158248793-rekjmm82r",
+      "priority": "medium",
+      "dueDate": null,
+      "status": "not_started",
+      "estimatedHours": null,
+      "assignedTo": null,
+      "lastModified": "2025-08-25T21:44:21.216Z",
+      "computedStyles": {
+        "transform": "none",
+        "borderRadius": "6px",
+        "backgroundColor": "rgb(248, 249, 250)",
+        "borderColor": "rgb(51, 51, 51)",
+        "boxShadow": ""
+      },
+      "containerPosition": {
+        "left": 104,
+        "top": 327
+      },
+      "nextActionSlotPosition": {
+        "left": 234,
+        "top": 327
+      }
+    },
+    {
+      "id": "4",
+      "type": "task",
+      "text": "Kiosk Vignette #n",
+      "left": 0,
+      "top": 0,
+      "anchoredTo": "1",
+      "previousAnchor": "null",
+      "slot": 1,
+      "tags": [
+        {
+          "category": "importance",
+          "option": "important"
+        }
+      ],
+      "isTaskNode": true,
+      "className": "task-banner",
+      "width": 124,
+      "height": 30,
+      "description": null,
+      "opportunityId": null,
+      "priority": null,
+      "dueDate": null,
+      "status": null,
+      "estimatedHours": null,
+      "assignedTo": null,
+      "lastModified": null,
+      "computedStyles": {
+        "transform": "none",
+        "borderRadius": "6px",
+        "backgroundColor": "rgb(248, 249, 250)",
+        "borderColor": "rgb(51, 51, 51)",
+        "boxShadow": ""
+      },
+      "containerPosition": {
+        "left": 104,
+        "top": 475
+      },
+      "nextActionSlotPosition": {
+        "left": 234,
+        "top": 475
+      }
+    },
+    {
+      "id": "5",
+      "type": "task",
+      "text": "Social Media Posts",
+      "left": 0,
+      "top": 0,
+      "anchoredTo": "1",
+      "previousAnchor": "null",
+      "slot": 2,
+      "tags": [
+        {
+          "category": "urgency",
+          "option": "urgent"
+        }
+      ],
+      "isTaskNode": true,
+      "className": "task-banner",
+      "width": 127,
+      "height": 30,
+      "description": null,
+      "opportunityId": null,
+      "priority": null,
+      "dueDate": null,
+      "status": null,
+      "estimatedHours": null,
+      "assignedTo": null,
+      "lastModified": null,
+      "computedStyles": {
+        "transform": "none",
+        "borderRadius": "6px",
+        "backgroundColor": "rgb(248, 249, 250)",
+        "borderColor": "rgb(51, 51, 51)",
+        "boxShadow": ""
+      },
+      "containerPosition": {
+        "left": 104,
+        "top": 540
+      },
+      "nextActionSlotPosition": {
+        "left": 234,
+        "top": 540
+      }
+    }
+  ],
+  "flowlines": [
+    {
+      "sourceId": "1",
+      "targetId": "6",
+      "type": "straight"
+    },
+    {
+      "sourceId": "1",
+      "targetId": "7",
+      "type": "straight"
+    },
+    {
+      "sourceId": "6",
+      "targetId": "8",
+      "type": "straight"
+    },
+    {
+      "sourceId": "7",
+      "targetId": "8",
+      "type": "straight"
+    },
+    {
+      "sourceId": "8",
+      "targetId": "9",
+      "type": "straight"
+    },
+    {
+      "sourceId": "8",
+      "targetId": "10",
+      "type": "straight"
+    },
+    {
+      "sourceId": "node_14",
+      "targetId": "node_15",
+      "type": "straight"
+    },
+    {
+      "sourceId": "node_13",
+      "targetId": "node_14",
+      "type": "straight"
+    },
+    {
+      "sourceId": "1",
+      "targetId": "node_13",
+      "type": "straight"
+    }
+  ],
+  "opportunities": [
+    {
+      "opportunity_id": "opp-1756158248793-rekjmm82r",
+      "title": "Toretto",
+      "description": "toretto",
+      "status": "active",
+      "tags": [],
+      "created_at": "2025-08-25T21:44:08.793Z",
+      "metadata": {
+        "source": "manual",
+        "priority": "medium"
+      }
+    }
+  ],
+  "relationships": {
+    "data": {
+      "relationships": [
+        {
+          "key": "task:3--anchored_to-->node:1",
+          "sourceType": "task",
+          "sourceId": "3",
+          "targetType": "node",
+          "targetId": "1",
+          "relationshipType": "anchored_to",
+          "strength": 1,
+          "metadata": {
+            "bidirectional": false,
+            "system": true,
+            "confidence": 1
+          },
+          "created": "2025-08-25T21:44:21.216Z",
+          "updated": "2025-08-25T21:44:21.216Z"
+        },
+        {
+          "key": "task:3--linked_to-->opportunity:opp-1756158248793-rekjmm82r",
+          "sourceType": "task",
+          "sourceId": "3",
+          "targetType": "opportunity",
+          "targetId": "opp-1756158248793-rekjmm82r",
+          "relationshipType": "linked_to",
+          "strength": 1,
+          "metadata": {
+            "bidirectional": false,
+            "system": true,
+            "confidence": 1
+          },
+          "created": "2025-08-25T21:44:21.218Z",
+          "updated": "2025-08-25T21:44:21.218Z"
+        },
+        {
+          "key": "task:3--tagged_with-->tag:3_tag_0",
+          "sourceType": "task",
+          "sourceId": "3",
+          "targetType": "tag",
+          "targetId": "3_tag_0",
+          "relationshipType": "tagged_with",
+          "strength": 1,
+          "metadata": {
+            "bidirectional": false,
+            "system": true,
+            "confidence": 1
+          },
+          "created": "2025-08-25T21:44:21.218Z",
+          "updated": "2025-08-25T21:44:21.218Z"
+        },
+        {
+          "key": "task:3--tagged_with-->tag:3_tag_1",
+          "sourceType": "task",
+          "sourceId": "3",
+          "targetType": "tag",
+          "targetId": "3_tag_1",
+          "relationshipType": "tagged_with",
+          "strength": 1,
+          "metadata": {
+            "bidirectional": false,
+            "system": true,
+            "confidence": 1
+          },
+          "created": "2025-08-25T21:44:21.219Z",
+          "updated": "2025-08-25T21:44:21.219Z"
+        },
+        {
+          "key": "task:3--tagged_with-->tag:3_tag_2",
+          "sourceType": "task",
+          "sourceId": "3",
+          "targetType": "tag",
+          "targetId": "3_tag_2",
+          "relationshipType": "tagged_with",
+          "strength": 1,
+          "metadata": {
+            "bidirectional": false,
+            "system": true,
+            "confidence": 1
+          },
+          "created": "2025-08-25T21:44:21.221Z",
+          "updated": "2025-08-25T21:44:21.221Z"
+        }
+      ],
+      "stats": {
+        "totalRelationships": 5,
+        "relationshipsByType": {},
+        "entitiesByType": {},
+        "lastUpdated": "2025-08-25T21:44:21.221Z"
+      },
+      "exported": "2025-08-25T21:44:49.370Z",
+      "version": "1.0.0"
+    },
+    "version": "1.0.0"
+  },
+  "metadata": {
+    "description": "Process flow workflow with opportunities and relationship tracking",
+    "author": "Process Flow Designer",
+    "taskOpportunityLinks": 1,
+    "totalRelationships": 5,
+    "exportedFeatures": [
+      "nodes",
+      "tasks",
+      "flowlines",
+      "opportunities",
+      "relationships",
+      "enhanced_task_fields",
+      "task_opportunity_linking"
+    ]
+  },
+  "settings": {
+    "flowlineType": "straight"
+  },
+  "structured": {
+    "tasks": [
+      {
+        "id": "2",
+        "type": "task",
+        "text": "Old Opportunity",
+        "description": null,
+        "tags": [
+          {
+            "category": "bnb",
+            "option": "no-bid",
+            "date": "2025-07-31"
+          },
+          {
+            "category": "urgency",
+            "option": "not-urgent"
+          },
+          {
+            "category": "importance",
+            "option": "not-important"
+          }
+        ],
+        "opportunityId": null,
+        "priority": "medium",
+        "dueDate": null,
+        "status": "not_started",
+        "estimatedHours": null,
+        "assignedTo": null,
+        "lastModified": null,
+        "position": {
+          "left": 0,
+          "top": 0
+        },
+        "anchoredTo": "node_13",
+        "previousAnchor": "1",
+        "slot": 0,
+        "containerPosition": {
+          "left": 902,
+          "top": 111
+        },
+        "nextActionSlotPosition": {
+          "left": 1032,
+          "top": 111
+        }
+      },
+      {
+        "id": "3",
+        "type": "task",
+        "text": "New Opportunity",
+        "description": null,
+        "tags": [
+          {
+            "category": "bnb",
+            "option": "draft",
+            "date": "2025-09-30"
+          },
+          {
+            "category": "urgency",
+            "option": "urgent"
+          },
+          {
+            "category": "importance",
+            "option": "important"
+          }
+        ],
+        "opportunityId": "opp-1756158248793-rekjmm82r",
+        "priority": "medium",
+        "dueDate": null,
+        "status": "not_started",
+        "estimatedHours": null,
+        "assignedTo": null,
+        "lastModified": "2025-08-25T21:44:21.216Z",
+        "position": {
+          "left": 0,
+          "top": 0
+        },
+        "anchoredTo": "1",
+        "previousAnchor": "null",
+        "slot": 0,
+        "containerPosition": {
+          "left": 104,
+          "top": 327
+        },
+        "nextActionSlotPosition": {
+          "left": 234,
+          "top": 327
+        }
+      },
+      {
+        "id": "4",
+        "type": "task",
+        "text": "Kiosk Vignette #n",
+        "description": null,
+        "tags": [
+          {
+            "category": "importance",
+            "option": "important"
+          }
+        ],
+        "opportunityId": null,
+        "priority": "medium",
+        "dueDate": null,
+        "status": "not_started",
+        "estimatedHours": null,
+        "assignedTo": null,
+        "lastModified": null,
+        "position": {
+          "left": 0,
+          "top": 0
+        },
+        "anchoredTo": "1",
+        "previousAnchor": "null",
+        "slot": 1,
+        "containerPosition": {
+          "left": 104,
+          "top": 475
+        },
+        "nextActionSlotPosition": {
+          "left": 234,
+          "top": 475
+        }
+      },
+      {
+        "id": "5",
+        "type": "task",
+        "text": "Social Media Posts",
+        "description": null,
+        "tags": [
+          {
+            "category": "urgency",
+            "option": "urgent"
+          }
+        ],
+        "opportunityId": null,
+        "priority": "medium",
+        "dueDate": null,
+        "status": "not_started",
+        "estimatedHours": null,
+        "assignedTo": null,
+        "lastModified": null,
+        "position": {
+          "left": 0,
+          "top": 0
+        },
+        "anchoredTo": "1",
+        "previousAnchor": "null",
+        "slot": 2,
+        "containerPosition": {
+          "left": 104,
+          "top": 540
+        },
+        "nextActionSlotPosition": {
+          "left": 234,
+          "top": 540
+        }
+      }
+    ],
+    "tags": [
+      {
+        "taskId": "2",
+        "taskText": "Old Opportunity",
+        "taskType": "task",
+        "tags": [
+          {
+            "category": "bnb",
+            "option": "no-bid",
+            "date": "2025-07-31"
+          },
+          {
+            "category": "urgency",
+            "option": "not-urgent"
+          },
+          {
+            "category": "importance",
+            "option": "not-important"
+          }
+        ],
+        "tagCount": 3
+      },
+      {
+        "taskId": "3",
+        "taskText": "New Opportunity",
+        "taskType": "task",
+        "tags": [
+          {
+            "category": "bnb",
+            "option": "draft",
+            "date": "2025-09-30"
+          },
+          {
+            "category": "urgency",
+            "option": "urgent"
+          },
+          {
+            "category": "importance",
+            "option": "important"
+          }
+        ],
+        "tagCount": 3
+      },
+      {
+        "taskId": "4",
+        "taskText": "Kiosk Vignette #n",
+        "taskType": "task",
+        "tags": [
+          {
+            "category": "importance",
+            "option": "important"
+          }
+        ],
+        "tagCount": 1
+      },
+      {
+        "taskId": "5",
+        "taskText": "Social Media Posts",
+        "taskType": "task",
+        "tags": [
+          {
+            "category": "urgency",
+            "option": "urgent"
+          }
+        ],
+        "tagCount": 1
+      }
+    ],
+    "regularNodes": [
+      {
+        "id": "1",
+        "type": "terminal",
+        "text": "Start",
+        "position": {
+          "left": 104,
+          "top": 247
+        }
+      },
+      {
+        "id": "6",
+        "type": "decision",
+        "text": "Fed BD",
+        "position": {
+          "left": 365,
+          "top": 123
+        }
+      },
+      {
+        "id": "7",
+        "type": "decision",
+        "text": "Comm BD",
+        "position": {
+          "left": 364,
+          "top": 325
+        }
+      },
+      {
+        "id": "8",
+        "type": "decision",
+        "text": "Goldenrod",
+        "position": {
+          "left": 522,
+          "top": 229
+        }
+      },
+      {
+        "id": "9",
+        "type": "terminal",
+        "text": "terminal 9",
+        "position": {
+          "left": 646,
+          "top": 137
+        }
+      },
+      {
+        "id": "10",
+        "type": "terminal",
+        "text": "terminal 10",
+        "position": {
+          "left": 642,
+          "top": 374
+        }
+      },
+      {
+        "id": "node_13",
+        "type": "terminal",
+        "text": "BNB",
+        "position": {
+          "left": 902,
+          "top": 31
+        }
+      },
+      {
+        "id": "node_14",
+        "type": "decision",
+        "text": "Decision 3",
+        "position": {
+          "left": 1135,
+          "top": 231
+        }
+      },
+      {
+        "id": "node_15",
+        "type": "terminal",
+        "text": "Terminal 4",
+        "position": {
+          "left": 1223,
+          "top": 351
+        }
+      }
+    ],
+    "summary": {
+      "totalNodes": 9,
+      "taskCount": 4,
+      "regularNodeCount": 5,
+      "flowlineCount": 9,
+      "opportunityCount": 1,
+      "taskOpportunityLinks": 1,
+      "totalTagCount": 8,
+      "relationshipCount": 5
+    }
+  }
+}

@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phase 3 Vector Search Interface Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f8fafc;
+            color: #1a202c;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        .header h1 {
+            color: #2d3748;
+            margin-bottom: 8px;
+        }
+        
+        .header p {
+            color: #718096;
+            font-size: 16px;
+        }
+        
+        .demo-section {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .demo-section h2 {
+            margin-top: 0;
+            margin-bottom: 16px;
+            color: #2d3748;
+            font-size: 20px;
+        }
+        
+        .search-container {
+            margin-bottom: 24px;
+        }
+        
+        .status-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        
+        .status-card {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .status-card h3 {
+            margin: 0 0 12px 0;
+            font-size: 16px;
+            color: #4a5568;
+        }
+        
+        .status-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #3182ce;
+        }
+        
+        .status-description {
+            font-size: 14px;
+            color: #718096;
+            margin-top: 8px;
+        }
+        
+        .actions-section {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 24px;
+        }
+        
+        .action-btn {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 8px;
+            background: #3182ce;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+            font-size: 14px;
+        }
+        
+        .action-btn:hover {
+            background: #2c5282;
+        }
+        
+        .action-btn.secondary {
+            background: #e2e8f0;
+            color: #4a5568;
+        }
+        
+        .action-btn.secondary:hover {
+            background: #cbd5e0;
+        }
+        
+        .logs-section {
+            background: #1a202c;
+            color: #e2e8f0;
+            border-radius: 8px;
+            padding: 16px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 13px;
+            line-height: 1.4;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .log-entry {
+            margin-bottom: 4px;
+        }
+        
+        .log-timestamp {
+            color: #9ca3af;
+        }
+        
+        .log-level-info {
+            color: #3b82f6;
+        }
+        
+        .log-level-success {
+            color: #10b981;
+        }
+        
+        .log-level-error {
+            color: #ef4444;
+        }
+        
+        .sample-queries {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+            margin-top: 16px;
+        }
+        
+        .sample-query {
+            padding: 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: center;
+            font-size: 14px;
+        }
+        
+        .sample-query:hover {
+            border-color: #3182ce;
+            background: #f0f9ff;
+            color: #3182ce;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 Phase 3 Vector Search Interface</h1>
+            <p>Test and demonstrate hybrid search capabilities with semantic and text search</p>
+        </div>
+        
+        <!-- Search Component -->
+        <div class="demo-section">
+            <h2>Search Interface</h2>
+            <div id="search-container"></div>
+        </div>
+        
+        <!-- Status Cards -->
+        <div class="status-section">
+            <div class="status-card">
+                <h3>API Connection</h3>
+                <div class="status-value" id="api-status">Checking...</div>
+                <div class="status-description">Backend API connectivity</div>
+            </div>
+            
+            <div class="status-card">
+                <h3>Search Service</h3>
+                <div class="status-value" id="search-status">Loading...</div>
+                <div class="status-description">Vector search availability</div>
+            </div>
+            
+            <div class="status-card">
+                <h3>Total Searches</h3>
+                <div class="status-value" id="search-count">0</div>
+                <div class="status-description">Searches performed</div>
+            </div>
+            
+            <div class="status-card">
+                <h3>Cache Size</h3>
+                <div class="status-value" id="cache-size">0</div>
+                <div class="status-description">Cached results</div>
+            </div>
+        </div>
+        
+        <!-- Sample Queries -->
+        <div class="demo-section">
+            <h2>Sample Queries</h2>
+            <p>Click on any sample query to test the search functionality:</p>
+            <div class="sample-queries">
+                <div class="sample-query" data-query="business opportunities">🏢 Business Opportunities</div>
+                <div class="sample-query" data-query="workflow automation">⚙️ Workflow Automation</div>
+                <div class="sample-query" data-query="task management">✅ Task Management</div>
+                <div class="sample-query" data-query="process optimization">🚀 Process Optimization</div>
+                <div class="sample-query" data-query="project planning">📋 Project Planning</div>
+                <div class="sample-query" data-query="team collaboration">👥 Team Collaboration</div>
+                <div class="sample-query" data-query="data analysis">📊 Data Analysis</div>
+                <div class="sample-query" data-query="customer support">🎧 Customer Support</div>
+            </div>
+        </div>
+        
+        <!-- Actions -->
+        <div class="demo-section">
+            <h2>Test Actions</h2>
+            <div class="actions-section">
+                <button class="action-btn" onclick="testSearchService()">Test Search Service</button>
+                <button class="action-btn" onclick="testEmbedding()">Test Embedding Generation</button>
+                <button class="action-btn" onclick="runPerformanceTest()">Performance Test</button>
+                <button class="action-btn secondary" onclick="clearSearchHistory()">Clear History</button>
+                <button class="action-btn secondary" onclick="clearSearchCache()">Clear Cache</button>
+                <button class="action-btn secondary" onclick="clearLogs()">Clear Logs</button>
+            </div>
+        </div>
+        
+        <!-- Logs -->
+        <div class="demo-section">
+            <h2>Activity Log</h2>
+            <div class="logs-section" id="logs"></div>
+        </div>
+    </div>
+
+    <!-- Import ES Modules -->
+    <script type="module">
+        import { SearchComponent } from './features/search-interface/search-component.js';
+        import { getSearchService } from './services/search-service.js';
+        
+        let searchComponent;
+        let searchService;
+        let searchCount = 0;
+        
+        // Initialize
+        async function initialize() {
+            try {
+                log('🚀 Initializing Phase 3 Vector Search Interface...', 'info');
+                
+                // Initialize search service
+                searchService = getSearchService();
+                await updateSearchStatus();
+                
+                // Initialize search component
+                searchComponent = new SearchComponent({
+                    containerId: 'search-container',
+                    autoFocus: true,
+                    onResultSelect: handleResultSelect,
+                    onSearchStart: handleSearchStart,
+                    onSearchComplete: handleSearchComplete
+                });
+                
+                await searchComponent.init();
+                log('✅ Search interface initialized successfully', 'success');
+                
+                // Update status periodically
+                setInterval(updateStatus, 5000);
+                updateStatus();
+                
+            } catch (error) {
+                log(`❌ Initialization failed: ${error.message}`, 'error');
+            }
+        }
+        
+        // Event handlers
+        function handleResultSelect(result, meta) {
+            log(`📍 Selected: ${result.type} "${result.title}" (ID: ${result.id})`, 'info');
+        }
+        
+        function handleSearchStart(query) {
+            log(`🔍 Starting search: "${query}"`, 'info');
+        }
+        
+        function handleSearchComplete(query, results) {
+            searchCount++;
+            document.getElementById('search-count').textContent = searchCount;
+            
+            log(`✅ Search completed: "${query}" - ${results.total} results (${results.searchType})`, 'success');
+            if (results.breakdown) {
+                log(`   📊 Breakdown: ${results.breakdown.semantic} semantic, ${results.breakdown.text} text`, 'info');
+            }
+        }
+        
+        // Status updates
+        async function updateStatus() {
+            await updateAPIStatus();
+            await updateSearchStatus();
+            updateCacheStatus();
+        }
+        
+        async function updateAPIStatus() {
+            try {
+                const apiClient = searchService.apiClient;
+                const isOnline = apiClient.isConnected();
+                
+                document.getElementById('api-status').textContent = isOnline ? 'Online' : 'Offline';
+                document.getElementById('api-status').style.color = isOnline ? '#10b981' : '#ef4444';
+            } catch (error) {
+                document.getElementById('api-status').textContent = 'Error';
+                document.getElementById('api-status').style.color = '#ef4444';
+            }
+        }
+        
+        async function updateSearchStatus() {
+            try {
+                const status = await searchService.getStatus();
+                const isOperational = status.status === 'operational';
+                
+                document.getElementById('search-status').textContent = isOperational ? 'Available' : 'Unavailable';
+                document.getElementById('search-status').style.color = isOperational ? '#10b981' : '#ef4444';
+                
+                if (isOperational) {
+                    log(`🧠 Embedding service: ${status.embeddingService.provider} (${status.embeddingService.dimensions}D)`, 'info');
+                }
+            } catch (error) {
+                document.getElementById('search-status').textContent = 'Error';
+                document.getElementById('search-status').style.color = '#ef4444';
+                log(`⚠️ Search status check failed: ${error.message}`, 'error');
+            }
+        }
+        
+        function updateCacheStatus() {
+            const stats = searchService.getSearchStats();
+            document.getElementById('cache-size').textContent = stats.cacheSize;
+        }
+        
+        // Sample query handlers
+        document.querySelectorAll('.sample-query').forEach(element => {
+            element.addEventListener('click', () => {
+                const query = element.dataset.query;
+                log(`🎯 Running sample query: "${query}"`, 'info');
+                searchComponent.setQuery(query);
+            });
+        });
+        
+        // Global functions for buttons
+        window.testSearchService = async function() {
+            log('🧪 Testing search service...', 'info');
+            try {
+                const testQuery = 'test search functionality';
+                const results = await searchService.search(testQuery);
+                log(`✅ Search service test passed: ${results.total} results`, 'success');
+            } catch (error) {
+                log(`❌ Search service test failed: ${error.message}`, 'error');
+            }
+        };
+        
+        window.testEmbedding = async function() {
+            log('🧪 Testing embedding generation...', 'info');
+            try {
+                const testText = 'This is a test for embedding generation';
+                const result = await searchService.generateEmbedding(testText, 'test');
+                log(`✅ Embedding test passed: ${result.dimensions} dimensions, provider: ${result.provider}`, 'success');
+            } catch (error) {
+                log(`❌ Embedding test failed: ${error.message}`, 'error');
+            }
+        };
+        
+        window.runPerformanceTest = async function() {
+            log('🚀 Running performance test...', 'info');
+            const startTime = performance.now();
+            
+            try {
+                const testQueries = [
+                    'workflow management',
+                    'business opportunities',
+                    'task automation',
+                    'project planning',
+                    'team collaboration'
+                ];
+                
+                const promises = testQueries.map(query => searchService.search(query));
+                await Promise.all(promises);
+                
+                const endTime = performance.now();
+                const duration = Math.round(endTime - startTime);
+                
+                log(`✅ Performance test completed: ${testQueries.length} queries in ${duration}ms`, 'success');
+                log(`   📊 Average: ${Math.round(duration / testQueries.length)}ms per query`, 'info');
+                
+            } catch (error) {
+                log(`❌ Performance test failed: ${error.message}`, 'error');
+            }
+        };
+        
+        window.clearSearchHistory = function() {
+            searchService.clearSearchHistory();
+            log('🗑️ Search history cleared', 'info');
+            updateStatus();
+        };
+        
+        window.clearSearchCache = function() {
+            searchService.clearCache();
+            log('🗑️ Search cache cleared', 'info');
+            updateStatus();
+        };
+        
+        window.clearLogs = function() {
+            document.getElementById('logs').innerHTML = '';
+        };
+        
+        // Logging function
+        function log(message, level = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry';
+            logEntry.innerHTML = `
+                <span class="log-timestamp">[${timestamp}]</span>
+                <span class="log-level-${level}">${message}</span>
+            `;
+            
+            const logsContainer = document.getElementById('logs');
+            logsContainer.appendChild(logEntry);
+            logsContainer.scrollTop = logsContainer.scrollHeight;
+        }
+        
+        // Make log function global
+        window.log = log;
+        
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', initialize);
+        
+    </script>
+</body>
+</html>
