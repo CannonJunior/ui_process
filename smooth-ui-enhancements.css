@@ -1,0 +1,240 @@
+/* Smooth UI Enhancements - Interactive Toggle Elements */
+/* Based on smooth.css design patterns */
+
+/* Enhanced Toggle Buttons with SVG-like Grid Pattern */
+.toolbar-button.smooth-toggle,
+.modal-button.smooth-toggle {
+    position: relative;
+    overflow: hidden;
+}
+
+.toolbar-button.smooth-toggle::before,
+.modal-button.smooth-toggle::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: 
+        linear-gradient(90deg, transparent 0px, rgba(118, 179, 250, 0.1) 1px, transparent 1px),
+        linear-gradient(0deg, transparent 0px, rgba(118, 179, 250, 0.1) 1px, transparent 1px);
+    background-size: 8px 8px;
+    opacity: 0;
+    transition: opacity 300ms ease-in-out;
+    pointer-events: none;
+}
+
+.toolbar-button.smooth-toggle:hover::before,
+.modal-button.smooth-toggle:hover::before,
+.toolbar-button.smooth-toggle.active::before,
+.modal-button.smooth-toggle.active::before {
+    opacity: 1;
+}
+
+/* Smooth Animation Effects */
+.smooth-slide-effect {
+    position: relative;
+    overflow: hidden;
+}
+
+.smooth-slide-effect .slide-elements {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+    transition: transform 300ms ease-in-out;
+}
+
+.smooth-slide-effect .slide-element {
+    width: 6px;
+    height: 6px;
+    background-color: #484a57;
+    border-radius: 1px;
+    transition: all 300ms ease-in-out;
+}
+
+.smooth-slide-effect:hover .slide-element,
+.smooth-slide-effect.active .slide-element {
+    background-color: #76b3fa;
+    transform: translateX(2px);
+}
+
+.smooth-slide-effect .slide-element:nth-child(odd) {
+    transition-delay: 0ms;
+}
+
+.smooth-slide-effect .slide-element:nth-child(even) {
+    transition-delay: 50ms;
+}
+
+/* Enhanced Status Indicators */
+.status-dot.smooth {
+    position: relative;
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+    background-image: repeating-linear-gradient(
+        45deg,
+        currentColor 0px,
+        currentColor 1px,
+        transparent 1px,
+        transparent 3px
+    );
+    transition: all 300ms ease-in-out;
+}
+
+.status-dot.smooth::after {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    border: 1px solid currentColor;
+    border-radius: 3px;
+    opacity: 0;
+    transition: opacity 300ms ease-in-out;
+}
+
+.status-dot.smooth.online::after {
+    opacity: 1;
+    animation: smooth-pulse 2s infinite;
+}
+
+@keyframes smooth-pulse {
+    0%, 100% { 
+        opacity: 1; 
+        transform: scale(1);
+    }
+    50% { 
+        opacity: 0.3;
+        transform: scale(1.1);
+    }
+}
+
+/* Interactive Control Labels */
+.control-label.smooth {
+    background-color: #24252c;
+    background-image: repeating-linear-gradient(
+        0deg,
+        #181a29,
+        #181a29 2px,
+        #202436 2px,
+        #202436 4px
+    );
+    border: 2px solid #575969;
+    border-radius: 4px;
+    padding: 8px 12px;
+    font-family: "IBM Plex Mono", monospace;
+    font-weight: 300;
+    font-size: 11px;
+    color: #a3a7ad;
+    cursor: pointer;
+    transition: all 300ms ease-in-out;
+    position: relative;
+    overflow: hidden;
+}
+
+.control-label.smooth:hover {
+    border-color: #76b3fa;
+    color: #76b3fa;
+    box-shadow: 0 0 12px rgba(118, 179, 250, 0.3);
+}
+
+.control-label.smooth.active {
+    border-color: #76b3fa;
+    color: #76b3fa;
+    box-shadow: 0 0 20px 0 #0763f7, inset 0px 0px 8px 0px #0763f7;
+}
+
+/* Smooth Checkbox Styles */
+input[type="checkbox"].smooth {
+    opacity: 0;
+    position: absolute;
+}
+
+input[type="checkbox"].smooth + .checkbox-visual {
+    display: inline-block;
+    width: 40px;
+    height: 20px;
+    background-color: #24252c;
+    background-image: repeating-linear-gradient(
+        0deg,
+        #181a29,
+        #181a29 1px,
+        #202436 1px,
+        #202436 2px
+    );
+    border: 2px solid #575969;
+    border-radius: 4px;
+    position: relative;
+    cursor: pointer;
+    transition: all 300ms ease-in-out;
+}
+
+input[type="checkbox"].smooth + .checkbox-visual::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 10px;
+    height: 10px;
+    background-color: #484a57;
+    border-radius: 1px;
+    transition: all 300ms ease-in-out;
+}
+
+input[type="checkbox"].smooth:checked + .checkbox-visual {
+    border-color: #76b3fa;
+    box-shadow: 0 0 12px rgba(118, 179, 250, 0.3);
+}
+
+input[type="checkbox"].smooth:checked + .checkbox-visual::after {
+    background-color: #76b3fa;
+    transform: translateX(16px);
+}
+
+input[type="checkbox"].smooth:focus + .checkbox-visual {
+    border-color: #76b3fa;
+}
+
+/* Utility Classes */
+.smooth-glow {
+    box-shadow: 0 0 20px 0 #0763f7, inset 0px 0px 8px 0px #0763f7;
+}
+
+.smooth-border {
+    border: 2px solid #575969;
+    transition: border-color 300ms ease-in-out;
+}
+
+.smooth-border:hover {
+    border-color: #76b3fa;
+}
+
+.smooth-bg {
+    background-color: #24252c;
+    background-image: repeating-linear-gradient(
+        0deg,
+        #181a29,
+        #181a29 2px,
+        #202436 2px,
+        #202436 4px
+    );
+}
+
+.smooth-text {
+    font-family: "IBM Plex Mono", monospace;
+    font-weight: 300;
+    color: #a3a7ad;
+}
+
+.smooth-accent {
+    color: #76b3fa;
+}
+
+.smooth-heading {
+    font-family: "Lexend Deca", sans-serif;
+    font-weight: 300;
+    color: #76b3fa;
+}

@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Knowledge Graph Test Interface</title>
+    <style>
+        body {
+            font-family: 'IBM Plex Mono', monospace;
+            background-color: #3d3e4a;
+            color: #a3a7ad;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background-color: #24252c;
+            background-image: repeating-linear-gradient(
+                0deg,
+                #181a29,
+                #181a29 2px,
+                #202436 2px,
+                #202436 4px
+            );
+            border: 2px solid #575969;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            color: #76b3fa;
+            font-family: "Lexend Deca", sans-serif;
+            font-weight: 300;
+            margin: 0 0 10px 0;
+        }
+        
+        .test-section {
+            background-color: #24252c;
+            background-image: repeating-linear-gradient(
+                0deg,
+                #181a29,
+                #181a29 2px,
+                #202436 2px,
+                #202436 4px
+            );
+            border: 2px solid #575969;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .test-section h2 {
+            color: #76b3fa;
+            margin-top: 0;
+            font-size: 18px;
+        }
+        
+        .query-form {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            align-items: center;
+        }
+        
+        .query-input {
+            flex: 1;
+            padding: 10px 12px;
+            font-family: "IBM Plex Mono", monospace;
+            font-size: 12px;
+            border: 2px solid #575969;
+            border-radius: 4px;
+            background-color: #3d3e4a;
+            color: #a3a7ad;
+            transition: all 300ms ease-in-out;
+        }
+        
+        .query-input:focus {
+            outline: none;
+            border-color: #76b3fa;
+            box-shadow: 0 0 12px rgba(118, 179, 250, 0.3);
+        }
+        
+        .query-button {
+            padding: 10px 20px;
+            font-family: "IBM Plex Mono", monospace;
+            font-weight: 300;
+            font-size: 12px;
+            border: 2px solid #575969;
+            border-radius: 4px;
+            background-color: #24252c;
+            background-image: repeating-linear-gradient(
+                0deg,
+                #181a29,
+                #181a29 2px,
+                #202436 2px,
+                #202436 4px
+            );
+            color: #a3a7ad;
+            cursor: pointer;
+            transition: all 300ms ease-in-out;
+        }
+        
+        .query-button:hover {
+            border-color: #76b3fa;
+            color: #76b3fa;
+            box-shadow: 0 0 12px rgba(118, 179, 250, 0.3);
+        }
+        
+        .query-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .results {
+            margin-top: 20px;
+        }
+        
+        .result-item {
+            background-color: #181a29;
+            border: 1px solid #484a57;
+            border-radius: 4px;
+            padding: 15px;
+            margin-bottom: 10px;
+        }
+        
+        .result-query {
+            color: #76b3fa;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .result-response {
+            color: #a3a7ad;
+            line-height: 1.4;
+            margin-bottom: 10px;
+            white-space: pre-wrap;
+        }
+        
+        .result-meta {
+            font-size: 10px;
+            color: #484a57;
+            border-top: 1px solid #484a57;
+            padding-top: 10px;
+        }
+        
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .status.loading {
+            background-color: rgba(255, 193, 7, 0.1);
+            border: 1px solid rgba(255, 193, 7, 0.3);
+            color: #ffc107;
+        }
+        
+        .status.success {
+            background-color: rgba(40, 167, 69, 0.1);
+            border: 1px solid rgba(40, 167, 69, 0.3);
+            color: #28a745;
+        }
+        
+        .status.error {
+            background-color: rgba(220, 53, 69, 0.1);
+            border: 1px solid rgba(220, 53, 69, 0.3);
+            color: #dc3545;
+        }
+        
+        .preset-queries {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .preset-query {
+            padding: 8px 12px;
+            font-size: 11px;
+            border: 1px solid #575969;
+            border-radius: 4px;
+            background-color: #3d3e4a;
+            color: #a3a7ad;
+            cursor: pointer;
+            transition: all 300ms ease-in-out;
+        }
+        
+        .preset-query:hover {
+            border-color: #76b3fa;
+            color: #76b3fa;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🧠 Knowledge Graph Test Interface</h1>
+        <p>Test LLM querying of PostgreSQL knowledge graph data</p>
+    </div>
+    
+    <div class="test-section">
+        <h2>Database Connection Test</h2>
+        <div id="dbStatus" class="status loading">Checking database connection...</div>
+        <button id="testDbButton" class="query-button">Test Database</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>Knowledge Graph Query Interface</h2>
+        
+        <div class="preset-queries">
+            <div class="preset-query" data-query="Who is Alice Johnson?">Who is Alice Johnson?</div>
+            <div class="preset-query" data-query="What company does Bob Smith work for?">What company does Bob Smith work for?</div>
+            <div class="preset-query" data-query="Who works for TechCorp Industries?">Who works for TechCorp?</div>
+            <div class="preset-query" data-query="What skills does Alice Johnson have?">Alice's skills?</div>
+            <div class="preset-query" data-query="What documents has Bob Smith authored?">Bob's documents?</div>
+            <div class="preset-query" data-query="Who manages Alice Johnson?">Who manages Alice?</div>
+            <div class="preset-query" data-query="What assets are in San Francisco?">SF assets?</div>
+        </div>
+        
+        <div class="query-form">
+            <input type="text" 
+                   id="queryInput" 
+                   class="query-input" 
+                   placeholder="Ask a question about the knowledge graph..."
+                   maxlength="200">
+            <button id="queryButton" class="query-button">Ask KG</button>
+            <button id="runAllTestsButton" class="query-button">Run All Tests</button>
+        </div>
+        
+        <div id="queryResults" class="results"></div>
+    </div>
+    
+    <script type="module">
+        import { getKnowledgeGraphClient } from './services/knowledge-graph-client.js';
+        
+        let kgClient;
+        let isInitialized = false;
+        
+        // Initialize when DOM loads
+        document.addEventListener('DOMContentLoaded', async () => {
+            console.log('🚀 Initializing Knowledge Graph Test Interface');
+            
+            try {
+                kgClient = getKnowledgeGraphClient();
+                console.log('✅ KG Client initialized');
+                
+                await testDatabaseConnection();
+                setupEventListeners();
+                isInitialized = true;
+                
+            } catch (error) {
+                console.error('❌ Initialization failed:', error);
+                updateStatus('error', `Initialization failed: ${error.message}`);
+            }
+        });
+        
+        async function testDatabaseConnection() {
+            const statusEl = document.getElementById('dbStatus');
+            
+            try {
+                statusEl.className = 'status loading';
+                statusEl.textContent = 'Testing database connection...';
+                
+                // Test basic API connectivity
+                const response = await fetch('http://localhost:3001/health');
+                if (!response.ok) {
+                    throw new Error(`API server not responding: ${response.status}`);
+                }
+                
+                // Test knowledge graph endpoints
+                const entityTypes = await kgClient.getEntityTypes();
+                const relationshipTypes = await kgClient.getRelationshipTypes();
+                
+                statusEl.className = 'status success';
+                statusEl.textContent = `✅ Connected! Found ${entityTypes.length} entity types, ${relationshipTypes.length} relationship types`;
+                
+            } catch (error) {
+                console.error('Database connection test failed:', error);
+                statusEl.className = 'status error';
+                statusEl.textContent = `❌ Connection failed: ${error.message}`;
+            }
+        }
+        
+        function setupEventListeners() {
+            // Test database button
+            document.getElementById('testDbButton').addEventListener('click', testDatabaseConnection);
+            
+            // Query form
+            const queryInput = document.getElementById('queryInput');
+            const queryButton = document.getElementById('queryButton');
+            const runAllTestsButton = document.getElementById('runAllTestsButton');
+            
+            queryButton.addEventListener('click', async () => {
+                const query = queryInput.value.trim();
+                if (query) {
+                    await executeQuery(query);
+                    queryInput.value = '';
+                }
+            });
+            
+            queryInput.addEventListener('keypress', async (e) => {
+                if (e.key === 'Enter') {
+                    const query = queryInput.value.trim();
+                    if (query) {
+                        await executeQuery(query);
+                        queryInput.value = '';
+                    }
+                }
+            });
+            
+            // Preset queries
+            document.querySelectorAll('.preset-query').forEach(el => {
+                el.addEventListener('click', async () => {
+                    const query = el.dataset.query;
+                    await executeQuery(query);
+                });
+            });
+            
+            // Run all tests button
+            runAllTestsButton.addEventListener('click', async () => {
+                await runAllTests();
+            });
+        }
+        
+        async function executeQuery(query) {
+            if (!isInitialized) {
+                addResult(query, 'System not initialized yet', false, 'System not ready');
+                return;
+            }
+            
+            const queryButton = document.getElementById('queryButton');
+            queryButton.disabled = true;
+            queryButton.textContent = 'Processing...';
+            
+            try {
+                console.log('🔍 Executing query:', query);
+                const startTime = Date.now();
+                
+                const result = await kgClient.askKnowledgeGraph(query);
+                
+                const duration = Date.now() - startTime;
+                const response = result.llm_response.response;
+                const success = result.success;
+                const meta = {
+                    entities_found: result.kg_results.total_results,
+                    processing_time: `${duration}ms`,
+                    search_type: result.kg_results.search_type,
+                    llm_source: result.llm_response.source
+                };
+                
+                addResult(query, response, success, meta);
+                
+            } catch (error) {
+                console.error('Query execution failed:', error);
+                addResult(query, `Error: ${error.message}`, false, 'Query failed');
+            } finally {
+                queryButton.disabled = false;
+                queryButton.textContent = 'Ask KG';
+            }
+        }
+        
+        async function runAllTests() {
+            if (!isInitialized) {
+                addResult('All Tests', 'System not initialized yet', false, 'System not ready');
+                return;
+            }
+            
+            const runAllTestsButton = document.getElementById('runAllTestsButton');
+            runAllTestsButton.disabled = true;
+            runAllTestsButton.textContent = 'Running Tests...';
+            
+            // Clear previous results
+            document.getElementById('queryResults').innerHTML = '';
+            
+            try {
+                console.log('🧪 Running all knowledge graph tests...');
+                const results = await kgClient.runTests();
+                
+                let passedTests = 0;
+                results.forEach(result => {
+                    addResult(
+                        result.query, 
+                        result.response, 
+                        result.success,
+                        {
+                            entities_found: result.entities_found,
+                            test_result: result.success ? 'PASS' : 'FAIL'
+                        }
+                    );
+                    
+                    if (result.success) passedTests++;
+                });
+                
+                // Add summary
+                const summary = `Test Results: ${passedTests}/${results.length} passed`;
+                const summarySuccess = passedTests === results.length;
+                addResult('TEST SUMMARY', summary, summarySuccess, `${passedTests} of ${results.length} tests passed`);
+                
+            } catch (error) {
+                console.error('Test execution failed:', error);
+                addResult('All Tests', `Test execution failed: ${error.message}`, false, 'Test suite failed');
+            } finally {
+                runAllTestsButton.disabled = false;
+                runAllTestsButton.textContent = 'Run All Tests';
+            }
+        }
+        
+        function addResult(query, response, success, meta) {
+            const resultsEl = document.getElementById('queryResults');
+            
+            const resultEl = document.createElement('div');
+            resultEl.className = 'result-item';
+            
+            const queryEl = document.createElement('div');
+            queryEl.className = 'result-query';
+            queryEl.textContent = `Q: ${query}`;
+            
+            const responseEl = document.createElement('div');
+            responseEl.className = 'result-response';
+            responseEl.style.color = success ? '#a3a7ad' : '#dc3545';
+            responseEl.textContent = response;
+            
+            const metaEl = document.createElement('div');
+            metaEl.className = 'result-meta';
+            if (typeof meta === 'object') {
+                metaEl.textContent = Object.entries(meta)
+                    .map(([key, value]) => `${key}: ${value}`)
+                    .join(' | ');
+            } else {
+                metaEl.textContent = meta;
+            }
+            
+            resultEl.appendChild(queryEl);
+            resultEl.appendChild(responseEl);
+            resultEl.appendChild(metaEl);
+            
+            resultsEl.insertBefore(resultEl, resultsEl.firstChild);
+            
+            // Limit to 20 results
+            while (resultsEl.children.length > 20) {
+                resultsEl.removeChild(resultsEl.lastChild);
+            }
+        }
+        
+        function updateStatus(type, message) {
+            const statusEl = document.getElementById('dbStatus');
+            statusEl.className = `status ${type}`;
+            statusEl.textContent = message;
+        }
+        
+        // Make functions available globally for debugging
+        window.kgTest = {
+            executeQuery,
+            runAllTests,
+            testDatabaseConnection,
+            getClient: () => kgClient
+        };
+    </script>
+</body>
+</html>
