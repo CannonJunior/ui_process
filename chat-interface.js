@@ -1,7 +1,7 @@
 class ChatInterface {
     constructor() {
         this.ollamaBaseUrl = 'http://localhost:11434';
-        this.modelName = 'smollm2:135m';
+        this.modelName = 'qwen2.5:3b'; // Default model
         this.isOpen = false;
         this.isConnected = false;
         this.documents = new Map(); // Store processed documents
@@ -45,6 +45,9 @@ class ChatInterface {
         if (window.ServiceHealthManager) {
             this.healthManager = new ServiceHealthManager();
         }
+        
+        // Get saved model preference from health manager
+        this.loadModelPreference();
         
         await this.checkOllamaConnection();
         await this.initializeMCPBridge();
@@ -322,9 +325,45 @@ class ChatInterface {
         }
     }
     
+    loadModelPreference() {
+        // Get model preference from localStorage or health manager
+        const savedModel = localStorage.getItem('selectedOllamaModel');
+        if (savedModel) {
+            this.modelName = savedModel;
+            console.log('Loaded saved model preference:', savedModel);
+        }
+    }
+    
+    setModel(modelName) {
+        this.modelName = modelName;
+        console.log('Chat interface model updated to:', modelName);
+        
+        // Re-check connection with new model
+        this.checkOllamaConnection();
+        
+        // Update status display
+        const modelShortName = modelName.split(':')[0];
+        this.updateStatus('connected', `Switching to ${modelShortName}...`);
+        
+        // Clear conversation history when switching models
+        this.conversationHistory = [];
+    }
+    
+    getCurrentModel() {
+        return this.modelName;
+    }
+    
     updateStatus(status, message) {
         this.statusIndicator.className = `status-indicator ${status}`;
-        this.statusText.textContent = message;
+        
+        // Enhanced status message with model info
+        if (status === 'connected' && this.modelName) {
+            const modelShortName = this.modelName.split(':')[0];
+            const modelVersion = this.modelName.split(':')[1] || '';
+            this.statusText.textContent = `Connected to ${modelShortName}${modelVersion ? ' (' + modelVersion + ')' : ''}`;
+        } else {
+            this.statusText.textContent = message;
+        }
         
         // Update health manager
         if (this.healthManager) {

@@ -1926,3 +1926,383 @@ input.node-input {
         border-width: 1px;
     }
 }
+
+/* Knowledge Graph Styles */
+.kg-node {
+    position: absolute;
+    background: linear-gradient(135deg, #24252c, #181a29);
+    background-image: repeating-linear-gradient(
+        0deg,
+        #181a29,
+        #181a29 2px,
+        #202436 2px,
+        #202436 4px
+    );
+    border: 2px solid #76b3fa;
+    border-radius: 12px;
+    padding: 12px 16px;
+    color: #a3a7ad;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    font-weight: 300;
+    min-width: 120px;
+    max-width: 200px;
+    cursor: move;
+    user-select: none;
+    box-shadow: 0 4px 12px rgba(118, 179, 250, 0.2);
+    transition: all 300ms ease-in-out;
+    z-index: 15;
+}
+
+.kg-node:hover {
+    border-color: #0763f7;
+    box-shadow: 0 6px 20px rgba(118, 179, 250, 0.4);
+    transform: translateY(-1px);
+}
+
+.kg-node.selected {
+    border-color: #0763f7;
+    box-shadow: 0 0 0 2px rgba(118, 179, 250, 0.3);
+}
+
+.kg-node.dragging {
+    z-index: 1000;
+    transform: scale(1.05);
+    box-shadow: 0 8px 25px rgba(118, 179, 250, 0.6);
+}
+
+/* KG Node Types */
+.kg-node.person {
+    border-left: 4px solid #4CAF50;
+}
+
+.kg-node.company {
+    border-left: 4px solid #2196F3;
+}
+
+.kg-node.document {
+    border-left: 4px solid #FF9800;
+}
+
+.kg-node.asset {
+    border-left: 4px solid #9C27B0;
+}
+
+.kg-node-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.kg-node-icon {
+    font-size: 14px;
+    margin-right: 8px;
+}
+
+.kg-node.person .kg-node-icon::before {
+    content: "👤";
+}
+
+.kg-node.company .kg-node-icon::before {
+    content: "🏢";
+}
+
+.kg-node.document .kg-node-icon::before {
+    content: "📄";
+}
+
+.kg-node.asset .kg-node-icon::before {
+    content: "⚙️";
+}
+
+.kg-node-name {
+    font-weight: 500;
+    color: #76b3fa;
+    font-size: 12px;
+    line-height: 1.2;
+    word-wrap: break-word;
+}
+
+.kg-node-type {
+    font-size: 9px;
+    color: #666b77;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+}
+
+.kg-node-description {
+    font-size: 10px;
+    line-height: 1.3;
+    color: #a3a7ad;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+.kg-node-links {
+    margin-top: 8px;
+    font-size: 9px;
+    color: #666b77;
+}
+
+.kg-node-link {
+    display: inline-block;
+    background: rgba(118, 179, 250, 0.1);
+    border: 1px solid rgba(118, 179, 250, 0.3);
+    border-radius: 3px;
+    padding: 2px 6px;
+    margin-right: 4px;
+    margin-bottom: 2px;
+}
+
+/* Knowledge Graph Modal Styles */
+.kg-node-form {
+    max-width: 500px;
+}
+
+.kg-dynamic-fields {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid #ddd;
+}
+
+.entity-fields {
+    display: none;
+}
+
+.entity-fields.active {
+    display: block;
+}
+
+.link-options {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 15px;
+    margin-top: 10px;
+}
+
+.link-option {
+    padding: 12px;
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 6px;
+}
+
+.link-option label {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 6px;
+    color: #495057;
+}
+
+.link-option select {
+    width: 100%;
+    padding: 6px 8px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 13px;
+}
+
+.section-label {
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 10px;
+    display: block;
+}
+
+/* Knowledge Graph View Mode */
+.canvas.kg-mode {
+    background: linear-gradient(135deg, #1a1b23, #24252c);
+    background-image: 
+        radial-gradient(circle at 25% 25%, rgba(118, 179, 250, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 75% 75%, rgba(7, 99, 247, 0.05) 0%, transparent 50%);
+}
+
+.canvas.kg-mode .node,
+.canvas.kg-mode .task,
+.canvas.kg-mode .flowline {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 500ms ease-in-out;
+}
+
+.canvas.kg-mode .kg-node {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* KG Mode Transition */
+.kg-mode-transition {
+    transition: all 500ms ease-in-out;
+}
+
+/* Knowledge Graph Connections */
+.kg-connection {
+    stroke: rgba(118, 179, 250, 0.6);
+    stroke-width: 1.5;
+    fill: none;
+    stroke-dasharray: 5,5;
+    animation: kg-flow 3s linear infinite;
+}
+
+@keyframes kg-flow {
+    0% { stroke-dashoffset: 0; }
+    100% { stroke-dashoffset: 10; }
+}
+
+.kg-connection.strong {
+    stroke-width: 2;
+    stroke: rgba(118, 179, 250, 0.8);
+}
+
+.kg-connection.weak {
+    stroke-width: 1;
+    stroke: rgba(118, 179, 250, 0.3);
+}
+
+/* Connection Mode Styles */
+.canvas.connection-mode {
+    cursor: crosshair;
+}
+
+.kg-node.connecting {
+    border-color: #0763f7;
+    box-shadow: 0 0 0 3px rgba(118, 179, 250, 0.4);
+    animation: kg-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes kg-pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+/* Relationship Modal Styles */
+.relationship-form {
+    max-width: 450px;
+}
+
+.connection-preview {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    margin: 20px 0;
+    padding: 15px;
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+}
+
+.connection-node {
+    text-align: center;
+    padding: 10px;
+    background: white;
+    border: 2px solid #76b3fa;
+    border-radius: 6px;
+    min-width: 120px;
+}
+
+.connection-node .node-name {
+    display: block;
+    font-weight: bold;
+    color: #495057;
+    margin-bottom: 4px;
+}
+
+.connection-node .node-type {
+    display: block;
+    font-size: 11px;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.connection-arrow {
+    font-size: 20px;
+    color: #76b3fa;
+    font-weight: bold;
+}
+
+.form-group input[type="range"] {
+    width: 100%;
+    margin-right: 10px;
+}
+
+.form-group input[type="range"] + span {
+    display: inline-block;
+    min-width: 20px;
+    text-align: center;
+    font-weight: bold;
+    color: #76b3fa;
+}
+
+#customRelationshipGroup {
+    margin-top: 10px;
+    padding: 10px;
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 6px;
+}
+
+/* Connection Instructions */
+#connectionInstructions {
+    animation: slideInRight 0.3s ease-out;
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* Model Selector Styles */
+.model-selector {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    transition: all 200ms ease-in-out;
+}
+
+.model-selector:hover {
+    border-color: #76b3fa;
+    box-shadow: 0 6px 16px rgba(118, 179, 250, 0.2);
+}
+
+.model-selector option {
+    background: #24252c;
+    color: #a3a7ad;
+    padding: 4px 8px;
+}
+
+.model-selector option:hover {
+    background: #76b3fa;
+    color: white;
+}
+
+/* Enhanced Health Indicators */
+.health-indicator {
+    position: relative;
+    cursor: pointer;
+    transition: all 200ms ease-in-out;
+}
+
+.health-indicator:hover {
+    transform: scale(1.05);
+}
+
+.health-indicator:hover .health-dot.online {
+    box-shadow: 0 0 8px rgba(76, 175, 80, 0.6);
+}
+
+.health-indicator:hover .health-dot.offline {
+    box-shadow: 0 0 8px rgba(244, 67, 54, 0.6);
+}
+
+.health-indicator:hover .health-dot.connecting {
+    box-shadow: 0 0 8px rgba(255, 193, 7, 0.6);
+}

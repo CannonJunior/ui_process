@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Knowledge Graph Integration Test</title>
+    <style>
+        body { 
+            font-family: 'IBM Plex Mono', monospace; 
+            background: #3d3e4a; 
+            color: #a3a7ad; 
+            padding: 20px; 
+        }
+        .test-section { 
+            background: #24252c; 
+            border: 2px solid #575969; 
+            border-radius: 8px; 
+            padding: 20px; 
+            margin-bottom: 20px; 
+        }
+        .test-result { 
+            padding: 10px; 
+            border-radius: 4px; 
+            margin: 10px 0; 
+        }
+        .success { background: rgba(76, 175, 80, 0.1); color: #4CAF50; }
+        .error { background: rgba(244, 67, 54, 0.1); color: #f44336; }
+        button { 
+            background: #76b3fa; 
+            color: white; 
+            border: none; 
+            padding: 8px 16px; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            margin: 5px; 
+        }
+        button:hover { background: #0763f7; }
+        .kg-node-preview {
+            display: inline-block;
+            background: linear-gradient(135deg, #24252c, #181a29);
+            border: 2px solid #76b3fa;
+            border-radius: 8px;
+            padding: 8px 12px;
+            margin: 5px;
+            color: #a3a7ad;
+            font-size: 11px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧠 Knowledge Graph Integration Test</h1>
+    
+    <div class="test-section">
+        <h2>API Connectivity Tests</h2>
+        <button onclick="testAPIHealth()">Test API Health</button>
+        <button onclick="testKGEntities()">Test KG Entities</button>
+        <button onclick="testKGEntityTypes()">Test Entity Types</button>
+        <div id="apiResults"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Knowledge Graph Creation Test</h2>
+        <button onclick="createTestEntity()">Create Test Entity</button>
+        <button onclick="loadKGEntities()">Load & Display Entities</button>
+        <div id="creationResults"></div>
+        <div id="entityDisplay"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>LLM Query Test</h2>
+        <input type="text" id="queryInput" placeholder="Ask about Alice Johnson..." style="width: 300px; padding: 6px;">
+        <button onclick="testLLMQuery()">Query Knowledge Graph</button>
+        <div id="llmResults"></div>
+    </div>
+
+    <script>
+        async function testAPIHealth() {
+            const results = document.getElementById('apiResults');
+            try {
+                const response = await fetch('http://localhost:3001/health');
+                const data = await response.json();
+                results.innerHTML = '<div class="test-result success">✅ API Health: ' + data.status + '</div>';
+            } catch (error) {
+                results.innerHTML = '<div class="test-result error">❌ API Health failed: ' + error.message + '</div>';
+            }
+        }
+
+        async function testKGEntities() {
+            const results = document.getElementById('apiResults');
+            try {
+                const response = await fetch('http://localhost:3001/api/v1/kg/entities');
+                const entities = await response.json();
+                results.innerHTML += '<div class="test-result success">✅ Found ' + entities.length + ' KG entities</div>';
+            } catch (error) {
+                results.innerHTML += '<div class="test-result error">❌ KG entities failed: ' + error.message + '</div>';
+            }
+        }
+
+        async function testKGEntityTypes() {
+            const results = document.getElementById('apiResults');
+            try {
+                const response = await fetch('http://localhost:3001/api/v1/kg/entity-types');
+                const types = await response.json();
+                results.innerHTML += '<div class="test-result success">✅ Found ' + types.length + ' entity types: ' + 
+                    types.map(t => t.name).join(', ') + '</div>';
+            } catch (error) {
+                results.innerHTML += '<div class="test-result error">❌ Entity types failed: ' + error.message + '</div>';
+            }
+        }
+
+        async function createTestEntity() {
+            const results = document.getElementById('creationResults');
+            try {
+                const testEntity = {
+                    entity_type_name: 'person',
+                    name: 'Test User ' + Date.now(),
+                    description: 'A test user created for integration testing',
+                    properties: {
+                        title: 'Test Engineer',
+                        department: 'QA'
+                    }
+                };
+
+                const response = await fetch('http://localhost:3001/api/v1/kg/entities', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(testEntity)
+                });
+
+                if (response.ok) {
+                    const created = await response.json();
+                    results.innerHTML = '<div class="test-result success">✅ Created entity: ' + created.name + ' (ID: ' + created.id + ')</div>';
+                } else {
+                    results.innerHTML = '<div class="test-result error">❌ Failed to create entity: ' + response.status + '</div>';
+                }
+            } catch (error) {
+                results.innerHTML = '<div class="test-result error">❌ Entity creation failed: ' + error.message + '</div>';
+            }
+        }
+
+        async function loadKGEntities() {
+            const display = document.getElementById('entityDisplay');
+            try {
+                const response = await fetch('http://localhost:3001/api/v1/kg/entities');
+                const entities = await response.json();
+                
+                display.innerHTML = '<h3>Knowledge Graph Entities:</h3>';
+                entities.forEach(entity => {
+                    const nodeDiv = document.createElement('div');
+                    nodeDiv.className = 'kg-node-preview ' + entity.entity_type;
+                    nodeDiv.innerHTML = `
+                        <strong>${entity.name}</strong><br>
+                        <small>${entity.entity_type} • ${entity.description}</small>
+                    `;
+                    display.appendChild(nodeDiv);
+                });
+            } catch (error) {
+                display.innerHTML = '<div class="test-result error">❌ Failed to load entities: ' + error.message + '</div>';
+            }
+        }
+
+        async function testLLMQuery() {
+            const query = document.getElementById('queryInput').value || 'Who is Alice Johnson?';
+            const results = document.getElementById('llmResults');
+            
+            try {
+                // Step 1: Query knowledge graph
+                const kgResponse = await fetch('http://localhost:3001/api/v1/kg/query', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        query_text: query,
+                        include_relationships: true
+                    })
+                });
+
+                const kgData = await kgResponse.json();
+                
+                let resultHTML = '<div class="test-result success">🔍 KG Query: Found ' + kgData.total_results + ' results</div>';
+                
+                if (kgData.total_results > 0) {
+                    kgData.entities.forEach(entity => {
+                        resultHTML += '<div class="test-result success">📊 Found: ' + entity.name + ' (' + entity.entity_type + ')</div>';
+                    });
+                    
+                    // Mock LLM response based on the data
+                    const entity = kgData.entities[0];
+                    let mockResponse = '';
+                    
+                    if (query.toLowerCase().includes('alice')) {
+                        mockResponse = `Alice Johnson - Person\n• Senior Software Engineer, ${entity.properties?.department || 'AI Research'}\n• Works for TechCorp Industries`;
+                    } else {
+                        mockResponse = `${entity.name} - ${entity.entity_type}\n• ${entity.description}`;
+                    }
+                    
+                    resultHTML += '<div class="test-result success">🤖 Mock LLM Response:<br><pre>' + mockResponse + '</pre></div>';
+                } else {
+                    resultHTML += '<div class="test-result error">❌ No entities found for query</div>';
+                }
+                
+                results.innerHTML = resultHTML;
+                
+            } catch (error) {
+                results.innerHTML = '<div class="test-result error">❌ LLM query failed: ' + error.message + '</div>';
+            }
+        }
+
+        // Auto-run basic tests on load
+        window.onload = function() {
+            testAPIHealth();
+            setTimeout(() => {
+                testKGEntities();
+                testKGEntityTypes();
+            }, 500);
+        };
+    </script>
+</body>
+</html>

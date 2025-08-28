@@ -34,6 +34,8 @@
         
         <button id="opportunityToggle" class="toolbar-button">💼 Opportunities</button>
         
+        <button id="knowledgeGraphToggle" class="toolbar-button">🧠 Knowledge Graph</button>
+        
         <!-- Service Health Indicators -->
         <div class="service-health">
             <div id="mcpHealthIndicator" class="health-indicator" title="MCP Services">
@@ -151,6 +153,7 @@
         <div class="menu-item" data-add-type="node">Node</div>
         <div class="menu-item" data-add-type="task">Task</div>
         <div class="menu-item" data-add-type="opportunity">Opportunity</div>
+        <div class="menu-item" data-add-type="kg-node">Knowledge Graph</div>
     </div>
     
     <!-- Workflow Context Menu -->
@@ -454,6 +457,192 @@
         </div>
     </div>
     
+    <div id="kgNodeModal" class="modal">
+        <div class="modal-content">
+            <h3>Create Knowledge Graph Node</h3>
+            <div class="kg-node-form">
+                <div class="form-group">
+                    <label for="kgNodeName">Name (required):</label>
+                    <input type="text" id="kgNodeName" placeholder="Enter entity name..." maxlength="255" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="kgNodeType">Entity Type:</label>
+                    <select id="kgNodeType" required>
+                        <option value="">Select entity type...</option>
+                        <option value="person">Person</option>
+                        <option value="company">Company</option>
+                        <option value="document">Document</option>
+                        <option value="asset">Asset</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="kgNodeDescription">Description (required):</label>
+                    <textarea id="kgNodeDescription" placeholder="Enter detailed description..." rows="3" maxlength="500" required></textarea>
+                </div>
+                
+                <!-- Dynamic fields based on entity type -->
+                <div id="kgDynamicFields" class="kg-dynamic-fields">
+                    <!-- Person fields -->
+                    <div class="entity-fields person-fields" data-type="person" style="display: none;">
+                        <div class="form-group">
+                            <label for="kgPersonTitle">Title:</label>
+                            <input type="text" id="kgPersonTitle" placeholder="e.g., Senior Engineer">
+                        </div>
+                        <div class="form-group">
+                            <label for="kgPersonDepartment">Department:</label>
+                            <input type="text" id="kgPersonDepartment" placeholder="e.g., Engineering">
+                        </div>
+                        <div class="form-group">
+                            <label for="kgPersonEmail">Email:</label>
+                            <input type="email" id="kgPersonEmail" placeholder="person@company.com">
+                        </div>
+                        <div class="form-group">
+                            <label for="kgPersonSkills">Skills (comma-separated):</label>
+                            <input type="text" id="kgPersonSkills" placeholder="Python, Machine Learning, Data Science">
+                        </div>
+                        <div class="form-group">
+                            <label for="kgPersonLocation">Location:</label>
+                            <input type="text" id="kgPersonLocation" placeholder="City, State">
+                        </div>
+                    </div>
+                    
+                    <!-- Company fields -->
+                    <div class="entity-fields company-fields" data-type="company" style="display: none;">
+                        <div class="form-group">
+                            <label for="kgCompanyIndustry">Industry:</label>
+                            <input type="text" id="kgCompanyIndustry" placeholder="e.g., Technology">
+                        </div>
+                        <div class="form-group">
+                            <label for="kgCompanySize">Company Size:</label>
+                            <select id="kgCompanySize">
+                                <option value="">Select size...</option>
+                                <option value="1-10 employees">1-10 employees</option>
+                                <option value="11-50 employees">11-50 employees</option>
+                                <option value="51-200 employees">51-200 employees</option>
+                                <option value="201-500 employees">201-500 employees</option>
+                                <option value="501-1000 employees">501-1000 employees</option>
+                                <option value="1001-5000 employees">1001-5000 employees</option>
+                                <option value="5000+ employees">5000+ employees</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="kgCompanyWebsite">Website:</label>
+                            <input type="url" id="kgCompanyWebsite" placeholder="https://company.com">
+                        </div>
+                        <div class="form-group">
+                            <label for="kgCompanyLocation">Location:</label>
+                            <input type="text" id="kgCompanyLocation" placeholder="City, State">
+                        </div>
+                    </div>
+                    
+                    <!-- Document fields -->
+                    <div class="entity-fields document-fields" data-type="document" style="display: none;">
+                        <div class="form-group">
+                            <label for="kgDocumentType">Document Type:</label>
+                            <input type="text" id="kgDocumentType" placeholder="e.g., Technical Specification">
+                        </div>
+                        <div class="form-group">
+                            <label for="kgDocumentAuthor">Author:</label>
+                            <input type="text" id="kgDocumentAuthor" placeholder="Author name">
+                        </div>
+                        <div class="form-group">
+                            <label for="kgDocumentFormat">Format:</label>
+                            <select id="kgDocumentFormat">
+                                <option value="">Select format...</option>
+                                <option value="PDF">PDF</option>
+                                <option value="Word">Word Document</option>
+                                <option value="PowerPoint">PowerPoint</option>
+                                <option value="Excel">Excel</option>
+                                <option value="Text">Text File</option>
+                                <option value="Markdown">Markdown</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="kgDocumentClassification">Classification:</label>
+                            <select id="kgDocumentClassification">
+                                <option value="">Select classification...</option>
+                                <option value="Public">Public</option>
+                                <option value="Internal">Internal</option>
+                                <option value="Confidential">Confidential</option>
+                                <option value="Restricted">Restricted</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="kgDocumentDate">Created Date:</label>
+                            <input type="date" id="kgDocumentDate">
+                        </div>
+                    </div>
+                    
+                    <!-- Asset fields -->
+                    <div class="entity-fields asset-fields" data-type="asset" style="display: none;">
+                        <div class="form-group">
+                            <label for="kgAssetType">Asset Type:</label>
+                            <input type="text" id="kgAssetType" placeholder="e.g., Database System">
+                        </div>
+                        <div class="form-group">
+                            <label for="kgAssetStatus">Status:</label>
+                            <select id="kgAssetStatus">
+                                <option value="">Select status...</option>
+                                <option value="Operational">Operational</option>
+                                <option value="Maintenance">Under Maintenance</option>
+                                <option value="Inactive">Inactive</option>
+                                <option value="Retired">Retired</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="kgAssetLocation">Location:</label>
+                            <input type="text" id="kgAssetLocation" placeholder="Physical or logical location">
+                        </div>
+                        <div class="form-group">
+                            <label for="kgAssetModel">Model/Version:</label>
+                            <input type="text" id="kgAssetModel" placeholder="Model number or version">
+                        </div>
+                        <div class="form-group">
+                            <label for="kgAssetSpecs">Specifications:</label>
+                            <textarea id="kgAssetSpecs" placeholder="Technical specifications..." rows="2"></textarea>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Link to existing process data -->
+                <div class="form-group">
+                    <label class="section-label">Link to Existing Data (optional):</label>
+                    <div class="link-options">
+                        <div class="link-option">
+                            <label for="kgLinkNode">Link to Node:</label>
+                            <select id="kgLinkNode">
+                                <option value="">No node linked</option>
+                                <!-- Will be populated dynamically -->
+                            </select>
+                        </div>
+                        <div class="link-option">
+                            <label for="kgLinkTask">Link to Task:</label>
+                            <select id="kgLinkTask">
+                                <option value="">No task linked</option>
+                                <!-- Will be populated dynamically -->
+                            </select>
+                        </div>
+                        <div class="link-option">
+                            <label for="kgLinkOpportunity">Link to Opportunity:</label>
+                            <select id="kgLinkOpportunity">
+                                <option value="">No opportunity linked</option>
+                                <!-- Will be populated dynamically -->
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="modal-buttons">
+                <button id="kgNodeModalCancel" class="modal-button cancel">Cancel</button>
+                <button id="kgNodeModalCreate" class="modal-button create">Create KG Node</button>
+            </div>
+        </div>
+    </div>
+    
     <script src="config.js"></script>
     
     <!-- Utility Modules (Phase 2: Safe Modularization) -->
@@ -504,6 +693,7 @@
     
     <!-- Knowledge Graph Integration -->
     <script type="module" src="services/knowledge-graph-client.js"></script>
+    <script src="features/knowledge-graph/kg-controller.js"></script>
     
     <script src="chat-interface.js"></script>
     <script src="script.js"></script>

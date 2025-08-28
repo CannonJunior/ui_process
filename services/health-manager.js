@@ -16,9 +16,14 @@ class ServiceHealthManager {
                 element: null,
                 dot: null,
                 status: 'offline',
-                client: null
+                client: null,
+                models: [],
+                selectedModel: 'qwen2.5:3b',
+                baseUrl: 'http://localhost:11434'
             }
         };
+        
+        this.modelSelector = null;
         
         this.init();
     }
@@ -37,8 +42,14 @@ class ServiceHealthManager {
         }
         
         if (this.services.ollama.element) {
-            this.services.ollama.element.addEventListener('click', () => this.showOllamaStatus());
+            this.services.ollama.element.addEventListener('click', () => this.showOllamaModels());
         }
+        
+        // Create model selector interface
+        this.createModelSelector();
+        
+        // Load saved model preference
+        this.loadModelPreference();
         
         console.log('ServiceHealthManager initialized');
     }
@@ -124,14 +135,255 @@ class ServiceHealthManager {
         }
     }
 
-    checkOllamaHealth() {
-        if (!this.services.ollama.client) {
+    async checkOllamaHealth() {
+        try {
+            this.updateServiceStatus('ollama', 'connecting');
+            
+            // Check Ollama server and detect models
+            const response = await fetch(`${this.services.ollama.baseUrl}/api/tags`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                this.services.ollama.models = data.models || [];
+                
+                if (this.services.ollama.models.length > 0) {
+                    this.updateServiceStatus('ollama', 'online');
+                    this.updateModelSelector();
+                    
+                    // Update health indicator with model count
+                    const element = this.services.ollama.element;
+                    if (element) {
+                        element.title = `Ollama AI: ${this.services.ollama.models.length} models available`;
+                        
+                        // Update status text to show model count
+                        const statusSpan = element.querySelector('.health-status');
+                        if (statusSpan) {
+                            statusSpan.textContent = `AI (${this.services.ollama.models.length})`;
+                        }
+                    }
+                } else {
+                    this.updateServiceStatus('ollama', 'offline');
+                    this.updateOllamaTooltip('No models available');
+                }
+            } else {
+                throw new Error('Ollama server not responding');
+            }
+        } catch (error) {
+            this.services.ollama.models = [];
             this.updateServiceStatus('ollama', 'offline');
+            this.updateOllamaTooltip('Ollama server not running');
+        }
+    }
+
+    createModelSelector() {
+        // Create model selector dropdown if it doesn't exist
+        let selector = document.getElementById('ollamaModelSelector');
+        if (!selector) {
+            selector = document.createElement('select');
+            selector.id = 'ollamaModelSelector';
+            selector.className = 'model-selector';
+            selector.style.cssText = `
+                position: fixed;
+                top: 60px;
+                right: 20px;
+                background: #24252c;
+                border: 2px solid #575969;
+                border-radius: 4px;
+                color: #a3a7ad;
+                font-family: 'IBM Plex Mono', monospace;
+                font-size: 11px;
+                padding: 4px 8px;
+                min-width: 150px;
+                z-index: 9999;
+                display: none;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            `;
+            
+            // Add default option
+            const defaultOption = document.createElement('option');
+            defaultOption.value = '';
+            defaultOption.textContent = 'Loading models...';
+            selector.appendChild(defaultOption);
+            
+            // Add to document body (using fixed positioning)
+            document.body.appendChild(selector);
+            
+            // Handle model selection
+            selector.addEventListener('change', (e) => {
+                if (e.target.value) {
+                    this.selectModel(e.target.value);
+                }
+            });
+        }
+        
+        this.modelSelector = selector;
+    }
+
+    updateModelSelector() {
+        if (!this.modelSelector) return;
+        
+        // Clear existing options
+        this.modelSelector.innerHTML = '';
+        
+        if (this.services.ollama.models.length === 0) {
+            const option = document.createElement('option');
+            option.value = '';
+            option.textContent = 'No models available';
+            this.modelSelector.appendChild(option);
             return;
         }
+        
+        // Add available models
+        this.services.ollama.models.forEach(model => {
+            const option = document.createElement('option');
+            option.value = model.name;
+            option.textContent = `${model.name} (${this.formatSize(model.size)})`;
+            
+            // Mark as selected if it matches current selection
+            if (model.name === this.services.ollama.selectedModel) {
+                option.selected = true;
+            }
+            
+            this.modelSelector.appendChild(option);
+        });
+        
+        // Auto-select first model if none selected
+        if (!this.services.ollama.selectedModel && this.services.ollama.models.length > 0) {
+            this.services.ollama.selectedModel = this.services.ollama.models[0].name;
+            this.modelSelector.value = this.services.ollama.selectedModel;
+        }
+    }
 
-        const isConnected = this.services.ollama.client.isConnected;
-        this.updateServiceStatus('ollama', isConnected ? 'online' : 'offline');
+    formatSize(bytes) {
+        if (bytes === 0) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+    }
+
+    selectModel(modelName) {
+        this.services.ollama.selectedModel = modelName;
+        console.log('Selected Ollama model:', modelName);
+        
+        // Hide selector
+        if (this.modelSelector) {
+            this.modelSelector.style.display = 'none';
+        }
+        
+        // Update chat interface if available
+        if (this.services.ollama.client && this.services.ollama.client.setModel) {
+            this.services.ollama.client.setModel(modelName);
+        }
+        
+        // Update status displays
+        this.updateChatConnectionStatus();
+        
+        // Store preference
+        localStorage.setItem('selectedOllamaModel', modelName);
+        
+        // Show confirmation
+        this.showModelSelectionConfirmation(modelName);
+    }
+
+    updateChatConnectionStatus() {
+        const statusText = document.getElementById('statusText');
+        if (statusText && this.services.ollama.selectedModel) {
+            const modelShortName = this.services.ollama.selectedModel.split(':')[0];
+            statusText.textContent = `Connected to ${modelShortName}`;
+        }
+    }
+
+    updateOllamaTooltip(message) {
+        const element = this.services.ollama.element;
+        if (element) {
+            element.title = `Ollama AI: ${message}`;
+        }
+    }
+
+    showModelSelectionConfirmation(modelName) {
+        // Create temporary notification
+        const notification = document.createElement('div');
+        notification.style.cssText = `
+            position: fixed;
+            top: 60px;
+            right: 20px;
+            background: rgba(36, 37, 44, 0.95);
+            border: 2px solid #76b3fa;
+            border-radius: 6px;
+            padding: 12px;
+            color: #a3a7ad;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 12px;
+            z-index: 10000;
+            animation: slideInRight 0.3s ease-out;
+        `;
+        notification.innerHTML = `
+            <div style="color: #76b3fa; font-weight: bold; margin-bottom: 4px;">🤖 Model Selected</div>
+            <div>${modelName}</div>
+        `;
+        
+        document.body.appendChild(notification);
+        
+        // Remove after 3 seconds
+        setTimeout(() => {
+            notification.remove();
+        }, 3000);
+    }
+
+    showOllamaModels() {
+        const models = this.services.ollama.models;
+        const status = this.services.ollama.status;
+        
+        if (status === 'offline') {
+            const message = '❌ Ollama AI: Disconnected\n\nTo fix:\n1. Install Ollama from https://ollama.ai\n2. Run "ollama serve" in terminal\n3. Pull a model: "ollama pull qwen2.5:3b"\n4. Refresh the page';
+            alert(message);
+            return;
+        }
+        
+        if (models.length === 0) {
+            const message = '⚠️ Ollama AI: No Models Available\n\nTo install models:\n1. ollama pull qwen2.5:3b\n2. ollama pull llama3.2:3b\n3. ollama pull smollm2:135m\n4. Refresh the page';
+            alert(message);
+            return;
+        }
+        
+        // Show/hide model selector
+        if (this.modelSelector) {
+            const isVisible = this.modelSelector.style.display === 'block';
+            this.modelSelector.style.display = isVisible ? 'none' : 'block';
+            
+            if (!isVisible) {
+                // Auto-hide after 5 seconds
+                setTimeout(() => {
+                    if (this.modelSelector) {
+                        this.modelSelector.style.display = 'none';
+                    }
+                }, 5000);
+            }
+        }
+    }
+
+    // Load saved model preference
+    loadModelPreference() {
+        const saved = localStorage.getItem('selectedOllamaModel');
+        if (saved) {
+            this.services.ollama.selectedModel = saved;
+        }
+    }
+
+    // Get current selected model
+    getSelectedModel() {
+        return this.services.ollama.selectedModel;
+    }
+
+    // Get available models
+    getAvailableModels() {
+        return this.services.ollama.models;
     }
 
     showMCPStatus() {
@@ -153,21 +405,6 @@ class ServiceHealthManager {
         alert(message);
     }
 
-    showOllamaStatus() {
-        const status = this.services.ollama.status;
-        let message = '';
-        
-        switch (status) {
-            case 'online':
-                message = '✅ Ollama AI: Connected\n\nChat assistant is available for process flow help.';
-                break;
-            case 'offline':
-                message = '❌ Ollama AI: Disconnected\n\nChat assistant is not available.\n\nTo fix:\n1. Install Ollama from https://ollama.ai\n2. Run "ollama serve" in terminal\n3. Pull a model: "ollama pull qwen2.5:3b"\n4. Refresh the page';
-                break;
-        }
-        
-        alert(message);
-    }
 
     // Method to get overall health status
     getOverallHealth() {

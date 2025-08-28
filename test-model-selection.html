@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ollama Model Selection Test</title>
+    <style>
+        body { 
+            font-family: 'IBM Plex Mono', monospace; 
+            background: #3d3e4a; 
+            color: #a3a7ad; 
+            padding: 20px; 
+        }
+        .test-section { 
+            background: #24252c; 
+            border: 2px solid #575969; 
+            border-radius: 8px; 
+            padding: 20px; 
+            margin-bottom: 20px; 
+        }
+        .test-result { 
+            padding: 10px; 
+            border-radius: 4px; 
+            margin: 10px 0; 
+        }
+        .success { background: rgba(76, 175, 80, 0.1); color: #4CAF50; }
+        .error { background: rgba(244, 67, 54, 0.1); color: #f44336; }
+        button { 
+            background: #76b3fa; 
+            color: white; 
+            border: none; 
+            padding: 8px 16px; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            margin: 5px; 
+        }
+        button:hover { background: #0763f7; }
+        .model-item {
+            background: rgba(118, 179, 250, 0.1);
+            border: 1px solid rgba(118, 179, 250, 0.3);
+            border-radius: 4px;
+            padding: 8px 12px;
+            margin: 5px 0;
+            display: flex;
+            justify-content: space-between;
+        }
+        .model-name { font-weight: bold; }
+        .model-size { font-size: 11px; opacity: 0.7; }
+        select {
+            background: #24252c;
+            border: 2px solid #575969;
+            color: #a3a7ad;
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-family: inherit;
+        }
+    </style>
+</head>
+<body>
+    <h1>🤖 Ollama Model Selection Test</h1>
+    
+    <div class="test-section">
+        <h2>Ollama Server Test</h2>
+        <button onclick="testOllamaServer()">Test Server Connection</button>
+        <div id="serverResults"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Model Detection Test</h2>
+        <button onclick="detectModels()">Detect Available Models</button>
+        <div id="modelResults"></div>
+        <div id="modelList"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Model Selection Test</h2>
+        <label for="modelSelect">Select Model:</label>
+        <select id="modelSelect" onchange="selectModel()">
+            <option value="">Loading...</option>
+        </select>
+        <div id="selectionResults"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Integration Test</h2>
+        <button onclick="testIntegration()">Test Full Integration</button>
+        <div id="integrationResults"></div>
+    </div>
+
+    <script>
+        let availableModels = [];
+        const ollamaBaseUrl = 'http://localhost:11434';
+
+        async function testOllamaServer() {
+            const results = document.getElementById('serverResults');
+            try {
+                const response = await fetch(`${ollamaBaseUrl}/api/version`);
+                if (response.ok) {
+                    const data = await response.json();
+                    results.innerHTML = '<div class="test-result success">✅ Ollama server is running<br>Version: ' + data.version + '</div>';
+                } else {
+                    throw new Error('Server responded with error');
+                }
+            } catch (error) {
+                results.innerHTML = '<div class="test-result error">❌ Ollama server not accessible<br>Make sure Ollama is running: ollama serve</div>';
+            }
+        }
+
+        async function detectModels() {
+            const results = document.getElementById('modelResults');
+            const modelList = document.getElementById('modelList');
+            
+            try {
+                results.innerHTML = '<div class="test-result">🔍 Detecting models...</div>';
+                
+                const response = await fetch(`${ollamaBaseUrl}/api/tags`);
+                if (response.ok) {
+                    const data = await response.json();
+                    availableModels = data.models || [];
+                    
+                    results.innerHTML = '<div class="test-result success">✅ Found ' + availableModels.length + ' models</div>';
+                    
+                    if (availableModels.length > 0) {
+                        modelList.innerHTML = '<h3>Available Models:</h3>';
+                        availableModels.forEach(model => {
+                            const modelDiv = document.createElement('div');
+                            modelDiv.className = 'model-item';
+                            modelDiv.innerHTML = `
+                                <div>
+                                    <div class="model-name">${model.name}</div>
+                                    <div>Modified: ${new Date(model.modified_at).toLocaleString()}</div>
+                                </div>
+                                <div class="model-size">${formatSize(model.size)}</div>
+                            `;
+                            modelList.appendChild(modelDiv);
+                        });
+                        
+                        // Populate selector
+                        const selector = document.getElementById('modelSelect');
+                        selector.innerHTML = '<option value="">Select a model...</option>';
+                        availableModels.forEach(model => {
+                            const option = document.createElement('option');
+                            option.value = model.name;
+                            option.textContent = `${model.name} (${formatSize(model.size)})`;
+                            selector.appendChild(option);
+                        });
+                    } else {
+                        modelList.innerHTML = '<div class="test-result error">No models found. Install some models:<br>ollama pull qwen2.5:3b<br>ollama pull llama3.2:3b<br>ollama pull smollm2:135m</div>';
+                    }
+                } else {
+                    throw new Error('Failed to fetch models');
+                }
+            } catch (error) {
+                results.innerHTML = '<div class="test-result error">❌ Failed to detect models: ' + error.message + '</div>';
+                modelList.innerHTML = '';
+            }
+        }
+
+        function selectModel() {
+            const selector = document.getElementById('modelSelect');
+            const results = document.getElementById('selectionResults');
+            
+            if (selector.value) {
+                const selectedModel = availableModels.find(m => m.name === selector.value);
+                results.innerHTML = `
+                    <div class="test-result success">
+                        ✅ Selected: ${selectedModel.name}<br>
+                        Size: ${formatSize(selectedModel.size)}<br>
+                        Modified: ${new Date(selectedModel.modified_at).toLocaleString()}
+                    </div>
+                `;
+                
+                // Simulate localStorage save
+                localStorage.setItem('selectedOllamaModel', selector.value);
+                console.log('Model selection saved:', selector.value);
+            } else {
+                results.innerHTML = '';
+            }
+        }
+
+        async function testIntegration() {
+            const results = document.getElementById('integrationResults');
+            let testResults = [];
+            
+            // Test 1: Server connectivity
+            try {
+                const response = await fetch(`${ollamaBaseUrl}/api/version`);
+                testResults.push(response.ok ? '✅ Server Connection' : '❌ Server Connection');
+            } catch {
+                testResults.push('❌ Server Connection');
+            }
+            
+            // Test 2: Model detection
+            try {
+                const response = await fetch(`${ollamaBaseUrl}/api/tags`);
+                const data = await response.json();
+                const modelCount = (data.models || []).length;
+                testResults.push(modelCount > 0 ? `✅ Model Detection (${modelCount} models)` : '❌ Model Detection (0 models)');
+            } catch {
+                testResults.push('❌ Model Detection');
+            }
+            
+            // Test 3: LocalStorage
+            const saved = localStorage.getItem('selectedOllamaModel');
+            testResults.push(saved ? `✅ Model Persistence (${saved})` : '⚠️ No Model Saved');
+            
+            // Test 4: Health Manager Integration
+            const hasHealthManager = typeof window.ServiceHealthManager !== 'undefined';
+            testResults.push(hasHealthManager ? '✅ Health Manager Available' : '❌ Health Manager Missing');
+            
+            results.innerHTML = '<div class="test-result success">Integration Test Results:<br>' + testResults.join('<br>') + '</div>';
+        }
+
+        function formatSize(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+        }
+
+        // Auto-run server test on load
+        window.onload = function() {
+            testOllamaServer();
+            setTimeout(detectModels, 1000);
+        };
+    </script>
+</body>
+</html>
