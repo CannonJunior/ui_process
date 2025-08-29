@@ -98,13 +98,21 @@ class KnowledgeGraphController {
             kgToggle.style.color = 'white';
             console.log('🧠 Knowledge Graph mode activated');
             
-            // Load existing KG nodes from API
-            this.loadKGNodesFromAPI();
+            // Load existing KG nodes from API or show existing ones
+            if (this.kgNodes.length === 0) {
+                this.loadKGNodesFromAPI();
+            } else {
+                // Show existing nodes with transition
+                this.showKGNodesWithTransition();
+            }
         } else {
             canvas.classList.remove('kg-mode');
             kgToggle.style.background = '';
             kgToggle.style.color = '';
             console.log('📊 Regular process mode activated');
+            
+            // Animate KG nodes off-canvas (similar to opportunity cards)
+            this.hideKGNodesWithTransition();
         }
     }
     
@@ -1156,6 +1164,101 @@ class KnowledgeGraphController {
         };
         
         this.createKGNodeFromEntity(entity, { x, y });
+    }
+    
+    /**
+     * Hide KG nodes with smooth off-canvas transition (similar to opportunity cards)
+     */
+    hideKGNodesWithTransition() {
+        console.log('🎬 Animating KG nodes off-canvas...');
+        
+        // Apply transition animation to each KG node
+        this.kgNodes.forEach(nodeData => {
+            if (nodeData.element) {
+                nodeData.element.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+                nodeData.element.style.opacity = '0';
+                nodeData.element.style.transform = 'translateX(-100vw)'; // Slide off-canvas to the left
+            }
+        });
+        
+        // Hide connections as well
+        this.hideKGConnectionsWithTransition();
+        
+        // After animation completes, hide the elements completely
+        setTimeout(() => {
+            this.kgNodes.forEach(nodeData => {
+                if (nodeData.element) {
+                    nodeData.element.style.display = 'none';
+                    // Reset styles for when KG mode is re-enabled
+                    nodeData.element.style.transition = '';
+                    nodeData.element.style.transform = '';
+                }
+            });
+            console.log('✅ KG nodes hidden off-canvas');
+        }, 500); // Match transition duration
+    }
+    
+    /**
+     * Hide KG connections with transition
+     */
+    hideKGConnectionsWithTransition() {
+        const connectionsLayer = document.getElementById('kgConnections');
+        if (connectionsLayer) {
+            connectionsLayer.style.transition = 'opacity 0.5s ease';
+            connectionsLayer.style.opacity = '0';
+            
+            setTimeout(() => {
+                connectionsLayer.style.display = 'none';
+                connectionsLayer.style.transition = '';
+            }, 500);
+        }
+    }
+    
+    /**
+     * Show KG nodes with smooth on-canvas transition when KG mode is activated
+     */
+    showKGNodesWithTransition() {
+        console.log('🎬 Animating KG nodes on-canvas...');
+        
+        // Show and animate each KG node back onto canvas
+        this.kgNodes.forEach(nodeData => {
+            if (nodeData.element) {
+                // Set initial off-canvas position
+                nodeData.element.style.display = 'block';
+                nodeData.element.style.opacity = '0';
+                nodeData.element.style.transform = 'translateX(-100vw)';
+                
+                // Force reflow
+                nodeData.element.offsetHeight;
+                
+                // Animate to normal position
+                nodeData.element.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+                nodeData.element.style.opacity = '1';
+                nodeData.element.style.transform = 'translateX(0)';
+            }
+        });
+        
+        // Show connections as well
+        this.showKGConnectionsWithTransition();
+        
+        console.log('✅ KG nodes animated on-canvas');
+    }
+    
+    /**
+     * Show KG connections with transition
+     */
+    showKGConnectionsWithTransition() {
+        const connectionsLayer = document.getElementById('kgConnections');
+        if (connectionsLayer) {
+            connectionsLayer.style.display = 'block';
+            connectionsLayer.style.opacity = '0';
+            
+            // Force reflow
+            connectionsLayer.offsetHeight;
+            
+            connectionsLayer.style.transition = 'opacity 0.5s ease';
+            connectionsLayer.style.opacity = '1';
+        }
     }
 }
 
