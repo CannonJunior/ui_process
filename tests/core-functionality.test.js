@@ -239,14 +239,21 @@ describe('Core Functionality', function() {
             expect(matrixElement.style.display).to.equal('none');
         });
         
-        it('should update button text based on matrix mode', function() {
+        it('should maintain consistent button text in radio button mode', function() {
             const button = document.getElementById('eisenhowerToggle');
             
-            app.toggleEisenhowerMatrix();
-            expect(button.textContent).to.equal('📊 Exit Matrix');
-            
-            app.toggleEisenhowerMatrix();
+            // Button should always display "📊 Matrix" text, only color changes
             expect(button.textContent).to.equal('📊 Matrix');
+            
+            // Activate matrix mode
+            app.setMode('matrix');
+            expect(button.textContent).to.equal('📊 Matrix');
+            expect(button.classList.contains('active')).to.be.true;
+            
+            // Activate different mode (should deactivate matrix)
+            app.setMode('workflow');
+            expect(button.textContent).to.equal('📊 Matrix');
+            expect(button.classList.contains('active')).to.be.false;
         });
     });
     

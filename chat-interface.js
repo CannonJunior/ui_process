@@ -1,6 +1,6 @@
 class ChatInterface {
     constructor() {
-        this.ollamaBaseUrl = 'http://localhost:11434';
+        this.ollamaBaseUrl = typeof PortConfig !== 'undefined' ? PortConfig.getOllamaUrl() : 'http://localhost:11434';
         this.modelName = 'qwen2.5:3b'; // Default model
         this.isOpen = false;
         this.isConnected = false;

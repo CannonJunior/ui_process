@@ -15,6 +15,9 @@ class ProcessFlowDesigner {
         // this.isMatrixMode now handled by MatrixController (getter defined below)
         this.originalNodePositions = new Map(); // Store original positions for ALL nodes before matrix mode
         
+        // Track current mode for radio button behavior
+        this.currentMode = null;
+        
         // Track if workflows have been appended (for future merge validation)
         this.hasAppendedWorkflows = false;
         
@@ -76,9 +79,14 @@ class ProcessFlowDesigner {
         }
     }
     
-    // Matrix interface preservation - all methods delegate to MatrixController
+    // Matrix interface preservation - compatibility method for tests
     toggleEisenhowerMatrix() {
-        return this.matrixController ? this.matrixController.toggleEisenhowerMatrix() : null;
+        // For tests: toggle between matrix and workflow modes
+        if (this.currentMode === 'matrix') {
+            this.setMode('workflow');
+        } else {
+            this.setMode('matrix');
+        }
     }
     
     enterMatrixMode() {
@@ -122,6 +130,934 @@ class ProcessFlowDesigner {
                 detail: { enabled: true } 
             }));
         }
+    }
+    
+    /**
+     * Set the application mode - exclusive radio button system for four modes
+     * @param {string} mode - The mode to activate ('workflow', 'matrix', 'opportunities', 'knowledgeGraph')
+     */
+    setMode(mode) {
+        // Radio button behavior: don't allow clicking the same button to toggle off
+        if (this.currentMode === mode) {
+            console.log(`🔘 Already in ${mode} mode - no change needed`);
+            return;
+        }
+        
+        console.log(`🔄 Switching from ${this.currentMode || 'none'} to ${mode} mode`);
+        
+        // Save positions before switching away from workflow mode
+        if (this.currentMode === 'workflow') {
+            this.saveWorkflowPositions();
+        }
+        
+        // Track current state
+        const previousMode = this.currentMode;
+        this.currentMode = mode;
+        
+        // Deactivate all modes first (transition elements off-screen)
+        this.deactivateAllModes();
+        
+        // Then activate the selected mode
+        setTimeout(() => {
+            switch (mode) {
+                case 'workflow':
+                    this.activateWorkflowMode();
+                    break;
+                case 'matrix':
+                    this.activateMatrixMode();
+                    break;
+                case 'opportunities':
+                    this.activateOpportunitiesMode();
+                    break;
+                case 'knowledgeGraph':
+                    this.activateKnowledgeGraphMode();
+                    break;
+                default:
+                    console.warn(`Unknown mode: ${mode}`);
+            }
+        }, 100); // Small delay to allow transitions to start
+    }
+    
+    /**
+     * Save positions of all workflow objects before switching modes
+     * Uses persistent localStorage with validation to prevent overwriting
+     */
+    saveWorkflowPositions() {
+        console.log('💾 Saving workflow object positions to persistent storage...');
+        
+        try {
+            // Get existing positions from localStorage (never overwrite without validation)
+            const existingPositions = this.getStoredWorkflowPositions();
+            
+            // Create new position data structure
+            const positionData = {
+                timestamp: Date.now(),
+                nodes: {},
+                taskNodes: {},
+                nextActionSlots: {},
+                flowlines: {},
+                otherElements: {},
+                canvasScroll: { x: 0, y: 0 }
+            };
+            
+            const canvas = document.getElementById('canvas');
+            const canvasRect = canvas.getBoundingClientRect();
+            
+            // Save canvas scroll position
+            positionData.canvasScroll = {
+                x: canvas.scrollLeft || 0,
+                y: canvas.scrollTop || 0
+            };
+            
+            // Save node positions
+            const nodes = document.querySelectorAll('.node');
+            nodes.forEach(node => {
+                if (node.dataset.id) {
+                    const rect = node.getBoundingClientRect();
+                    const x = rect.left - canvasRect.left + canvas.scrollLeft;
+                    const y = rect.top - canvasRect.top + canvas.scrollTop;
+                    
+                    const nodeId = node.dataset.id;
+                    
+                    // Only save if position is valid and not already stored, or if current position differs
+                    if (this.isValidPosition(x, y)) {
+                        const existing = existingPositions.nodes?.[nodeId];
+                        if (!existing || existing.x !== x || existing.y !== y) {
+                            positionData.nodes[nodeId] = { x, y, nodeType: node.dataset.nodeType || 'unknown' };
+                            
+                            // Also save to dataset as backup
+                            node.dataset.savedX = x;
+                            node.dataset.savedY = y;
+                        } else {
+                            // Keep existing position
+                            positionData.nodes[nodeId] = existing;
+                        }
+                    } else if (existingPositions.nodes?.[nodeId]) {
+                        // Keep existing valid position if current is invalid
+                        positionData.nodes[nodeId] = existingPositions.nodes[nodeId];
+                    }
+                }
+            });
+            
+            // Save task node positions
+            const taskNodes = document.querySelectorAll('.task-node');
+            taskNodes.forEach(taskNode => {
+                if (taskNode.dataset.id) {
+                    const rect = taskNode.getBoundingClientRect();
+                    const x = rect.left - canvasRect.left + canvas.scrollLeft;
+                    const y = rect.top - canvasRect.top + canvas.scrollTop;
+                    
+                    const taskId = taskNode.dataset.id;
+                    
+                    if (this.isValidPosition(x, y)) {
+                        const existing = existingPositions.taskNodes?.[taskId];
+                        if (!existing || existing.x !== x || existing.y !== y) {
+                            positionData.taskNodes[taskId] = { x, y };
+                            
+                            taskNode.dataset.savedX = x;
+                            taskNode.dataset.savedY = y;
+                        } else {
+                            positionData.taskNodes[taskId] = existing;
+                        }
+                    } else if (existingPositions.taskNodes?.[taskId]) {
+                        positionData.taskNodes[taskId] = existingPositions.taskNodes[taskId];
+                    }
+                }
+            });
+            
+            // Save next action slot positions
+            const nextActionSlots = document.querySelectorAll('.next-action-slot');
+            nextActionSlots.forEach(slot => {
+                if (slot.dataset.nodeId) {
+                    const rect = slot.getBoundingClientRect();
+                    const x = rect.left - canvasRect.left + canvas.scrollLeft;
+                    const y = rect.top - canvasRect.top + canvas.scrollTop;
+                    
+                    const slotKey = `${slot.dataset.nodeId}-${slot.dataset.slotIndex || 0}`;
+                    
+                    if (this.isValidPosition(x, y)) {
+                        const existing = existingPositions.nextActionSlots?.[slotKey];
+                        if (!existing || existing.x !== x || existing.y !== y) {
+                            positionData.nextActionSlots[slotKey] = { 
+                                x, y, 
+                                nodeId: slot.dataset.nodeId, 
+                                slotIndex: slot.dataset.slotIndex || 0 
+                            };
+                            
+                            slot.dataset.savedX = x;
+                            slot.dataset.savedY = y;
+                        } else {
+                            positionData.nextActionSlots[slotKey] = existing;
+                        }
+                    } else if (existingPositions.nextActionSlots?.[slotKey]) {
+                        positionData.nextActionSlots[slotKey] = existingPositions.nextActionSlots[slotKey];
+                    }
+                }
+            });
+            
+            // Save flowline connection data
+            const flowlines = document.querySelectorAll('.flowline, .flowline-path');
+            let flowlineCount = 0;
+            flowlines.forEach(flowline => {
+                if (flowline.dataset.sourceId && flowline.dataset.targetId) {
+                    const flowlineKey = `${flowline.dataset.sourceId}-${flowline.dataset.targetId}`;
+                    positionData.flowlines[flowlineKey] = {
+                        sourceId: flowline.dataset.sourceId,
+                        targetId: flowline.dataset.targetId,
+                        type: flowline.dataset.type || 'default'
+                    };
+                    
+                    // Store backup data
+                    flowline.dataset.savedSourceId = flowline.dataset.sourceId;
+                    flowline.dataset.savedTargetId = flowline.dataset.targetId;
+                    if (flowline.dataset.type) {
+                        flowline.dataset.savedType = flowline.dataset.type;
+                    }
+                    flowlineCount++;
+                }
+            });
+            
+            // Save any other positioned workflow elements
+            const otherWorkflowElements = document.querySelectorAll('[data-workflow-element]');
+            otherWorkflowElements.forEach(element => {
+                const elementId = element.id || element.dataset.workflowElement;
+                if (elementId) {
+                    const rect = element.getBoundingClientRect();
+                    const x = rect.left - canvasRect.left + canvas.scrollLeft;
+                    const y = rect.top - canvasRect.top + canvas.scrollTop;
+                    
+                    if (this.isValidPosition(x, y)) {
+                        const existing = existingPositions.otherElements?.[elementId];
+                        if (!existing || existing.x !== x || existing.y !== y) {
+                            positionData.otherElements[elementId] = { x, y };
+                            
+                            element.dataset.savedX = x;
+                            element.dataset.savedY = y;
+                        } else {
+                            positionData.otherElements[elementId] = existing;
+                        }
+                    } else if (existingPositions.otherElements?.[elementId]) {
+                        positionData.otherElements[elementId] = existingPositions.otherElements[elementId];
+                    }
+                }
+            });
+            
+            // Store to localStorage with validation
+            this.storeWorkflowPositions(positionData);
+            
+            console.log(`✅ Saved positions for ${Object.keys(positionData.nodes).length} nodes, ${Object.keys(positionData.taskNodes).length} task nodes, ${Object.keys(positionData.nextActionSlots).length} slots, ${flowlineCount} flowlines to persistent storage`);
+            
+        } catch (error) {
+            console.error('❌ Error saving workflow positions:', error);
+        }
+    }
+    
+    /**
+     * Validate if position coordinates are reasonable and not corrupted
+     */
+    isValidPosition(x, y) {
+        // Check for reasonable bounds (not negative, not extremely large)
+        const maxCanvasSize = 50000; // 50k pixels should be more than enough
+        return (
+            typeof x === 'number' && 
+            typeof y === 'number' && 
+            !isNaN(x) && 
+            !isNaN(y) && 
+            x >= -1000 && // Allow some negative offset for elements slightly off-canvas
+            y >= -1000 && 
+            x < maxCanvasSize && 
+            y < maxCanvasSize
+        );
+    }
+    
+    /**
+     * Get stored workflow positions from localStorage
+     */
+    getStoredWorkflowPositions() {
+        try {
+            const stored = localStorage.getItem('workflowPositions');
+            if (stored) {
+                const positions = JSON.parse(stored);
+                console.log('📍 Retrieved stored positions from localStorage');
+                return positions;
+            }
+        } catch (error) {
+            console.warn('⚠️ Error reading stored positions:', error);
+        }
+        
+        // Return empty structure if nothing stored
+        return {
+            timestamp: 0,
+            nodes: {},
+            taskNodes: {},
+            nextActionSlots: {},
+            flowlines: {},
+            otherElements: {},
+            canvasScroll: { x: 0, y: 0 }
+        };
+    }
+    
+    /**
+     * Store workflow positions to localStorage with validation
+     */
+    storeWorkflowPositions(positionData) {
+        try {
+            // Validate position data structure
+            if (!positionData || typeof positionData !== 'object') {
+                throw new Error('Invalid position data structure');
+            }
+            
+            // Ensure all required properties exist
+            const requiredProps = ['nodes', 'taskNodes', 'nextActionSlots', 'flowlines', 'otherElements', 'canvasScroll'];
+            for (const prop of requiredProps) {
+                if (!positionData[prop]) {
+                    positionData[prop] = {};
+                }
+            }
+            
+            // Add version for future compatibility
+            positionData.version = '1.0';
+            positionData.timestamp = Date.now();
+            
+            // Store to localStorage
+            const jsonData = JSON.stringify(positionData, null, 2);
+            localStorage.setItem('workflowPositions', jsonData);
+            
+            console.log('✅ Workflow positions stored to localStorage successfully');
+            
+            // Also store a backup with timestamp
+            const backupKey = `workflowPositions_backup_${Date.now()}`;
+            localStorage.setItem(backupKey, jsonData);
+            
+            // Clean up old backups (keep only the 3 most recent)
+            this.cleanupPositionBackups();
+            
+        } catch (error) {
+            console.error('❌ Error storing positions to localStorage:', error);
+        }
+    }
+    
+    /**
+     * Clean up old position backups to prevent localStorage bloat
+     */
+    cleanupPositionBackups() {
+        try {
+            const backupKeys = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && key.startsWith('workflowPositions_backup_')) {
+                    backupKeys.push(key);
+                }
+            }
+            
+            // Sort by timestamp (newest first)
+            backupKeys.sort((a, b) => {
+                const timestampA = parseInt(a.split('_').pop());
+                const timestampB = parseInt(b.split('_').pop());
+                return timestampB - timestampA;
+            });
+            
+            // Remove old backups (keep only 3 most recent)
+            for (let i = 3; i < backupKeys.length; i++) {
+                localStorage.removeItem(backupKeys[i]);
+            }
+            
+            if (backupKeys.length > 3) {
+                console.log(`🧹 Cleaned up ${backupKeys.length - 3} old position backups`);
+            }
+        } catch (error) {
+            console.warn('⚠️ Error cleaning up position backups:', error);
+        }
+    }
+    
+    /**
+     * Restore positions of workflow objects when returning to workflow mode
+     * Uses persistent localStorage data with fallback to dataset attributes
+     */
+    restoreWorkflowPositions() {
+        console.log('📍 Restoring workflow object positions from persistent storage...');
+        
+        try {
+            // Get stored position data from localStorage
+            const storedPositions = this.getStoredWorkflowPositions();
+            let restoredCount = { nodes: 0, taskNodes: 0, slots: 0, flowlines: 0, otherElements: 0 };
+            let errorsCount = 0;
+            
+            // Restore canvas scroll position
+            const canvas = document.getElementById('canvas');
+            if (canvas && storedPositions.canvasScroll) {
+                if (typeof storedPositions.canvasScroll.x === 'number') {
+                    canvas.scrollLeft = storedPositions.canvasScroll.x;
+                }
+                if (typeof storedPositions.canvasScroll.y === 'number') {
+                    canvas.scrollTop = storedPositions.canvasScroll.y;
+                }
+            }
+            
+            // Restore node positions
+            const nodes = document.querySelectorAll('.node');
+            nodes.forEach(node => {
+                const nodeId = node.dataset.id;
+                if (nodeId) {
+                    let restored = false;
+                    
+                    // Try to restore from localStorage first
+                    if (storedPositions.nodes && storedPositions.nodes[nodeId]) {
+                        const stored = storedPositions.nodes[nodeId];
+                        if (this.isValidPosition(stored.x, stored.y)) {
+                            node.style.left = stored.x + 'px';
+                            node.style.top = stored.y + 'px';
+                            node.dataset.savedX = stored.x;
+                            node.dataset.savedY = stored.y;
+                            restoredCount.nodes++;
+                            restored = true;
+                        }
+                    }
+                    
+                    // Fallback to dataset attributes if localStorage failed
+                    if (!restored && node.dataset.savedX && node.dataset.savedY) {
+                        const x = parseFloat(node.dataset.savedX);
+                        const y = parseFloat(node.dataset.savedY);
+                        if (this.isValidPosition(x, y)) {
+                            node.style.left = x + 'px';
+                            node.style.top = y + 'px';
+                            restoredCount.nodes++;
+                            restored = true;
+                        }
+                    }
+                    
+                    if (!restored) {
+                        errorsCount++;
+                        console.warn(`⚠️ Could not restore position for node ${nodeId}`);
+                    }
+                }
+            });
+            
+            // Restore task node positions
+            const taskNodes = document.querySelectorAll('.task-node');
+            taskNodes.forEach(taskNode => {
+                const taskId = taskNode.dataset.id;
+                if (taskId) {
+                    let restored = false;
+                    
+                    // Try localStorage first
+                    if (storedPositions.taskNodes && storedPositions.taskNodes[taskId]) {
+                        const stored = storedPositions.taskNodes[taskId];
+                        if (this.isValidPosition(stored.x, stored.y)) {
+                            taskNode.style.left = stored.x + 'px';
+                            taskNode.style.top = stored.y + 'px';
+                            taskNode.dataset.savedX = stored.x;
+                            taskNode.dataset.savedY = stored.y;
+                            restoredCount.taskNodes++;
+                            restored = true;
+                        }
+                    }
+                    
+                    // Fallback to dataset
+                    if (!restored && taskNode.dataset.savedX && taskNode.dataset.savedY) {
+                        const x = parseFloat(taskNode.dataset.savedX);
+                        const y = parseFloat(taskNode.dataset.savedY);
+                        if (this.isValidPosition(x, y)) {
+                            taskNode.style.left = x + 'px';
+                            taskNode.style.top = y + 'px';
+                            restoredCount.taskNodes++;
+                            restored = true;
+                        }
+                    }
+                    
+                    if (!restored) {
+                        errorsCount++;
+                        console.warn(`⚠️ Could not restore position for task node ${taskId}`);
+                    }
+                }
+            });
+            
+            // Restore next action slot positions
+            const nextActionSlots = document.querySelectorAll('.next-action-slot');
+            nextActionSlots.forEach(slot => {
+                const nodeId = slot.dataset.nodeId;
+                const slotIndex = slot.dataset.slotIndex || 0;
+                const slotKey = `${nodeId}-${slotIndex}`;
+                
+                if (nodeId) {
+                    let restored = false;
+                    
+                    // Try localStorage first
+                    if (storedPositions.nextActionSlots && storedPositions.nextActionSlots[slotKey]) {
+                        const stored = storedPositions.nextActionSlots[slotKey];
+                        if (this.isValidPosition(stored.x, stored.y)) {
+                            slot.style.left = stored.x + 'px';
+                            slot.style.top = stored.y + 'px';
+                            slot.dataset.savedX = stored.x;
+                            slot.dataset.savedY = stored.y;
+                            restoredCount.slots++;
+                            restored = true;
+                        }
+                    }
+                    
+                    // Fallback to dataset
+                    if (!restored && slot.dataset.savedX && slot.dataset.savedY) {
+                        const x = parseFloat(slot.dataset.savedX);
+                        const y = parseFloat(slot.dataset.savedY);
+                        if (this.isValidPosition(x, y)) {
+                            slot.style.left = x + 'px';
+                            slot.style.top = y + 'px';
+                            restoredCount.slots++;
+                            restored = true;
+                        }
+                    }
+                    
+                    if (!restored) {
+                        errorsCount++;
+                        console.warn(`⚠️ Could not restore position for next action slot ${slotKey}`);
+                    }
+                }
+            });
+            
+            // Restore flowlines (connection data and trigger redraw)
+            const flowlines = document.querySelectorAll('.flowline, .flowline-path');
+            let flowlineConnectionsRestored = 0;
+            
+            // First, verify stored flowline connections
+            if (storedPositions.flowlines && Object.keys(storedPositions.flowlines).length > 0) {
+                for (const [flowlineKey, stored] of Object.entries(storedPositions.flowlines)) {
+                    // Find matching flowline element
+                    let foundFlowline = null;
+                    flowlines.forEach(flowline => {
+                        if (flowline.dataset.sourceId === stored.sourceId && 
+                            flowline.dataset.targetId === stored.targetId) {
+                            foundFlowline = flowline;
+                        }
+                    });
+                    
+                    if (foundFlowline) {
+                        // Ensure connection data is preserved
+                        foundFlowline.dataset.savedSourceId = stored.sourceId;
+                        foundFlowline.dataset.savedTargetId = stored.targetId;
+                        if (stored.type) {
+                            foundFlowline.dataset.savedType = stored.type;
+                        }
+                        flowlineConnectionsRestored++;
+                    }
+                }
+            }
+            
+            // Fallback: restore from dataset
+            flowlines.forEach(flowline => {
+                if (flowline.dataset.savedSourceId && flowline.dataset.savedTargetId) {
+                    // Connection data preserved, will be redrawn
+                    if (flowlineConnectionsRestored === 0) {
+                        restoredCount.flowlines++;
+                    }
+                }
+            });
+            
+            if (flowlineConnectionsRestored > 0) {
+                restoredCount.flowlines = flowlineConnectionsRestored;
+            }
+            
+            // Restore other workflow elements
+            const otherWorkflowElements = document.querySelectorAll('[data-workflow-element]');
+            otherWorkflowElements.forEach(element => {
+                const elementId = element.id || element.dataset.workflowElement;
+                if (elementId) {
+                    let restored = false;
+                    
+                    // Try localStorage first
+                    if (storedPositions.otherElements && storedPositions.otherElements[elementId]) {
+                        const stored = storedPositions.otherElements[elementId];
+                        if (this.isValidPosition(stored.x, stored.y)) {
+                            element.style.left = stored.x + 'px';
+                            element.style.top = stored.y + 'px';
+                            element.dataset.savedX = stored.x;
+                            element.dataset.savedY = stored.y;
+                            restoredCount.otherElements++;
+                            restored = true;
+                        }
+                    }
+                    
+                    // Fallback to dataset
+                    if (!restored && element.dataset.savedX && element.dataset.savedY) {
+                        const x = parseFloat(element.dataset.savedX);
+                        const y = parseFloat(element.dataset.savedY);
+                        if (this.isValidPosition(x, y)) {
+                            element.style.left = x + 'px';
+                            element.style.top = y + 'px';
+                            restoredCount.otherElements++;
+                            restored = true;
+                        }
+                    }
+                    
+                    if (!restored) {
+                        errorsCount++;
+                        console.warn(`⚠️ Could not restore position for workflow element ${elementId}`);
+                    }
+                }
+            });
+            
+            // Trigger flowline redraw to ensure proper connections
+            if (this.flowlineManager && restoredCount.flowlines > 0) {
+                setTimeout(() => {
+                    try {
+                        this.flowlineManager.updateFlowlines();
+                        console.log('🔄 Flowlines redrawn after position restoration');
+                    } catch (flowlineError) {
+                        console.error('❌ Error redrawing flowlines:', flowlineError);
+                    }
+                }, 100); // Longer delay to ensure all elements are positioned
+            }
+            
+            // Verification: Check that restored positions are actually applied
+            setTimeout(() => {
+                this.verifyPositionRestoration(restoredCount);
+            }, 200);
+            
+            const totalRestored = Object.values(restoredCount).reduce((sum, count) => sum + count, 0);
+            console.log(`✅ Restored positions for ${totalRestored} elements: ${restoredCount.nodes} nodes, ${restoredCount.taskNodes} task nodes, ${restoredCount.slots} slots, ${restoredCount.flowlines} flowlines, ${restoredCount.otherElements} other elements`);
+            
+            if (errorsCount > 0) {
+                console.warn(`⚠️ ${errorsCount} elements could not be restored to their saved positions`);
+            }
+            
+            return restoredCount;
+            
+        } catch (error) {
+            console.error('❌ Error restoring workflow positions:', error);
+            return { nodes: 0, taskNodes: 0, slots: 0, flowlines: 0, otherElements: 0 };
+        }
+    }
+    
+    /**
+     * Verify that position restoration actually worked correctly
+     */
+    verifyPositionRestoration(expectedCounts) {
+        console.log('🔍 Verifying position restoration...');
+        
+        try {
+            let verificationResults = {
+                nodes: { expected: expectedCounts.nodes, actual: 0, positioned: 0 },
+                taskNodes: { expected: expectedCounts.taskNodes, actual: 0, positioned: 0 },
+                slots: { expected: expectedCounts.slots, actual: 0, positioned: 0 },
+                otherElements: { expected: expectedCounts.otherElements, actual: 0, positioned: 0 }
+            };
+            
+            // Verify node positions
+            const nodes = document.querySelectorAll('.node');
+            verificationResults.nodes.actual = nodes.length;
+            nodes.forEach(node => {
+                if (node.style.left && node.style.top && 
+                    node.style.left !== '0px' && node.style.top !== '0px') {
+                    verificationResults.nodes.positioned++;
+                }
+            });
+            
+            // Verify task node positions
+            const taskNodes = document.querySelectorAll('.task-node');
+            verificationResults.taskNodes.actual = taskNodes.length;
+            taskNodes.forEach(taskNode => {
+                if (taskNode.style.left && taskNode.style.top && 
+                    taskNode.style.left !== '0px' && taskNode.style.top !== '0px') {
+                    verificationResults.taskNodes.positioned++;
+                }
+            });
+            
+            // Verify next action slot positions
+            const nextActionSlots = document.querySelectorAll('.next-action-slot');
+            verificationResults.slots.actual = nextActionSlots.length;
+            nextActionSlots.forEach(slot => {
+                if (slot.style.left && slot.style.top && 
+                    slot.style.left !== '0px' && slot.style.top !== '0px') {
+                    verificationResults.slots.positioned++;
+                }
+            });
+            
+            // Verify other workflow elements
+            const otherWorkflowElements = document.querySelectorAll('[data-workflow-element]');
+            verificationResults.otherElements.actual = otherWorkflowElements.length;
+            otherWorkflowElements.forEach(element => {
+                if (element.style.left && element.style.top && 
+                    element.style.left !== '0px' && element.style.top !== '0px') {
+                    verificationResults.otherElements.positioned++;
+                }
+            });
+            
+            // Report verification results
+            let allVerified = true;
+            for (const [type, result] of Object.entries(verificationResults)) {
+                if (result.expected > 0 && result.positioned < result.expected) {
+                    console.warn(`⚠️ ${type}: Expected ${result.expected} positioned elements, but only ${result.positioned} out of ${result.actual} total elements are properly positioned`);
+                    allVerified = false;
+                } else if (result.positioned > 0) {
+                    console.log(`✅ ${type}: ${result.positioned}/${result.actual} elements properly positioned`);
+                }
+            }
+            
+            if (allVerified && Object.values(verificationResults).some(result => result.positioned > 0)) {
+                console.log('✅ Position restoration verification passed - all elements properly positioned');
+            } else if (Object.values(verificationResults).every(result => result.positioned === 0)) {
+                console.log('ℹ️ No positioned elements found - this may be expected for a new workspace');
+            }
+            
+            return verificationResults;
+            
+        } catch (error) {
+            console.error('❌ Error during position restoration verification:', error);
+            return null;
+        }
+    }
+    
+    /**
+     * Clear all stored workflow positions (for debugging or reset)
+     */
+    clearStoredWorkflowPositions() {
+        try {
+            localStorage.removeItem('workflowPositions');
+            
+            // Also clear backups
+            const keysToRemove = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && key.startsWith('workflowPositions_backup_')) {
+                    keysToRemove.push(key);
+                }
+            }
+            
+            keysToRemove.forEach(key => localStorage.removeItem(key));
+            
+            console.log(`🧹 Cleared all stored workflow positions and ${keysToRemove.length} backups`);
+            return true;
+        } catch (error) {
+            console.error('❌ Error clearing stored positions:', error);
+            return false;
+        }
+    }
+    
+    /**
+     * Debug method to show current stored positions
+     */
+    debugStoredPositions() {
+        try {
+            const stored = this.getStoredWorkflowPositions();
+            console.log('🔍 Current stored positions:', stored);
+            
+            const totalElements = 
+                Object.keys(stored.nodes || {}).length +
+                Object.keys(stored.taskNodes || {}).length +
+                Object.keys(stored.nextActionSlots || {}).length +
+                Object.keys(stored.flowlines || {}).length +
+                Object.keys(stored.otherElements || {}).length;
+                
+            console.log(`📊 Total stored elements: ${totalElements}`);
+            if (stored.timestamp) {
+                console.log(`🕒 Last saved: ${new Date(stored.timestamp).toLocaleString()}`);
+            }
+            
+            return stored;
+        } catch (error) {
+            console.error('❌ Error debugging stored positions:', error);
+            return null;
+        }
+    }
+    
+    /**
+     * Deactivate all modes and transition their elements off-screen
+     */
+    deactivateAllModes() {
+        // Reset all toggle button states
+        this.workflowToggle.classList.remove('active');
+        this.eisenhowerToggle.classList.remove('active');
+        this.opportunityToggle.classList.remove('active');
+        this.knowledgeGraphToggle.classList.remove('active');
+        
+        // Reset button styles
+        [this.workflowToggle, this.eisenhowerToggle, this.opportunityToggle, this.knowledgeGraphToggle].forEach(button => {
+            button.style.background = '';
+            button.style.color = '';
+        });
+        
+        // Transition elements off-screen for each mode
+        this.deactivateWorkflowMode();
+        this.deactivateMatrixMode();
+        this.deactivateOpportunitiesMode();
+        this.deactivateKnowledgeGraphMode();
+    }
+    
+    /**
+     * Activate workflow mode
+     */
+    activateWorkflowMode() {
+        this.workflowToggle.classList.add('active');
+        this.workflowToggle.style.background = 'linear-gradient(135deg, #4CAF50, #45a049)';
+        this.workflowToggle.style.color = 'white';
+        
+        // Restore saved positions first
+        this.restoreWorkflowPositions();
+        
+        // Then show workflow elements (nodes, flowlines, etc.)
+        this.showWorkflowElements();
+        
+        console.log('📋 Workflow mode activated');
+    }
+    
+    /**
+     * Activate matrix mode
+     */
+    activateMatrixMode() {
+        this.eisenhowerToggle.classList.add('active');
+        this.eisenhowerToggle.style.background = 'linear-gradient(135deg, #FF6B6B, #FF5252)';
+        this.eisenhowerToggle.style.color = 'white';
+        
+        // Delegate to matrix controller using new activate method
+        if (this.matrixController) {
+            this.matrixController.activate();
+        }
+        
+        console.log('📊 Matrix mode activated');
+    }
+    
+    /**
+     * Activate opportunities mode
+     */
+    activateOpportunitiesMode() {
+        this.opportunityToggle.classList.add('active');
+        this.opportunityToggle.style.background = 'linear-gradient(135deg, #9C27B0, #7B1FA2)';
+        this.opportunityToggle.style.color = 'white';
+        
+        // Delegate to opportunity controller
+        if (this.opportunityController) {
+            document.dispatchEvent(new CustomEvent('toggleOpportunityMode', { 
+                detail: { enabled: true } 
+            }));
+        }
+        
+        console.log('💼 Opportunities mode activated');
+    }
+    
+    /**
+     * Activate knowledge graph mode
+     */
+    activateKnowledgeGraphMode() {
+        this.knowledgeGraphToggle.classList.add('active');
+        this.knowledgeGraphToggle.style.background = 'linear-gradient(135deg, #76b3fa, #0763f7)';
+        this.knowledgeGraphToggle.style.color = 'white';
+        
+        // Add KG mode class to canvas
+        const canvas = document.getElementById('canvas');
+        canvas.classList.add('kg-mode');
+        
+        // Delegate to KG controller
+        if (window.kgController) {
+            window.kgController.activate();
+        } else {
+            console.warn('Knowledge Graph Controller not available yet');
+        }
+        
+        console.log('🧠 Knowledge Graph mode activated');
+    }
+    
+    /**
+     * Deactivate workflow mode
+     */
+    deactivateWorkflowMode() {
+        // Hide workflow elements with transitions
+        this.hideWorkflowElements();
+    }
+    
+    /**
+     * Deactivate matrix mode
+     */
+    deactivateMatrixMode() {
+        // Delegate to matrix controller using new deactivate method
+        if (this.matrixController && this.matrixController.isMatrixMode) {
+            this.matrixController.deactivate();
+        }
+    }
+    
+    /**
+     * Deactivate opportunities mode
+     */
+    deactivateOpportunitiesMode() {
+        // Delegate to opportunity controller
+        if (this.opportunityController && this.opportunityController.isInOpportunityMode()) {
+            document.dispatchEvent(new CustomEvent('toggleOpportunityMode', { 
+                detail: { enabled: false } 
+            }));
+        }
+    }
+    
+    /**
+     * Deactivate knowledge graph mode
+     */
+    deactivateKnowledgeGraphMode() {
+        // Remove KG mode class from canvas
+        const canvas = document.getElementById('canvas');
+        canvas.classList.remove('kg-mode');
+        
+        // Delegate to KG controller
+        if (window.kgController) {
+            window.kgController.deactivate();
+        }
+    }
+    
+    /**
+     * Show workflow elements (nodes, flowlines, etc.)
+     */
+    showWorkflowElements() {
+        const elements = [
+            ...document.querySelectorAll('.node'),
+            ...document.querySelectorAll('.task-node'),
+            ...document.querySelectorAll('.flowline'),
+            ...document.querySelectorAll('.next-action-slot')
+        ];
+        
+        elements.forEach(element => {
+            if (element) {
+                element.style.display = 'block';
+                element.style.opacity = '0';
+                element.style.transform = 'translateY(20px)';
+                
+                // Force reflow
+                element.offsetHeight;
+                
+                element.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+                element.style.opacity = '1';
+                element.style.transform = 'translateY(0)';
+            }
+        });
+        
+        // Clear transitions after animation
+        setTimeout(() => {
+            elements.forEach(element => {
+                if (element) {
+                    element.style.transition = '';
+                    element.style.transform = '';
+                }
+            });
+        }, 500);
+    }
+    
+    /**
+     * Hide workflow elements
+     */
+    hideWorkflowElements() {
+        const elements = [
+            ...document.querySelectorAll('.node'),
+            ...document.querySelectorAll('.task-node'),
+            ...document.querySelectorAll('.flowline'),
+            ...document.querySelectorAll('.next-action-slot')
+        ];
+        
+        elements.forEach(element => {
+            if (element && element.style.display !== 'none') {
+                element.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+                element.style.opacity = '0';
+                element.style.transform = 'translateY(-20px)';
+                
+                setTimeout(() => {
+                    element.style.display = 'none';
+                }, 500);
+            }
+        });
     }
     
     // Animation interface preservation - delegates to MatrixAnimations
@@ -298,7 +1234,7 @@ class ProcessFlowDesigner {
             'loadWorkflowInput', 'appendWorkflowInput', 'tagModal', 'currentTags',
             'tagCategoryDropdown', 'tagOptionDropdown', 'tagDateInput', 'tagDescriptionInput',
             'tagLinkInput', 'tagCompletedInput', 'tagModalCancel', 'tagModalAdd', 'tagModalSave',
-            'tagContextMenu', 'tagAttributeMenu', 'tagDatePicker', 'eisenhowerToggle', 'eisenhowerMatrix', 'opportunityToggle',
+            'tagContextMenu', 'tagAttributeMenu', 'tagDatePicker', 'workflowToggle', 'eisenhowerToggle', 'eisenhowerMatrix', 'opportunityToggle', 'knowledgeGraphToggle',
             'reassignTasksModal', 'reassignTasksList', 'reassignOptions', 'reassignModalCancel', 'reassignModalConfirm',
             'opportunityModal', 'opportunityTitle', 'opportunityDescription', 'opportunityStatus', 'opportunityTags',
             'opportunityValue', 'opportunityPriority', 'opportunityDeadline', 'opportunityContact', 'opportunityNotes',
@@ -334,6 +1270,11 @@ class ProcessFlowDesigner {
         
         // Initialize workflow ingestion service (Phase 3: Vector Search Integration)
         this.initializeWorkflowIngestion();
+        
+        // Set default mode to workflow
+        setTimeout(() => {
+            this.setMode('workflow');
+        }, 100);
     }
     
     initializeDropdowns() {
@@ -397,10 +1338,11 @@ class ProcessFlowDesigner {
         this.loadWorkflowInput.addEventListener('change', (e) => this.loadWorkflow(e));
         this.appendWorkflowInput.addEventListener('change', (e) => this.appendWorkflow(e));
         
-        // Opportunity toggle event listener
-        this.opportunityToggle.addEventListener('click', () => this.toggleOpportunityMode());
-        
-        // Eisenhower Matrix toggle event listener is now handled by MatrixController
+        // Mode toggle event listeners - exclusive toggle system
+        this.workflowToggle.addEventListener('click', () => this.setMode('workflow'));
+        this.eisenhowerToggle.addEventListener('click', () => this.setMode('matrix'));
+        this.opportunityToggle.addEventListener('click', () => this.setMode('opportunities'));
+        this.knowledgeGraphToggle.addEventListener('click', () => this.setMode('knowledgeGraph'));
         
         // Tag modal event listeners are now handled by ModalManager
         // Note: Tag category dropdown change listener is kept here as it's tag logic, not modal management
@@ -1067,7 +2009,7 @@ class ProcessFlowDesigner {
         // Build application state object
         const appState = {
             taskNodes: this.taskNodes,
-            flowlines: this.flowlineManager ? this.flowlineManager.getFlowlines() : [],
+            flowlines: this.flowlineManager ? this.flowlineManager.getAllFlowlines() : [],
             opportunities: this.opportunityController ? this.opportunityController.getAllOpportunities() : []
         };
         
@@ -1336,10 +2278,7 @@ class ProcessFlowDesigner {
     navigateToOpportunity(opportunityId) {
         // Switch to opportunity view if not already there
         if (!this.opportunityController || !this.opportunityController.isInOpportunityMode()) {
-            const opportunityToggle = document.getElementById('opportunityToggle');
-            if (opportunityToggle) {
-                opportunityToggle.click();
-            }
+            this.setMode('opportunities');
         }
         
         // Highlight the specific opportunity card after a short delay

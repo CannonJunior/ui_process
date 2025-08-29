@@ -647,7 +647,8 @@ class WorkflowBridge {
         
         // Fallback: make a direct API call to the MCP service
         try {
-            const response = await fetch('http://localhost:3001/api/mcp/execute-command', {
+            const mcpUrl = (typeof PortConfig !== 'undefined' ? PortConfig.getMcpServiceUrl() : 'http://localhost:3002');
+            const response = await fetch(`${mcpUrl}/api/mcp/execute-command`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'

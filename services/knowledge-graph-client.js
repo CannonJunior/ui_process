@@ -4,8 +4,8 @@
  */
 
 class KnowledgeGraphClient {
-    constructor(baseURL = 'http://localhost:3001') {
-        this.baseURL = baseURL;
+    constructor(baseURL = null) {
+        this.baseURL = baseURL || (typeof PortConfig !== 'undefined' ? PortConfig.getDatabaseApiUrl() : 'http://localhost:3001');
         this.apiClient = null;
         
         // Initialize API client if available

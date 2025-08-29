@@ -251,6 +251,38 @@ router.post('/relationships', async (req, res) => {
     }
 });
 
+// Get all relationships
+router.get('/relationships', async (req, res) => {
+    try {
+        const result = await query(`
+            SELECT 
+                r.id,
+                r.relationship_type_id,
+                r.source_entity_id,
+                r.target_entity_id,
+                r.properties,
+                r.strength,
+                r.created_at,
+                rt.name as relationship_type,
+                source.name as source_name,
+                source_et.name as source_type,
+                target.name as target_name,
+                target_et.name as target_type
+            FROM kg_relationships r
+            JOIN relationship_types rt ON r.relationship_type_id = rt.id
+            JOIN kg_entities source ON r.source_entity_id = source.id
+            JOIN kg_entities target ON r.target_entity_id = target.id
+            JOIN entity_types source_et ON source.entity_type_id = source_et.id
+            JOIN entity_types target_et ON target.entity_type_id = target_et.id
+            ORDER BY r.created_at DESC
+        `);
+        res.json(result.rows);
+    } catch (error) {
+        console.error('Error fetching relationships:', error);
+        res.status(500).json({ error: 'Failed to fetch relationships' });
+    }
+});
+
 // Query knowledge graph for LLM
 router.post('/query', async (req, res) => {
     try {

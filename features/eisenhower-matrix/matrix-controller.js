@@ -59,25 +59,25 @@ class MatrixController {
     // ==================== MATRIX MODE CONTROL METHODS ====================
     
     /**
-     * Toggle Eisenhower Matrix mode on/off
+     * Activate matrix mode (called by main app's radio button system)
      */
-    toggleEisenhowerMatrix() {
-        this.isMatrixMode = !this.isMatrixMode;
-        
-        // Note: app.isMatrixMode is a getter that returns this.matrixController.isMatrixMode, no need to sync
-        
-        if (this.isMatrixMode) {
+    activate() {
+        if (!this.isMatrixMode) {
+            this.isMatrixMode = true;
             this.enterMatrixMode();
-        } else {
+            console.log('MatrixController: Matrix mode enabled');
+        }
+    }
+    
+    /**
+     * Deactivate matrix mode (called by main app's radio button system)
+     */
+    deactivate() {
+        if (this.isMatrixMode) {
+            this.isMatrixMode = false;
             this.exitMatrixMode();
+            console.log('MatrixController: Matrix mode disabled');
         }
-        
-        // Update button text
-        if (this.eisenhowerToggle) {
-            this.eisenhowerToggle.textContent = this.isMatrixMode ? '📊 Exit Matrix' : '📊 Matrix';
-        }
-        
-        console.log(`MatrixController: Matrix mode ${this.isMatrixMode ? 'enabled' : 'disabled'}`);
     }
     
     /**
@@ -299,9 +299,14 @@ class MatrixController {
     
     /**
      * Store original positions of all nodes before matrix mode
+     * Uses main script's localStorage positions to ensure we restore to true Workflow positions
      */
     storeOriginalNodePositions() {
         this.originalNodePositions.clear();
+        
+        // Get the true Workflow positions from main script's localStorage system
+        const storedWorkflowPositions = this.app.getStoredWorkflowPositions ? 
+            this.app.getStoredWorkflowPositions() : {};
         
         // Get nodes from main app
         const nodes = this.app.nodes || [];
@@ -312,19 +317,26 @@ class MatrixController {
                 // For task nodes, store the task container position
                 const taskContainer = node.closest('.task-container');
                 if (taskContainer) {
-                    this.originalNodePositions.set(node.dataset.id, {
+                    // Try to get stored position first, fall back to current DOM position
+                    const taskId = node.dataset.id;
+                    const storedPos = storedWorkflowPositions.taskNodes?.[taskId];
+                    
+                    this.originalNodePositions.set(taskId, {
                         element: taskContainer,
-                        x: taskContainer.offsetLeft,
-                        y: taskContainer.offsetTop,
+                        x: storedPos ? storedPos.x : taskContainer.offsetLeft,
+                        y: storedPos ? storedPos.y : taskContainer.offsetTop,
                         type: 'task-container'
                     });
                 }
             } else {
                 // For regular nodes (process, decision, terminal)
-                this.originalNodePositions.set(node.dataset.id, {
+                const nodeId = node.dataset.id;
+                const storedPos = storedWorkflowPositions.nodes?.[nodeId];
+                
+                this.originalNodePositions.set(nodeId, {
                     element: node,
-                    x: node.offsetLeft,
-                    y: node.offsetTop,
+                    x: storedPos ? storedPos.x : node.offsetLeft,
+                    y: storedPos ? storedPos.y : node.offsetTop,
                     type: 'node'
                 });
             }
@@ -334,10 +346,13 @@ class MatrixController {
         if (this.canvas) {
             const nextActionSlots = this.canvas.querySelectorAll('.next-action-slot');
             nextActionSlots.forEach(slot => {
-                this.originalNodePositions.set(`slot-${slot.dataset.taskId}`, {
+                const taskId = slot.dataset.taskId;
+                const storedPos = storedWorkflowPositions.nextActionSlots?.[taskId];
+                
+                this.originalNodePositions.set(`slot-${taskId}`, {
                     element: slot,
-                    x: slot.offsetLeft,
-                    y: slot.offsetTop,
+                    x: storedPos ? storedPos.x : slot.offsetLeft,
+                    y: storedPos ? storedPos.y : slot.offsetTop,
                     type: 'next-action-slot'
                 });
             });
@@ -347,17 +362,26 @@ class MatrixController {
         this.storeOriginalFlowlinePositions();
         
         console.log('MatrixController: Stored original positions for', this.originalNodePositions.size, 'elements');
+        console.log('MatrixController: Using stored positions from localStorage:', !!storedWorkflowPositions.nodes);
     }
     
     /**
      * Store original positions of flowlines before matrix mode
+     * Uses stored flowline data when available for true Workflow state
      */
     storeOriginalFlowlinePositions() {
+        // Get the true Workflow positions from main script's localStorage system
+        const storedWorkflowPositions = this.app.getStoredWorkflowPositions ? 
+            this.app.getStoredWorkflowPositions() : {};
+            
         // Get flowlines from flowline manager
         const flowlines = this.app.flowlineManager ? this.app.flowlineManager.getAllFlowlines() : [];
         
         flowlines.forEach(flowline => {
             if (flowline.element && flowline.source && flowline.target) {
+                // Try to get stored flowline data first
+                const storedFlowline = storedWorkflowPositions.flowlines?.[flowline.id];
+                
                 // Store flowline path data by storing the source and target positions
                 this.originalNodePositions.set(`flowline-${flowline.id}`, {
                     element: flowline.element,
@@ -365,8 +389,8 @@ class MatrixController {
                     targetId: flowline.target.dataset.id,
                     type: 'flowline',
                     flowlineType: flowline.type,
-                    // Store current path attribute for restoration
-                    originalPath: flowline.element.getAttribute('d')
+                    // Use stored path if available, otherwise use current path
+                    originalPath: storedFlowline?.path || flowline.element.getAttribute('d')
                 });
             }
         });

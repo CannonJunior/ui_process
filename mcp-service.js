@@ -14,7 +14,7 @@ const MCPBridge = require('./services/mcp-bridge');
 class MCPService {
     constructor() {
         this.app = express();
-        this.port = process.env.MCP_PORT || 3001;
+        this.port = process.env.MCP_PORT || 3002;
         this.mcpBridge = new MCPBridge();
         
         this.setupMiddleware();
@@ -371,7 +371,7 @@ Commands:
   help          Show this help message
 
 Environment Variables:
-  MCP_PORT      Port to run the service on (default: 3001)
+  MCP_PORT      Port to run the service on (default: 3002)
   PYTHON_ENV    Python virtual environment path (default: venv_linux)
 
 Examples:

@@ -14,6 +14,13 @@ class KnowledgeGraphController {
         this.init();
     }
     
+    /**
+     * Get the base API URL for KG operations
+     */
+    getApiBaseUrl() {
+        return typeof PortConfig !== 'undefined' ? PortConfig.getDatabaseApiUrl() : 'http://localhost:3001';
+    }
+    
     init() {
         this.setupEventListeners();
         this.setupKeyboardShortcuts();
@@ -42,11 +49,8 @@ class KnowledgeGraphController {
     }
     
     setupEventListeners() {
-        // KG Toggle button
-        const kgToggle = document.getElementById('knowledgeGraphToggle');
-        if (kgToggle) {
-            kgToggle.addEventListener('click', () => this.toggleKGMode());
-        }
+        // Note: KG Toggle button is now handled by main script's radio button system
+        // The main script calls our methods directly via setMode('knowledgeGraph')
         
         // Add KG Node from dropdown
         document.addEventListener('click', (e) => {
@@ -87,15 +91,12 @@ class KnowledgeGraphController {
         }
     }
     
-    toggleKGMode() {
-        this.isKGMode = !this.isKGMode;
-        const canvas = document.getElementById('canvas');
-        const kgToggle = document.getElementById('knowledgeGraphToggle');
-        
-        if (this.isKGMode) {
-            canvas.classList.add('kg-mode');
-            kgToggle.style.background = 'linear-gradient(135deg, #76b3fa, #0763f7)';
-            kgToggle.style.color = 'white';
+    /**
+     * Activate Knowledge Graph mode (called by main script)
+     */
+    activate() {
+        if (!this.isKGMode) {
+            this.isKGMode = true;
             console.log('🧠 Knowledge Graph mode activated');
             
             // Load existing KG nodes from API or show existing ones
@@ -105,21 +106,36 @@ class KnowledgeGraphController {
                 // Show existing nodes with transition
                 this.showKGNodesWithTransition();
             }
-        } else {
-            canvas.classList.remove('kg-mode');
-            kgToggle.style.background = '';
-            kgToggle.style.color = '';
-            console.log('📊 Regular process mode activated');
+        }
+    }
+    
+    /**
+     * Deactivate Knowledge Graph mode (called by main script)
+     */
+    deactivate() {
+        if (this.isKGMode) {
+            this.isKGMode = false;
+            console.log('📊 Knowledge Graph mode deactivated');
             
             // Animate KG nodes off-canvas (similar to opportunity cards)
             this.hideKGNodesWithTransition();
         }
     }
     
+    /**
+     * Legacy toggle method - kept for backward compatibility but now managed by main script
+     * @deprecated Use activate()/deactivate() methods instead
+     */
+    toggleKGMode() {
+        console.warn('toggleKGMode() is deprecated. Mode switching is now managed by the main script.');
+        // This method is kept for backward compatibility but does nothing
+        // The main script handles mode switching via activate()/deactivate()
+    }
+    
     async loadKGNodesFromAPI() {
         try {
             console.log('📡 Loading KG nodes from API...');
-            const response = await fetch('http://localhost:3001/api/v1/kg/entities');
+            const response = await fetch(`${this.getApiBaseUrl()}/api/v1/kg/entities`);
             
             if (!response.ok) {
                 throw new Error(`API request failed: ${response.status}`);
@@ -713,7 +729,7 @@ class KnowledgeGraphController {
         try {
             console.log('💾 Saving relationship to API...', relationshipData);
             
-            const response = await fetch('http://localhost:3001/api/v1/kg/relationships', {
+            const response = await fetch(`${this.getApiBaseUrl()}/api/v1/kg/relationships`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -876,7 +892,7 @@ class KnowledgeGraphController {
     async loadKGConnectionsFromAPI() {
         try {
             console.log('📡 Loading KG relationships from API...');
-            const response = await fetch('http://localhost:3001/api/v1/kg/relationships');
+            const response = await fetch(`${this.getApiBaseUrl()}/api/v1/kg/relationships`);
             
             if (!response.ok) {
                 throw new Error(`API request failed: ${response.status}`);
@@ -1129,7 +1145,7 @@ class KnowledgeGraphController {
             
             console.log('💾 Saving KG node to API...', payload);
             
-            const response = await fetch('http://localhost:3001/api/v1/kg/entities', {
+            const response = await fetch(`${this.getApiBaseUrl()}/api/v1/kg/entities`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -1223,15 +1239,16 @@ class KnowledgeGraphController {
         // Show and animate each KG node back onto canvas
         this.kgNodes.forEach(nodeData => {
             if (nodeData.element) {
-                // Set initial off-canvas position
+                // First, make sure the element is visible and reset any previous transitions
                 nodeData.element.style.display = 'block';
+                nodeData.element.style.transition = 'none'; // Disable transitions temporarily
                 nodeData.element.style.opacity = '0';
                 nodeData.element.style.transform = 'translateX(-100vw)';
                 
-                // Force reflow
+                // Force reflow to apply the initial styles
                 nodeData.element.offsetHeight;
                 
-                // Animate to normal position
+                // Now enable transitions and animate to normal position
                 nodeData.element.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
                 nodeData.element.style.opacity = '1';
                 nodeData.element.style.transform = 'translateX(0)';
@@ -1241,7 +1258,15 @@ class KnowledgeGraphController {
         // Show connections as well
         this.showKGConnectionsWithTransition();
         
-        console.log('✅ KG nodes animated on-canvas');
+        // Clean up transition styles after animation completes
+        setTimeout(() => {
+            this.kgNodes.forEach(nodeData => {
+                if (nodeData.element) {
+                    nodeData.element.style.transition = '';
+                }
+            });
+            console.log('✅ KG nodes animated on-canvas');
+        }, 500);
     }
     
     /**
@@ -1250,14 +1275,22 @@ class KnowledgeGraphController {
     showKGConnectionsWithTransition() {
         const connectionsLayer = document.getElementById('kgConnections');
         if (connectionsLayer) {
+            // Reset any previous styles and make visible
             connectionsLayer.style.display = 'block';
+            connectionsLayer.style.transition = 'none'; // Disable transitions temporarily
             connectionsLayer.style.opacity = '0';
             
-            // Force reflow
+            // Force reflow to apply the initial styles
             connectionsLayer.offsetHeight;
             
+            // Now enable transitions and animate to visible
             connectionsLayer.style.transition = 'opacity 0.5s ease';
             connectionsLayer.style.opacity = '1';
+            
+            // Clean up transition styles after animation completes
+            setTimeout(() => {
+                connectionsLayer.style.transition = '';
+            }, 500);
         }
     }
 }

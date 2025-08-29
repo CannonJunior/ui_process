@@ -75,6 +75,12 @@ body {
     background-color: #0056b3;
 }
 
+.toolbar-button.active {
+    transform: scale(1.05);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    font-weight: bold;
+}
+
 /* Toolbar Logo */
 .toolbar-logo {
     display: flex;
@@ -2122,7 +2128,9 @@ input.node-input {
 
 .canvas.kg-mode .node,
 .canvas.kg-mode .task,
-.canvas.kg-mode .flowline {
+.canvas.kg-mode .task-node,
+.canvas.kg-mode .flowline,
+.canvas.kg-mode .next-action-slot {
     opacity: 0;
     pointer-events: none;
     transition: opacity 500ms ease-in-out;
