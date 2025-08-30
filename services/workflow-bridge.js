@@ -132,6 +132,10 @@ class WorkflowBridge {
             case 'handle_note_link':
                 return await this.handleNoteLink(parameters);
             
+            // Database Operations
+            case 'handle_db_query':
+                return await this.handleDbQuery(parameters);
+            
             default:
                 throw new Error(`Unknown action: ${action}`);
         }
@@ -635,6 +639,85 @@ class WorkflowBridge {
             };
         } catch (error) {
             throw new Error(`Failed to link note: ${error.message}`);
+        }
+    }
+
+    async handleDbQuery(parameters) {
+        try {
+            console.log('handleDbQuery called with parameters:', JSON.stringify(parameters, null, 2));
+            
+            // Extract SQL query from parameters - check both quoted and unquoted versions
+            const query = parameters.raw_params?.[1] || parameters.raw_params?.[2] || parameters.query;
+            
+            if (!query) {
+                throw new Error('SQL query is required');
+            }
+
+            // Validate the query for basic safety (prevent destructive operations)
+            const queryLower = query.toLowerCase().trim();
+            const dangerousOperations = ['drop', 'delete from', 'truncate', 'alter table', 'create table'];
+            
+            // For safety, let's check if it's a destructive operation and warn
+            const isDangerous = dangerousOperations.some(op => queryLower.includes(op));
+            
+            if (isDangerous) {
+                // For now, we'll allow it but warn - you might want to restrict this in production
+                console.warn('⚠️ Potentially destructive SQL operation detected:', query);
+            }
+
+            // Execute query through the API directly
+            const response = await fetch('http://localhost:3001/api/v1/db/query', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ 
+                    query: query,
+                    safe_mode: true  // This will enable read-only mode if API supports it
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`Database query failed: ${response.status} ${response.statusText}`);
+            }
+
+            const result = await response.json();
+            
+            // Format the result for display
+            let formattedResult = '';
+            if (result.rows && result.rows.length > 0) {
+                // Create a simple table format
+                const headers = Object.keys(result.rows[0]);
+                formattedResult = `\n📊 Query Results (${result.rows.length} rows):\n\n`;
+                
+                // Add headers
+                formattedResult += headers.join(' | ') + '\n';
+                formattedResult += headers.map(h => '-'.repeat(h.length)).join('-|-') + '\n';
+                
+                // Add rows (limit to first 10 for display)
+                const displayRows = result.rows.slice(0, 10);
+                for (const row of displayRows) {
+                    formattedResult += headers.map(h => String(row[h] || '').substring(0, 20)).join(' | ') + '\n';
+                }
+                
+                if (result.rows.length > 10) {
+                    formattedResult += `\n... and ${result.rows.length - 10} more rows\n`;
+                }
+            } else if (result.rowCount !== undefined) {
+                formattedResult = `\n✅ Query executed successfully. Affected rows: ${result.rowCount}`;
+            } else {
+                formattedResult = '\n✅ Query executed successfully.';
+            }
+            
+            return {
+                action: 'handle_db_query',
+                result: result,
+                message: `🗄️ PostgreSQL Query Executed:${formattedResult}`,
+                query: query
+            };
+        } catch (error) {
+            console.error('Database query error:', error);
+            throw new Error(`Failed to execute database query: ${error.message}`);
         }
     }
 

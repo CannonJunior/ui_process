@@ -1,0 +1,317 @@
+/**
+ * Contextual Background System
+ * Backgrounds that adapt to workflow mode to support different thinking patterns
+ */
+
+#canvas {
+    background-color: var(--bg-primary);
+    transition: var(--theme-transition);
+    position: relative;
+    overflow: hidden;
+}
+
+/* Workflow Mode - Grid for systematic organization */
+#canvas[data-mode="workflow"], #canvas:not([data-mode]) {
+    background: 
+        var(--bg-primary)
+        linear-gradient(90deg, var(--border-secondary) 1px, transparent 1px),
+        linear-gradient(var(--border-secondary) 1px, transparent 1px);
+    background-size: 40px 40px;
+    background-position: 0 0, 0 0;
+}
+
+/* Matrix Mode - Subtle quadrant indication with warm undertones */
+#canvas[data-mode="matrix"] {
+    background: 
+        var(--bg-primary),
+        radial-gradient(circle at 25% 25%, hsla(15, 25%, 75%, 0.08) 0%, transparent 35%),
+        radial-gradient(circle at 75% 25%, hsla(25, 30%, 80%, 0.06) 0%, transparent 35%),
+        radial-gradient(circle at 25% 75%, hsla(35, 25%, 78%, 0.07) 0%, transparent 35%),
+        radial-gradient(circle at 75% 75%, hsla(45, 35%, 82%, 0.05) 0%, transparent 35%);
+    background-size: 
+        100% 100%,
+        300px 300px, 
+        280px 280px, 
+        320px 320px, 
+        260px 260px;
+    animation: matrix-pulse 12s ease-in-out infinite alternate;
+}
+
+@keyframes matrix-pulse {
+    0% { 
+        background-position: 
+            0% 0%,
+            0% 0%, 
+            100% 100%, 
+            50% 50%, 
+            25% 75%; 
+    }
+    100% { 
+        background-position: 
+            0% 0%,
+            50% 50%, 
+            0% 0%, 
+            100% 0%, 
+            75% 25%; 
+    }
+}
+
+/* Opportunities Mode - Growth-oriented flowing patterns */
+#canvas[data-mode="opportunities"] {
+    background: 
+        var(--bg-primary),
+        radial-gradient(ellipse at 20% 80%, hsla(145, 30%, 70%, 0.1) 0%, transparent 45%),
+        radial-gradient(ellipse at 80% 20%, hsla(155, 35%, 75%, 0.08) 0%, transparent 45%),
+        radial-gradient(ellipse at 40% 40%, hsla(135, 25%, 65%, 0.06) 0%, transparent 45%);
+    background-size: 
+        100% 100%,
+        400px 300px, 
+        350px 250px, 
+        300px 400px;
+    animation: opportunity-flow 20s ease-in-out infinite alternate;
+}
+
+@keyframes opportunity-flow {
+    0% { 
+        background-position: 
+            0% 0%,
+            0% 0%, 
+            100% 100%, 
+            50% 50%; 
+    }
+    50% {
+        background-position: 
+            0% 0%,
+            25% 75%, 
+            75% 25%, 
+            0% 100%; 
+    }
+    100% { 
+        background-position: 
+            0% 0%,
+            100% 100%, 
+            0% 0%, 
+            100% 0%; 
+    }
+}
+
+/* Knowledge Graph Mode - Neural network inspired subtle connections */
+#canvas[data-mode="knowledgeGraph"] {
+    background: 
+        var(--bg-primary),
+        radial-gradient(circle at 30% 20%, hsla(280, 25%, 70%, 0.08) 0%, transparent 30%),
+        radial-gradient(circle at 70% 80%, hsla(290, 30%, 75%, 0.06) 0%, transparent 30%),
+        radial-gradient(circle at 80% 30%, hsla(270, 20%, 65%, 0.07) 0%, transparent 30%),
+        radial-gradient(circle at 20% 70%, hsla(300, 35%, 80%, 0.05) 0%, transparent 30%),
+        radial-gradient(circle at 50% 50%, hsla(285, 15%, 60%, 0.04) 0%, transparent 30%);
+    background-size: 
+        100% 100%,
+        200px 200px, 
+        180px 180px, 
+        220px 220px, 
+        160px 160px,
+        240px 240px;
+    animation: knowledge-drift 25s ease-in-out infinite alternate;
+}
+
+@keyframes knowledge-drift {
+    0% { 
+        background-position: 
+            0% 0%,
+            0% 0%, 
+            100% 100%, 
+            50% 50%, 
+            25% 75%,
+            75% 25%; 
+    }
+    33% {
+        background-position: 
+            0% 0%,
+            33% 66%, 
+            66% 33%, 
+            100% 0%, 
+            0% 100%,
+            50% 50%; 
+    }
+    66% {
+        background-position: 
+            0% 0%,
+            66% 33%, 
+            33% 66%, 
+            0% 100%, 
+            100% 0%,
+            25% 75%; 
+    }
+    100% { 
+        background-position: 
+            0% 0%,
+            100% 0%, 
+            0% 100%, 
+            75% 25%, 
+            50% 50%,
+            100% 100%; 
+    }
+}
+
+/* Canvas overlay for additional texture in specific modes */
+#canvas::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity var(--theme-transition);
+}
+
+/* Matrix mode overlay - subtle grid enhancement */
+#canvas[data-mode="matrix"]::before {
+    opacity: 1;
+    background: 
+        linear-gradient(90deg, hsla(var(--primary-hue), 10%, 50%, 0.05) 1px, transparent 1px),
+        linear-gradient(hsla(var(--primary-hue), 10%, 50%, 0.05) 1px, transparent 1px);
+    background-size: 100px 100px;
+}
+
+/* Opportunities mode overlay - organic texture */
+#canvas[data-mode="opportunities"]::before {
+    opacity: 1;
+    background: 
+        repeating-linear-gradient(
+            45deg,
+            transparent,
+            transparent 2px,
+            hsla(var(--primary-hue), 15%, 70%, 0.02) 2px,
+            hsla(var(--primary-hue), 15%, 70%, 0.02) 4px
+        );
+}
+
+/* Knowledge Graph mode overlay - dot matrix */
+#canvas[data-mode="knowledgeGraph"]::before {
+    opacity: 1;
+    background-image: 
+        radial-gradient(circle at center, 
+            hsla(var(--primary-hue), 20%, 60%, 0.1) 1px, 
+            transparent 1px
+        );
+    background-size: 50px 50px;
+    background-position: 0 0, 25px 25px;
+}
+
+/* Responsive adjustments for background patterns */
+@media (max-width: 1024px) {
+    #canvas[data-mode="matrix"] {
+        background-size: 
+            100% 100%,
+            250px 250px, 
+            230px 230px, 
+            270px 270px, 
+            210px 210px;
+    }
+    
+    #canvas[data-mode="opportunities"] {
+        background-size: 
+            100% 100%,
+            350px 250px, 
+            300px 200px, 
+            250px 350px;
+    }
+    
+    #canvas[data-mode="knowledgeGraph"] {
+        background-size: 
+            100% 100%,
+            150px 150px, 
+            130px 130px, 
+            170px 170px, 
+            110px 110px,
+            190px 190px;
+    }
+}
+
+@media (max-width: 768px) {
+    #canvas[data-mode="workflow"] {
+        background-size: 30px 30px;
+    }
+    
+    #canvas[data-mode="matrix"]::before {
+        background-size: 75px 75px;
+    }
+    
+    #canvas[data-mode="knowledgeGraph"]::before {
+        background-size: 40px 40px;
+    }
+}
+
+@media (max-width: 480px) {
+    #canvas[data-mode="workflow"] {
+        background-size: 20px 20px;
+    }
+    
+    /* Simplify patterns on mobile for better performance */
+    #canvas[data-mode="matrix"] {
+        background: 
+            var(--bg-primary),
+            radial-gradient(circle at 50% 50%, hsla(15, 25%, 75%, 0.1) 0%, transparent 50%);
+        background-size: 100% 100%, 200px 200px;
+    }
+    
+    #canvas[data-mode="opportunities"] {
+        background: 
+            var(--bg-primary),
+            radial-gradient(ellipse at 50% 50%, hsla(145, 30%, 70%, 0.1) 0%, transparent 50%);
+        background-size: 100% 100%, 250px 200px;
+    }
+    
+    #canvas[data-mode="knowledgeGraph"] {
+        background: 
+            var(--bg-primary),
+            radial-gradient(circle at 50% 50%, hsla(280, 25%, 70%, 0.08) 0%, transparent 40%);
+        background-size: 100% 100%, 180px 180px;
+    }
+}
+
+/* High contrast mode - remove decorative backgrounds */
+@media (prefers-contrast: high) {
+    #canvas[data-mode] {
+        background: var(--bg-primary) !important;
+        animation: none !important;
+    }
+    
+    #canvas::before {
+        display: none !important;
+    }
+    
+    /* Keep only functional grid for workflow mode */
+    #canvas[data-mode="workflow"] {
+        background: 
+            var(--bg-primary)
+            linear-gradient(90deg, var(--text-secondary) 1px, transparent 1px),
+            linear-gradient(var(--text-secondary) 1px, transparent 1px) !important;
+        background-size: 40px 40px !important;
+    }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    #canvas[data-mode] {
+        animation: none !important;
+    }
+    
+    #canvas {
+        transition: background-color 0.01ms !important;
+    }
+}
+
+/* Print styles - remove all backgrounds */
+@media print {
+    #canvas[data-mode] {
+        background: white !important;
+        animation: none !important;
+    }
+    
+    #canvas::before {
+        display: none !important;
+    }
+}

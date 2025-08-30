@@ -1,0 +1,330 @@
+/**
+ * Workflow-Specific Node Shapes
+ * Visual language that communicates function through form
+ */
+
+/* Base node styling with adaptive theme integration */
+.node {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: move;
+    user-select: none;
+    font-size: clamp(10px, 2.5vw, 12px);
+    font-weight: 500;
+    color: var(--text-primary);
+    background-color: var(--bg-secondary);
+    border: 2px solid var(--border-primary);
+    z-index: 10;
+    max-width: min(200px, 25vw);
+    word-wrap: break-word;
+    text-align: center;
+    padding: 8px 12px;
+    min-height: 40px;
+    min-width: 80px;
+    
+    /* Modern shadow system */
+    filter: drop-shadow(0 4px 12px hsla(var(--shadow-color), var(--shadow-opacity)));
+    
+    /* Smooth transitions */
+    transition: 
+        transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+        filter 0.3s ease,
+        background-color var(--theme-transition),
+        border-color var(--theme-transition),
+        color var(--theme-transition);
+}
+
+/* Process Node - Hexagonal for flow and systematic thinking */
+.node[data-type="process"] {
+    clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+    background: linear-gradient(135deg, 
+        var(--node-process-light),
+        var(--node-process)
+    );
+    border-color: var(--node-process);
+}
+
+/* Decision Node - Diamond for choice points */
+.node[data-type="decision"] {
+    clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+    background: linear-gradient(45deg,
+        var(--node-decision-light),
+        var(--node-decision)
+    );
+    border-color: var(--node-decision);
+    min-width: 100px; /* Slightly wider for diamond shape */
+}
+
+/* Terminal Node - Circle for completion and endpoints */
+.node[data-type="terminal"] {
+    clip-path: circle(50%);
+    background: radial-gradient(circle,
+        var(--node-terminal-light),
+        var(--node-terminal)
+    );
+    border-color: var(--node-terminal);
+    min-width: 90px;
+    min-height: 90px;
+}
+
+/* Task Node - Rounded rectangle for actionable items */
+.node[data-type="task"], .task-node {
+    border-radius: 12px;
+    background: linear-gradient(135deg,
+        var(--node-task-light),
+        var(--node-task)
+    );
+    border-color: var(--node-task);
+}
+
+/* Hover states with subtle lift and enhanced shadows */
+.node:hover {
+    transform: translateY(-2px);
+    filter: drop-shadow(0 8px 24px hsla(var(--shadow-color), calc(var(--shadow-opacity) * 1.5)));
+    z-index: 15;
+}
+
+.node:active {
+    transform: translateY(-1px);
+    filter: drop-shadow(0 6px 18px hsla(var(--shadow-color), calc(var(--shadow-opacity) * 1.2)));
+}
+
+/* Selected state */
+.node.selected {
+    border-width: 3px;
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 3px hsla(var(--primary-hue), calc(var(--saturation) + 20%), var(--lightness), 0.3);
+    z-index: 20;
+}
+
+/* Focus state for accessibility */
+.node:focus-visible {
+    outline: 2px solid var(--focus-outline);
+    outline-offset: 4px;
+}
+
+/* Dragging state */
+.node.dragging {
+    z-index: 1000;
+    transform: rotate(3deg) scale(1.05);
+    filter: drop-shadow(0 12px 32px hsla(var(--shadow-color), calc(var(--shadow-opacity) * 2)));
+}
+
+/* Different sizes for hierarchy */
+.node.size-small {
+    font-size: 10px;
+    padding: 6px 8px;
+    min-height: 32px;
+    min-width: 64px;
+}
+
+.node.size-large {
+    font-size: 14px;
+    padding: 12px 16px;
+    min-height: 56px;
+    min-width: 112px;
+}
+
+/* Priority indicators */
+.node[data-priority="high"]::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    background: linear-gradient(45deg, 
+        hsl(0, 70%, 60%), 
+        hsl(15, 70%, 60%), 
+        hsl(30, 70%, 60%)
+    );
+    background-size: 300% 300%;
+    border-radius: inherit;
+    z-index: -1;
+    animation: priority-pulse 2s ease-in-out infinite alternate;
+}
+
+@keyframes priority-pulse {
+    0% { 
+        background-position: 0% 50%;
+        opacity: 0.7;
+    }
+    100% { 
+        background-position: 100% 50%;
+        opacity: 1;
+    }
+}
+
+.node[data-priority="medium"]::after {
+    content: '⚠️';
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    font-size: 16px;
+    opacity: 0.8;
+}
+
+.node[data-priority="low"] {
+    opacity: 0.85;
+}
+
+/* Status indicators */
+.node[data-status="completed"] {
+    position: relative;
+    opacity: 0.8;
+}
+
+.node[data-status="completed"]::after {
+    content: '✓';
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    width: 20px;
+    height: 20px;
+    background: hsl(145, 60%, 50%);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.node[data-status="in-progress"] {
+    position: relative;
+}
+
+.node[data-status="in-progress"]::after {
+    content: '';
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    width: 8px;
+    height: 8px;
+    background: hsl(45, 80%, 60%);
+    border-radius: 50%;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { 
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% { 
+        opacity: 0.5;
+        transform: scale(1.2);
+    }
+}
+
+.node[data-status="blocked"] {
+    border-style: dashed;
+    opacity: 0.7;
+}
+
+.node[data-status="blocked"]::after {
+    content: '🚫';
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    font-size: 16px;
+}
+
+/* Node content styling */
+.node-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    width: 100%;
+    height: 100%;
+    justify-content: center;
+}
+
+.node-title {
+    font-weight: 600;
+    line-height: 1.2;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.node-subtitle {
+    font-size: 0.85em;
+    opacity: 0.8;
+    font-weight: 400;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .node {
+        font-size: 11px;
+        padding: 6px 10px;
+        min-height: 36px;
+        min-width: 72px;
+    }
+    
+    .node[data-type="terminal"] {
+        min-width: 80px;
+        min-height: 80px;
+    }
+    
+    .node[data-type="decision"] {
+        min-width: 85px;
+    }
+}
+
+@media (max-width: 480px) {
+    .node {
+        font-size: 10px;
+        padding: 4px 8px;
+        min-height: 32px;
+        min-width: 64px;
+    }
+    
+    .node[data-type="terminal"] {
+        min-width: 70px;
+        min-height: 70px;
+    }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .node {
+        border-width: 3px;
+        filter: none;
+        box-shadow: none;
+    }
+    
+    .node:hover {
+        transform: none;
+        border-width: 4px;
+    }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    .node,
+    .node::before,
+    .node::after {
+        animation: none !important;
+        transition-duration: 0.01ms !important;
+    }
+    
+    .node:hover {
+        transform: none;
+    }
+    
+    .node.dragging {
+        transform: scale(1.02);
+    }
+}

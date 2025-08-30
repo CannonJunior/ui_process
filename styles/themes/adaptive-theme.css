@@ -1,0 +1,127 @@
+/**
+ * Adaptive Context Theme System
+ * Colors that adapt based on workflow mode for enhanced cognitive alignment
+ */
+
+:root {
+  /* Base theme variables that adapt to mode */
+  --primary-hue: 210;
+  --saturation: 15%;
+  --lightness: 45%;
+  --theme-transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  
+  /* Mode-specific emotional color mappings */
+}
+
+/* Mode-specific hue adjustments for emotional resonance */
+:root[data-mode="workflow"] { 
+  --primary-hue: 210; /* Blue - Logic, Flow, Systematic thinking */
+}
+
+:root[data-mode="matrix"] { 
+  --primary-hue: 15; /* Orange - Urgency, Decision-making, Priority */
+}
+
+:root[data-mode="opportunities"] { 
+  --primary-hue: 145; /* Green - Growth, Opportunity, Progress */
+}
+
+:root[data-mode="knowledgeGraph"] { 
+  --primary-hue: 280; /* Purple - Knowledge, Wisdom, Discovery */
+}
+
+/* Light Mode Palette - "Dawn" */
+:root[data-theme="light"], :root {
+  --bg-primary: hsl(var(--primary-hue), calc(var(--saturation) * 0.3), 96%);
+  --bg-secondary: hsl(var(--primary-hue), calc(var(--saturation) * 0.4), 99%);
+  --bg-tertiary: hsl(var(--primary-hue), calc(var(--saturation) * 0.5), 92%);
+  --text-primary: hsl(var(--primary-hue), calc(var(--saturation) * 2), 15%);
+  --text-secondary: hsl(var(--primary-hue), calc(var(--saturation) * 1.5), 45%);
+  --accent-primary: hsl(var(--primary-hue), var(--saturation), var(--lightness));
+  --accent-secondary: hsl(var(--primary-hue), calc(var(--saturation) + 10%), calc(var(--lightness) + 15%));
+  --border-primary: hsl(var(--primary-hue), calc(var(--saturation) * 0.8), 80%);
+  --border-secondary: hsl(var(--primary-hue), calc(var(--saturation) * 0.6), 88%);
+  --shadow-color: hsl(var(--primary-hue), 30%, 30%);
+  --shadow-opacity: 0.15;
+}
+
+/* Dark Mode Palette - "Midnight" */
+:root[data-theme="dark"] {
+  --bg-primary: hsl(var(--primary-hue), calc(var(--saturation) * 0.8), 8%);
+  --bg-secondary: hsl(var(--primary-hue), calc(var(--saturation) * 0.9), 12%);
+  --bg-tertiary: hsl(var(--primary-hue), calc(var(--saturation) * 1.1), 16%);
+  --text-primary: hsl(var(--primary-hue), calc(var(--saturation) * 0.4), 92%);
+  --text-secondary: hsl(var(--primary-hue), calc(var(--saturation) * 0.6), 75%);
+  --accent-primary: hsl(var(--primary-hue), calc(var(--saturation) + 15%), calc(var(--lightness) + 25%));
+  --accent-secondary: hsl(var(--primary-hue), calc(var(--saturation) + 20%), calc(var(--lightness) + 35%));
+  --border-primary: hsl(var(--primary-hue), calc(var(--saturation) * 1.2), 35%);
+  --border-secondary: hsl(var(--primary-hue), calc(var(--saturation) * 1.0), 25%);
+  --shadow-color: hsl(var(--primary-hue), 50%, 5%);
+  --shadow-opacity: 0.4;
+}
+
+/* Sunrise Mode Palette - "Golden Hour" */
+:root[data-theme="sunrise"] {
+  --bg-primary: hsl(calc(var(--primary-hue) + 30), calc(var(--saturation) + 25%), 94%);
+  --bg-secondary: hsl(calc(var(--primary-hue) + 30), calc(var(--saturation) + 30%), 97%);
+  --bg-tertiary: hsl(calc(var(--primary-hue) + 30), calc(var(--saturation) + 20%), 88%);
+  --text-primary: hsl(calc(var(--primary-hue) + 30), calc(var(--saturation) * 2), 20%);
+  --text-secondary: hsl(calc(var(--primary-hue) + 30), calc(var(--saturation) * 1.5), 50%);
+  --accent-primary: hsl(calc(var(--primary-hue) + 30), calc(var(--saturation) + 20%), calc(var(--lightness) - 5%));
+  --accent-secondary: hsl(calc(var(--primary-hue) + 30), calc(var(--saturation) + 30%), calc(var(--lightness) + 10%));
+  --border-primary: hsl(calc(var(--primary-hue) + 30), calc(var(--saturation) + 15%), 70%);
+  --border-secondary: hsl(calc(var(--primary-hue) + 30), calc(var(--saturation) + 10%), 78%);
+  --shadow-color: hsl(calc(var(--primary-hue) + 30), 40%, 40%);
+  --shadow-opacity: 0.2;
+}
+
+/* Interactive states */
+:root {
+  --hover-bg: hsla(var(--primary-hue), calc(var(--saturation) + 10%), calc(var(--lightness) + 35%), 0.1);
+  --active-bg: hsla(var(--primary-hue), calc(var(--saturation) + 15%), calc(var(--lightness) + 30%), 0.15);
+  --focus-outline: hsl(var(--primary-hue), calc(var(--saturation) + 20%), var(--lightness));
+  --focus-shadow: hsla(var(--primary-hue), calc(var(--saturation) + 20%), var(--lightness), 0.4);
+}
+
+/* Node-specific color variations */
+:root {
+  --node-process: hsl(var(--primary-hue), var(--saturation), var(--lightness));
+  --node-process-light: hsl(var(--primary-hue), calc(var(--saturation) + 10%), calc(var(--lightness) + 25%));
+  
+  --node-decision: hsl(calc(var(--primary-hue) + 20), var(--saturation), var(--lightness));
+  --node-decision-light: hsl(calc(var(--primary-hue) + 20), calc(var(--saturation) + 10%), calc(var(--lightness) + 25%));
+  
+  --node-terminal: hsl(calc(var(--primary-hue) + 40), calc(var(--saturation) + 15%), var(--lightness));
+  --node-terminal-light: hsl(calc(var(--primary-hue) + 40), calc(var(--saturation) + 20%), calc(var(--lightness) + 25%));
+  
+  --node-task: hsl(calc(var(--primary-hue) - 10), var(--saturation), calc(var(--lightness) + 10%));
+  --node-task-light: hsl(calc(var(--primary-hue) - 10), calc(var(--saturation) + 10%), calc(var(--lightness) + 30%));
+}
+
+/* Global transition for theme changes */
+* {
+  transition: 
+    background-color var(--theme-transition),
+    border-color var(--theme-transition),
+    color var(--theme-transition),
+    box-shadow var(--theme-transition);
+}
+
+/* Exclude animations and transforms from global transition */
+*:not([data-no-theme-transition]) {
+  transition: 
+    background-color var(--theme-transition),
+    border-color var(--theme-transition),
+    color var(--theme-transition),
+    box-shadow var(--theme-transition);
+}
+
+[data-no-theme-transition] {
+  transition: 
+    transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.3s ease,
+    background-color var(--theme-transition),
+    border-color var(--theme-transition),
+    color var(--theme-transition),
+    box-shadow var(--theme-transition);
+}

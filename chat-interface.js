@@ -338,19 +338,62 @@ class ChatInterface {
         this.modelName = modelName;
         console.log('Chat interface model updated to:', modelName);
         
-        // Re-check connection with new model
-        this.checkOllamaConnection();
-        
         // Update status display
         const modelShortName = modelName.split(':')[0];
         this.updateStatus('connected', `Switching to ${modelShortName}...`);
         
         // Clear conversation history when switching models
         this.conversationHistory = [];
+        
+        // Re-check connection with new model (async, non-blocking)
+        this.checkOllamaConnection();
     }
     
     getCurrentModel() {
         return this.modelName;
+    }
+    
+    /**
+     * Set model with validation to ensure it's available
+     */
+    async setModelWithValidation(modelName) {
+        try {
+            await this.validateModel(modelName);
+            this.setModel(modelName);
+            console.log(`✅ Model validated and set to: ${modelName}`);
+        } catch (error) {
+            console.error(`❌ Failed to validate model ${modelName}:`, error);
+            throw error;
+        }
+    }
+    
+    /**
+     * Validate that a model is available in Ollama
+     */
+    async validateModel(modelName) {
+        try {
+            const response = await fetch(`${this.ollamaBaseUrl}/api/tags`);
+            if (!response.ok) {
+                throw new Error('Unable to fetch available models from Ollama');
+            }
+            
+            const data = await response.json();
+            const availableModels = data.models || [];
+            
+            const modelExists = availableModels.some(model => 
+                model.name === modelName || model.name.startsWith(modelName + ':')
+            );
+            
+            if (!modelExists) {
+                const modelList = availableModels.map(m => m.name).join(', ');
+                throw new Error(`Model '${modelName}' not found. Available models: ${modelList}`);
+            }
+            
+            return true;
+        } catch (error) {
+            console.error('Model validation failed:', error);
+            throw error;
+        }
     }
     
     updateStatus(status, message) {
@@ -870,30 +913,61 @@ class ChatInterface {
     }
     
     async callOllama(prompt) {
-        const response = await fetch(`${this.ollamaBaseUrl}/api/generate`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                model: this.modelName,
-                prompt: prompt,
-                stream: false,
-                options: {
-                    temperature: 0.7,
-                    top_p: 0.9,
-                    max_tokens: 1000,
-                    stop: ['User:', 'Human:', '\\n\\n']
+        try {
+            // Validate model availability before making the API call
+            await this.validateModel(this.modelName);
+            
+            const response = await fetch(`${this.ollamaBaseUrl}/api/generate`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    model: this.modelName,
+                    prompt: prompt,
+                    stream: false,
+                    options: {
+                        temperature: 0.7,
+                        top_p: 0.9,
+                        max_tokens: 1000,
+                        stop: ['User:', 'Human:', '\\n\\n']
+                    }
+                })
+            });
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('Ollama API error details:', errorText);
+                
+                // Provide more specific error messages
+                if (response.status === 404) {
+                    throw new Error(`Model '${this.modelName}' not found. Please run: ollama pull ${this.modelName}`);
+                } else if (response.status === 500) {
+                    throw new Error(`Ollama server error. The model '${this.modelName}' may be corrupted or incompatible. Try: ollama pull ${this.modelName}`);
+                } else {
+                    throw new Error(`Ollama API error: ${response.status} - ${errorText}`);
                 }
-            })
-        });
-        
-        if (!response.ok) {
-            throw new Error(`Ollama API error: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            return data.response || 'Sorry, I could not generate a response.';
+            
+        } catch (error) {
+            console.error('Error in callOllama:', error);
+            
+            // If model validation fails, try to fallback to default model
+            if (error.message.includes('not found') && this.modelName !== 'llama2') {
+                console.warn(`Attempting fallback to llama2 model...`);
+                try {
+                    await this.setModelWithValidation('llama2');
+                    return await this.callOllama(prompt); // Retry with fallback model
+                } catch (fallbackError) {
+                    console.error('Fallback to llama2 also failed:', fallbackError);
+                }
+            }
+            
+            throw error; // Re-throw the original error
         }
-        
-        const data = await response.json();
-        return data.response || 'Sorry, I could not generate a response.';
     }
     
     getApplicationContext() {

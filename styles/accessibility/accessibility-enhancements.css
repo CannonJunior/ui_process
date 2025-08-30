@@ -1,0 +1,381 @@
+/**
+ * Accessibility and Performance Optimizations
+ * Ensuring inclusive design and smooth performance
+ */
+
+/* Screen Reader Support */
+.sr-only {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    :root {
+        /* Override theme variables for maximum contrast */
+        --bg-primary: #ffffff !important;
+        --bg-secondary: #f8f9fa !important;
+        --text-primary: #000000 !important;
+        --text-secondary: #212529 !important;
+        --border-primary: #000000 !important;
+        --accent-primary: #0000ff !important;
+        --focus-outline: #ff0000 !important;
+    }
+    
+    :root[data-theme="dark"] {
+        --bg-primary: #000000 !important;
+        --bg-secondary: #1a1a1a !important;
+        --text-primary: #ffffff !important;
+        --text-secondary: #e9ecef !important;
+        --border-primary: #ffffff !important;
+        --accent-primary: #00ffff !important;
+        --focus-outline: #ffff00 !important;
+    }
+    
+    /* Remove decorative elements that might interfere with readability */
+    .node::before,
+    .node::after,
+    #canvas::before,
+    .toolbar-button::before,
+    .toolbar-button::after {
+        display: none !important;
+    }
+    
+    /* Ensure strong borders */
+    .node,
+    .task-node,
+    .toolbar-button,
+    .theme-toggle-container {
+        border-width: 2px !important;
+        border-style: solid !important;
+    }
+    
+    /* Remove box-shadows that might not be visible */
+    * {
+        box-shadow: none !important;
+        filter: none !important;
+    }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    /* Disable all animations and transitions */
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+    
+    /* Remove moving backgrounds */
+    #canvas[data-mode] {
+        animation: none !important;
+    }
+    
+    /* Static hover states */
+    .node:hover,
+    .toolbar-button:hover,
+    .theme-option:hover {
+        transform: none !important;
+    }
+    
+    /* Keep essential feedback but make it instant */
+    .node.selected {
+        animation: none !important;
+        border-width: 3px !important;
+    }
+    
+    .loading::after {
+        animation: none !important;
+        content: '⏳' !important;
+        border: none !important;
+        width: auto !important;
+        height: auto !important;
+        margin: 0 !important;
+        position: static !important;
+    }
+}
+
+/* Color blindness support */
+@media (prefers-color-scheme: no-preference) {
+    /* Ensure sufficient contrast ratios */
+    :root {
+        --contrast-ratio-check: calc(4.5); /* WCAG AA standard */
+    }
+}
+
+/* Focus management */
+.focus-visible,
+*:focus-visible {
+    outline: 2px solid var(--focus-outline) !important;
+    outline-offset: 2px !important;
+    box-shadow: 0 0 0 4px var(--focus-shadow) !important;
+}
+
+/* Remove default focus styles to avoid double outlines */
+*:focus {
+    outline: none;
+}
+
+/* Ensure interactive elements meet minimum touch target size */
+.toolbar-button,
+.theme-option,
+.node,
+.task-node {
+    min-width: 44px;
+    min-height: 44px;
+}
+
+/* Keyboard navigation improvements */
+.keyboard-navigation .node:focus,
+.keyboard-navigation .toolbar-button:focus,
+.keyboard-navigation .theme-option:focus {
+    z-index: 1001 !important; /* Above dragging elements */
+}
+
+/* Skip links for keyboard users */
+.skip-link {
+    position: absolute;
+    top: -40px;
+    left: 6px;
+    background: var(--accent-primary);
+    color: white;
+    padding: 8px;
+    border-radius: 4px;
+    text-decoration: none;
+    font-weight: bold;
+    z-index: 3000;
+    transition: top 0.2s ease;
+}
+
+.skip-link:focus {
+    top: 6px;
+}
+
+/* Screen reader announcements */
+.aria-live-region {
+    position: absolute;
+    left: -10000px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+}
+
+/* Ensure text remains readable at 200% zoom */
+@media (min-resolution: 2dppx) {
+    .node,
+    .toolbar-button,
+    .theme-option {
+        font-size: calc(1em * 1.25);
+    }
+}
+
+/* Print styles for accessibility */
+@media print {
+    /* High contrast for printing */
+    * {
+        background: white !important;
+        color: black !important;
+        box-shadow: none !important;
+        filter: none !important;
+    }
+    
+    /* Show essential information */
+    .node::before {
+        content: attr(data-type) " - " !important;
+        font-weight: bold !important;
+    }
+    
+    /* Hide interactive elements not useful in print */
+    .toolbar,
+    .theme-toggle-container,
+    .service-health,
+    button {
+        display: none !important;
+    }
+}
+
+/* Performance optimizations */
+.performance-mode * {
+    /* Use hardware acceleration sparingly and only where needed */
+    will-change: auto;
+}
+
+.performance-mode .node:hover,
+.performance-mode .toolbar-button:hover {
+    /* Simpler hover states for better performance */
+    transform: none;
+    filter: brightness(1.1);
+}
+
+/* Container queries for responsive components */
+@container (max-width: 768px) {
+    .theme-toggle-container {
+        scale: 0.9;
+    }
+    
+    .toolbar-button {
+        min-width: 40px;
+        font-size: 12px;
+    }
+}
+
+/* Respects user's motion preferences */
+@media (prefers-reduced-motion: no-preference) {
+    /* Enable smooth scrolling only for users who want motion */
+    html {
+        scroll-behavior: smooth;
+    }
+}
+
+/* Dark mode specific accessibility improvements */
+:root[data-theme="dark"] {
+    /* Ensure sufficient contrast in dark mode */
+    --text-primary: hsl(var(--primary-hue), calc(var(--saturation) * 0.3), 95%);
+    --text-secondary: hsl(var(--primary-hue), calc(var(--saturation) * 0.5), 85%);
+    --border-primary: hsl(var(--primary-hue), calc(var(--saturation) * 0.8), 40%);
+}
+
+/* Light mode specific accessibility improvements */
+:root[data-theme="light"] {
+    /* Ensure sufficient contrast in light mode */
+    --text-primary: hsl(var(--primary-hue), calc(var(--saturation) * 1.5), 10%);
+    --text-secondary: hsl(var(--primary-hue), calc(var(--saturation) * 1.2), 30%);
+    --border-primary: hsl(var(--primary-hue), calc(var(--saturation) * 1.0), 70%);
+}
+
+/* Error states with better accessibility */
+.error,
+.error-state {
+    border-color: #dc3545 !important;
+    background-color: #f8d7da !important;
+    color: #721c24 !important;
+}
+
+.error::before {
+    content: "⚠️ Error: ";
+    font-weight: bold;
+}
+
+/* Success states */
+.success,
+.success-state {
+    border-color: #28a745 !important;
+    background-color: #d4edda !important;
+    color: #155724 !important;
+}
+
+.success::before {
+    content: "✅ ";
+    font-weight: bold;
+}
+
+/* Warning states */
+.warning,
+.warning-state {
+    border-color: #ffc107 !important;
+    background-color: #fff3cd !important;
+    color: #856404 !important;
+}
+
+.warning::before {
+    content: "⚠️ ";
+    font-weight: bold;
+}
+
+/* Loading states for screen readers */
+.loading[aria-busy="true"]::before {
+    content: "Loading... ";
+    position: absolute;
+    left: -10000px;
+}
+
+/* Tooltip accessibility */
+[data-tooltip] {
+    position: relative;
+}
+
+[data-tooltip]:hover::after,
+[data-tooltip]:focus-visible::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-primary);
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 12px;
+    white-space: nowrap;
+    z-index: 1000;
+    box-shadow: 0 2px 8px hsla(var(--shadow-color), var(--shadow-opacity));
+}
+
+/* Focus traps for modals */
+.modal-open body {
+    overflow: hidden;
+}
+
+.modal[aria-modal="true"] {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 3000;
+}
+
+/* Language and reading direction support */
+[dir="rtl"] .theme-toggle-container {
+    direction: rtl;
+}
+
+[dir="rtl"] .toolbar {
+    flex-direction: row-reverse;
+}
+
+/* Ensure minimum color contrast for all themes */
+:root {
+    color-scheme: light dark;
+}
+
+:root[data-theme="dark"] {
+    color-scheme: dark;
+}
+
+:root[data-theme="light"] {
+    color-scheme: light;
+}
+
+/* Ensure form elements are accessible */
+input[type="file"] {
+    opacity: 1 !important;
+    position: static !important;
+    width: auto !important;
+    height: auto !important;
+    clip: auto !important;
+}
+
+/* Screen reader friendly loading states */
+.loading {
+    position: relative;
+}
+
+.loading::before {
+    content: "Loading";
+    position: absolute;
+    left: -10000px;
+    top: 0;
+    color: var(--text-primary);
+}

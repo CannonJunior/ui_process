@@ -109,6 +109,9 @@ class WorkflowCommandServer:
             'opp-search': r'^/opp[-_]?search\s+(?:"([^"]+)"|(.+))$',
             'opp-link': r'^/opp[-_]?link\s+(\S+)\s+(.+)$',
             'note-link': r'^/note[-_]?link\s+(\S+)\s+(.+)$',
+            
+            # Database Commands
+            'db-query': r'^/(?:db[-_]?query|sql)\s+(?:"([^"]+)"|(.+))$',
         }
         
         # Command descriptions for help system
@@ -181,6 +184,10 @@ class WorkflowCommandServer:
             '/opp-search <query>': 'Search opportunities by keywords',
             '/opp-link <opp_id> <target_id>': 'Link opportunity to workflow element',
             '/note-link <note_id> <target_id>': 'Link note to opportunity or task',
+            
+            # Database Commands
+            '/sql <query>': 'Execute PostgreSQL query directly',
+            '/db-query <query>': 'Execute PostgreSQL query directly',
         }
         
         # Valid values for various parameters
@@ -233,7 +240,8 @@ class WorkflowCommandServer:
             # Check if it's a workflow-related command that doesn't match our patterns
             workflow_keywords = [
                 'node', 'task', 'flow', 'tag', 'workflow', 'matrix', 'select', 'view',
-                'create', 'delete', 'move', 'connect', 'save', 'load', 'opp', 'opportunity', 'note'
+                'create', 'delete', 'move', 'connect', 'save', 'load', 'opp', 'opportunity', 'note',
+                'sql', 'db', 'database', 'query'
             ]
             
             if any(keyword in input_text.lower() for keyword in workflow_keywords):
@@ -395,7 +403,8 @@ class WorkflowCommandServer:
                     'Selection Commands': [cmd for cmd in self.command_descriptions.keys() if 'select' in cmd],
                     'Navigation Commands': [cmd for cmd in self.command_descriptions.keys() if any(x in cmd for x in ['goto', 'find', 'next', 'previous'])],
                     'Batch Commands': [cmd for cmd in self.command_descriptions.keys() if 'batch' in cmd],
-                    'Opportunity Commands': [cmd for cmd in self.command_descriptions.keys() if any(x in cmd for x in ['opp', 'note-link'])]
+                    'Opportunity Commands': [cmd for cmd in self.command_descriptions.keys() if any(x in cmd for x in ['opp', 'note-link'])],
+                    'Database Commands': [cmd for cmd in self.command_descriptions.keys() if any(x in cmd for x in ['sql', 'db-query'])]
                 }
                 
                 return {
@@ -480,6 +489,14 @@ class WorkflowCommandServer:
                             parameters = {'opp_id': param1, 'target_id': param2}
                         else:  # handle_note_link
                             parameters = {'note_id': param1, 'target_id': param2}
+            
+            # For database query commands, extract SQL query from raw_params
+            if not parameters and action == 'handle_db_query' and 'raw_params' in command_data:
+                raw_params = command_data.get('raw_params', [])
+                # Extract query from raw_params[1] or raw_params[2] (quoted or unquoted)
+                query = raw_params[1] if len(raw_params) > 1 and raw_params[1] else (raw_params[2] if len(raw_params) > 2 and raw_params[2] else None)
+                if query:
+                    parameters = {'query': query}
             
             # Structure the command data for the browser WorkflowBridge
             workflow_command = {
@@ -771,6 +788,17 @@ class WorkflowCommandServer:
                 '/matrix-enter',
                 '/matrix-move "Important Task" urgent-important',
                 '/matrix-show urgent-not-important'
+            ],
+            'sql': [
+                '/sql "SELECT * FROM workflows LIMIT 5"',
+                '/sql "SELECT COUNT(*) FROM tasks WHERE status = \'completed\'"',
+                '/db-query "SELECT table_name FROM information_schema.tables WHERE table_schema = \'public\'"',
+                '/sql "INSERT INTO notes (title, content) VALUES (\'Test\', \'Sample content\')"'
+            ],
+            'db': [
+                '/db-query "SELECT * FROM opportunities ORDER BY created_at DESC LIMIT 10"',
+                '/sql "SELECT status, COUNT(*) as count FROM tasks GROUP BY status"',
+                '/db-query "SHOW TABLES"'
             ]
         }
         

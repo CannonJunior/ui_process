@@ -81,6 +81,21 @@ class APIIntegration {
         document.addEventListener('syncFailed', (event) => {
             this.updateStatusIndicator('sync-error', event.detail);
         });
+        
+        // Initialize database status check
+        setTimeout(() => {
+            this.checkDatabaseStatus();
+        }, 1000);
+        
+        // Set up periodic database status checks (every 30 seconds)
+        setInterval(() => {
+            this.checkDatabaseStatus();
+        }, 30000);
+        
+        // Add click handler for database health indicator
+        setTimeout(() => {
+            this.setupDatabaseHealthClickHandler();
+        }, 1500);
     }
     
     createStatusIndicator() {
@@ -168,6 +183,372 @@ class APIIntegration {
                 text.textContent = 'Synchronizing...';
                 detailsEl.textContent = '';
                 break;
+        }
+        
+        // Also update the service health indicators
+        this.updateServiceHealthIndicators(status, details);
+    }
+    
+    updateServiceHealthIndicators(status, details = {}) {
+        // Update API health indicator in service health section
+        const apiHealthIndicator = document.getElementById('apiHealthIndicator');
+        if (apiHealthIndicator) {
+            const apiHealthDot = apiHealthIndicator.querySelector('.health-dot');
+            const apiHealthStatus = apiHealthIndicator.querySelector('.health-status');
+            
+            if (apiHealthDot && apiHealthStatus) {
+                // Map status to health indicator classes
+                switch (status) {
+                    case 'online':
+                    case 'synced':
+                        apiHealthDot.className = 'health-dot online';
+                        apiHealthStatus.textContent = 'API';
+                        break;
+                    case 'syncing':
+                        apiHealthDot.className = 'health-dot connecting';
+                        apiHealthStatus.textContent = 'API';
+                        break;
+                    case 'offline':
+                    case 'sync-error':
+                    default:
+                        apiHealthDot.className = 'health-dot offline';
+                        apiHealthStatus.textContent = 'API';
+                        break;
+                }
+            }
+        }
+        
+        // Check and update database status
+        this.checkDatabaseStatus();
+    }
+    
+    async checkDatabaseStatus() {
+        try {
+            // Call the API health endpoint to get database status
+            const response = await fetch('http://localhost:3001/health');
+            const healthData = await response.json();
+            
+            const dataHealthIndicator = document.getElementById('dataHealthIndicator');
+            if (dataHealthIndicator) {
+                const dataHealthDot = dataHealthIndicator.querySelector('.health-dot');
+                const dataHealthStatus = dataHealthIndicator.querySelector('.health-status');
+                
+                if (dataHealthDot && dataHealthStatus) {
+                    const dbConnected = healthData.database === 'connected';
+                    
+                    if (dbConnected) {
+                        dataHealthDot.className = 'health-dot online';
+                    } else {
+                        dataHealthDot.className = 'health-dot offline';
+                    }
+                    dataHealthStatus.textContent = 'Data';
+                }
+            }
+        } catch (error) {
+            console.error('Failed to check database status:', error);
+            
+            // Set database status to offline if API call fails
+            const dataHealthIndicator = document.getElementById('dataHealthIndicator');
+            if (dataHealthIndicator) {
+                const dataHealthDot = dataHealthIndicator.querySelector('.health-dot');
+                const dataHealthStatus = dataHealthIndicator.querySelector('.health-status');
+                
+                if (dataHealthDot && dataHealthStatus) {
+                    dataHealthDot.className = 'health-dot offline';
+                    dataHealthStatus.textContent = 'Data';
+                }
+            }
+        }
+    }
+    
+    setupDatabaseHealthClickHandler() {
+        const dataHealthIndicator = document.getElementById('dataHealthIndicator');
+        if (dataHealthIndicator) {
+            dataHealthIndicator.style.cursor = 'pointer';
+            dataHealthIndicator.addEventListener('click', () => {
+                this.showDatabaseDetails();
+            });
+            
+            // Add visual feedback on hover
+            dataHealthIndicator.addEventListener('mouseenter', () => {
+                dataHealthIndicator.style.opacity = '0.8';
+            });
+            
+            dataHealthIndicator.addEventListener('mouseleave', () => {
+                dataHealthIndicator.style.opacity = '1';
+            });
+            
+            console.log('✅ Database health indicator click handler setup');
+        } else {
+            console.warn('⚠️ dataHealthIndicator not found - retrying in 1 second');
+            setTimeout(() => this.setupDatabaseHealthClickHandler(), 1000);
+        }
+    }
+    
+    async showDatabaseDetails() {
+        try {
+            // Get detailed database information
+            const [healthResponse, schemaResponse, tablesResponse] = await Promise.all([
+                fetch('http://localhost:3001/health').catch(() => null),
+                fetch('http://localhost:3001/api/v1/db/schema').catch(() => null),
+                fetch('http://localhost:3001/api/v1/db/tables').catch(() => null)
+            ]);
+
+            let healthData = { database: 'disconnected' };
+            let schemaData = null;
+            let tablesData = null;
+
+            if (healthResponse && healthResponse.ok) {
+                healthData = await healthResponse.json();
+            }
+
+            if (schemaResponse && schemaResponse.ok) {
+                schemaData = await schemaResponse.json();
+            }
+
+            if (tablesResponse && tablesResponse.ok) {
+                tablesData = await tablesResponse.json();
+            }
+
+            // Create or update database details modal
+            let modal = document.getElementById('databaseDetailsModal');
+            if (!modal) {
+                modal = document.createElement('div');
+                modal.id = 'databaseDetailsModal';
+                modal.className = 'modal';
+                document.body.appendChild(modal);
+            }
+
+            // Build the modal content
+            const isConnected = healthData.database === 'connected';
+            const connectionStatus = isConnected ? '🟢 Connected' : '🔴 Disconnected';
+            
+            let tablesSection = '';
+            if (tablesData && tablesData.tables) {
+                const tableList = tablesData.tables
+                    .slice(0, 15) // Show first 15 tables
+                    .map(table => `<li><strong>${table.table_name}</strong> (${table.table_type})</li>`)
+                    .join('');
+                
+                tablesSection = `
+                    <div class="database-section">
+                        <h4>📋 Database Tables (${tablesData.count} total)</h4>
+                        <ul class="table-list">
+                            ${tableList}
+                            ${tablesData.count > 15 ? `<li><em>... and ${tablesData.count - 15} more tables</em></li>` : ''}
+                        </ul>
+                    </div>
+                `;
+            }
+
+            let schemaSection = '';
+            if (schemaData && schemaData.schema) {
+                const schemaInfo = Object.keys(schemaData.schema)
+                    .map(schema => {
+                        const tableCount = Object.keys(schemaData.schema[schema]).length;
+                        return `<li><strong>${schema}</strong>: ${tableCount} tables</li>`;
+                    })
+                    .join('');
+                
+                schemaSection = `
+                    <div class="database-section">
+                        <h4>🏗️ Database Schema</h4>
+                        <ul class="schema-list">
+                            ${schemaInfo}
+                        </ul>
+                        <p class="schema-stats">Total columns: ${schemaData.columnCount}</p>
+                    </div>
+                `;
+            }
+
+            modal.innerHTML = `
+                <div class="modal-content database-modal">
+                    <h3>🗄️ PostgreSQL Database Details</h3>
+                    
+                    <div class="database-status">
+                        <div class="status-item">
+                            <label>Connection Status:</label>
+                            <span class="status-value ${isConnected ? 'connected' : 'disconnected'}">
+                                ${connectionStatus}
+                            </span>
+                        </div>
+                        <div class="status-item">
+                            <label>Database Type:</label>
+                            <span class="status-value">PostgreSQL</span>
+                        </div>
+                        <div class="status-item">
+                            <label>Last Check:</label>
+                            <span class="status-value">${new Date().toLocaleString()}</span>
+                        </div>
+                    </div>
+
+                    ${tablesSection}
+                    ${schemaSection}
+
+                    ${isConnected ? `
+                        <div class="database-section">
+                            <h4>💡 Quick Commands</h4>
+                            <div class="quick-commands">
+                                <button class="quick-cmd-btn" onclick="navigator.clipboard.writeText('/sql &quot;SELECT table_name FROM information_schema.tables WHERE table_schema = \\'public\\'&quot;')">
+                                    📋 Copy: List Tables Query
+                                </button>
+                                <button class="quick-cmd-btn" onclick="navigator.clipboard.writeText('/sql &quot;SELECT COUNT(*) FROM workflows&quot;')">
+                                    📋 Copy: Count Workflows
+                                </button>
+                                <button class="quick-cmd-btn" onclick="navigator.clipboard.writeText('/db-query &quot;SELECT * FROM opportunities LIMIT 5&quot;')">
+                                    📋 Copy: View Opportunities
+                                </button>
+                            </div>
+                            <p class="help-text">💬 Use these commands in chat to query the database directly!</p>
+                        </div>
+                    ` : `
+                        <div class="database-section error-section">
+                            <h4>⚠️ Connection Issue</h4>
+                            <p>Unable to connect to the PostgreSQL database. This could be due to:</p>
+                            <ul>
+                                <li>Database server is not running</li>
+                                <li>API server is not running</li>
+                                <li>Network connectivity issues</li>
+                                <li>Database configuration problems</li>
+                            </ul>
+                            <p>Please check the server status and try again.</p>
+                        </div>
+                    `}
+                    
+                    <div class="modal-buttons">
+                        <button id="refreshDbStatus" class="modal-button secondary">🔄 Refresh</button>
+                        <button id="databaseModalClose" class="modal-button primary">Close</button>
+                    </div>
+                </div>
+            `;
+
+            // Add modal styles if they don't exist
+            if (!document.getElementById('database-modal-styles')) {
+                const style = document.createElement('style');
+                style.id = 'database-modal-styles';
+                style.textContent = `
+                    .database-modal {
+                        max-width: 700px;
+                        max-height: 80vh;
+                        overflow-y: auto;
+                    }
+                    
+                    .database-status {
+                        background: var(--bg-secondary);
+                        border: 1px solid var(--border-primary);
+                        border-radius: 6px;
+                        padding: 16px;
+                        margin: 16px 0;
+                    }
+                    
+                    .database-section {
+                        margin: 20px 0;
+                        padding: 16px;
+                        background: var(--bg-secondary);
+                        border-radius: 6px;
+                        border-left: 3px solid var(--accent-primary);
+                    }
+                    
+                    .database-section h4 {
+                        margin: 0 0 12px 0;
+                        color: var(--text-primary);
+                    }
+                    
+                    .table-list, .schema-list {
+                        margin: 0;
+                        padding-left: 20px;
+                        max-height: 200px;
+                        overflow-y: auto;
+                    }
+                    
+                    .table-list li, .schema-list li {
+                        margin: 4px 0;
+                        color: var(--text-secondary);
+                    }
+                    
+                    .schema-stats {
+                        margin: 12px 0 0 0;
+                        font-size: 0.9em;
+                        color: var(--text-secondary);
+                        font-style: italic;
+                    }
+                    
+                    .quick-commands {
+                        display: flex;
+                        flex-direction: column;
+                        gap: 8px;
+                        margin: 12px 0;
+                    }
+                    
+                    .quick-cmd-btn {
+                        background: var(--accent-primary);
+                        color: white;
+                        border: none;
+                        padding: 8px 12px;
+                        border-radius: 4px;
+                        cursor: pointer;
+                        font-size: 0.9em;
+                        transition: background-color 0.2s ease;
+                    }
+                    
+                    .quick-cmd-btn:hover {
+                        background: var(--accent-hover);
+                    }
+                    
+                    .help-text {
+                        margin: 12px 0 0 0;
+                        font-size: 0.85em;
+                        color: var(--text-secondary);
+                        font-style: italic;
+                    }
+                    
+                    .error-section {
+                        border-left-color: #ef4444;
+                        background: #fef2f2;
+                    }
+                    
+                    .error-section h4 {
+                        color: #dc2626;
+                    }
+                    
+                    .status-value.connected {
+                        color: #10b981;
+                        font-weight: bold;
+                    }
+                    
+                    .status-value.disconnected {
+                        color: #ef4444;
+                        font-weight: bold;
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+
+            // Show modal
+            modal.style.display = 'block';
+            
+            // Add event listeners
+            document.getElementById('databaseModalClose').onclick = () => {
+                modal.style.display = 'none';
+            };
+            
+            document.getElementById('refreshDbStatus').onclick = async () => {
+                document.getElementById('refreshDbStatus').textContent = '🔄 Refreshing...';
+                await this.checkDatabaseStatus();
+                modal.style.display = 'none';
+                setTimeout(() => this.showDatabaseDetails(), 500);
+            };
+
+            // Close modal when clicking outside
+            modal.onclick = (e) => {
+                if (e.target === modal) {
+                    modal.style.display = 'none';
+                }
+            };
+            
+        } catch (error) {
+            console.error('Error showing database details:', error);
+            alert('Failed to load database details. Please try again.');
         }
     }
     

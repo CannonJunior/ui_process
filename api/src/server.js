@@ -27,6 +27,7 @@ import searchRoutes from './routes/search.js';
 import chatRoutes from './routes/chat.js';
 import relationshipRoutes from './routes/relationships.js';
 import knowledgeGraphRoutes from './routes/knowledge-graph.js';
+import databaseRoutes from './routes/database.js';
 
 dotenv.config();
 
@@ -137,6 +138,7 @@ app.use('/api/v1/search', searchRoutes);
 app.use('/api/v1/chat', chatRoutes);
 app.use('/api/v1/relationships', relationshipRoutes);
 app.use('/api/v1/kg', knowledgeGraphRoutes);
+app.use('/api/v1/db', databaseRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {
