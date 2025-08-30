@@ -99,6 +99,9 @@ class KnowledgeGraphController {
             this.isKGMode = true;
             console.log('🧠 Knowledge Graph mode activated');
             
+            // Hide workflow elements with the same transition as opportunities mode
+            this.hideWorkflowElements();
+            
             // Load existing KG nodes from API or show existing ones
             if (this.kgNodes.length === 0) {
                 this.loadKGNodesFromAPI();
@@ -119,6 +122,9 @@ class KnowledgeGraphController {
             
             // Animate KG nodes off-canvas (similar to opportunity cards)
             this.hideKGNodesWithTransition();
+            
+            // Show workflow elements with transition
+            this.showWorkflowElements();
         }
     }
     
@@ -1292,6 +1298,69 @@ class KnowledgeGraphController {
                 connectionsLayer.style.transition = '';
             }, 500);
         }
+    }
+    
+    // ==================== WORKFLOW ELEMENT TRANSITION METHODS ====================
+    
+    /**
+     * Hide workflow elements with transition (matches opportunities mode behavior)
+     */
+    hideWorkflowElements() {
+        const elements = [
+            ...document.querySelectorAll('.node'),
+            ...document.querySelectorAll('.task-node'),
+            ...document.querySelectorAll('.flowline, .flowline-path'),
+            ...document.querySelectorAll('.next-action-slot'),
+            document.getElementById('eisenhowerMatrix')
+        ];
+        
+        elements.forEach(element => {
+            if (element && element.style.display !== 'none') {
+                element.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+                element.style.opacity = '0';
+                element.style.transform = 'translateY(-20px)';
+                
+                setTimeout(() => {
+                    element.style.display = 'none';
+                }, 500);
+            }
+        });
+    }
+    
+    /**
+     * Show workflow elements with transition (matches opportunities mode behavior)
+     */
+    showWorkflowElements() {
+        const elements = [
+            ...document.querySelectorAll('.node'),
+            ...document.querySelectorAll('.task-node'),
+            ...document.querySelectorAll('.flowline, .flowline-path'),
+            ...document.querySelectorAll('.next-action-slot'),
+            document.getElementById('eisenhowerMatrix')
+        ];
+        
+        elements.forEach(element => {
+            if (element) {
+                element.style.display = 'block';
+                element.style.opacity = '0';
+                element.style.transform = 'translateY(20px)';
+                
+                // Force reflow
+                element.offsetHeight;
+                
+                element.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+                element.style.opacity = '1';
+                element.style.transform = 'translateY(0)';
+                
+                // Clean up transition styles after animation completes
+                setTimeout(() => {
+                    element.style.transition = '';
+                    element.style.transform = '';
+                }, 500);
+            }
+        });
+        
+        console.log('KnowledgeGraphController: Showing workflow elements with transition');
     }
 }
 

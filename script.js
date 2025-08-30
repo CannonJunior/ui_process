@@ -145,8 +145,9 @@ class ProcessFlowDesigner {
         
         console.log(`🔄 Switching from ${this.currentMode || 'none'} to ${mode} mode`);
         
-        // Save positions before switching away from workflow mode
-        if (this.currentMode === 'workflow') {
+        // Save workflow positions only when switching FROM workflow mode TO non-workflow modes
+        if (this.currentMode === 'workflow' && ['matrix', 'opportunities', 'knowledgeGraph'].includes(mode)) {
+            console.log(`💾 Saving workflow positions before switching from workflow to ${mode} mode`);
             this.saveWorkflowPositions();
         }
         
@@ -154,28 +155,33 @@ class ProcessFlowDesigner {
         const previousMode = this.currentMode;
         this.currentMode = mode;
         
-        // Deactivate all modes first (transition elements off-screen)
-        this.deactivateAllModes();
-        
-        // Then activate the selected mode
-        setTimeout(() => {
-            switch (mode) {
-                case 'workflow':
-                    this.activateWorkflowMode();
-                    break;
-                case 'matrix':
-                    this.activateMatrixMode();
-                    break;
-                case 'opportunities':
-                    this.activateOpportunitiesMode();
-                    break;
-                case 'knowledgeGraph':
-                    this.activateKnowledgeGraphMode();
-                    break;
-                default:
-                    console.warn(`Unknown mode: ${mode}`);
-            }
-        }, 100); // Small delay to allow transitions to start
+        // For non-workflow modes: save positions first, THEN transition elements off-screen
+        if (['matrix', 'opportunities', 'knowledgeGraph'].includes(mode)) {
+            // Deactivate current mode
+            this.deactivateAllModes();
+            
+            // Then activate the new mode after transition starts
+            setTimeout(() => {
+                switch (mode) {
+                    case 'matrix':
+                        this.activateMatrixMode();
+                        break;
+                    case 'opportunities':
+                        this.activateOpportunitiesMode();
+                        break;
+                    case 'knowledgeGraph':
+                        this.activateKnowledgeGraphMode();
+                        break;
+                }
+            }, 100); // Small delay to allow transitions to start
+        } else if (mode === 'workflow') {
+            // For workflow mode: deactivate first, then restore positions and show elements
+            this.deactivateAllModes();
+            
+            setTimeout(() => {
+                this.activateWorkflowMode();
+            }, 100);
+        }
     }
     
     /**
@@ -201,7 +207,6 @@ class ProcessFlowDesigner {
             };
             
             const canvas = document.getElementById('canvas');
-            const canvasRect = canvas.getBoundingClientRect();
             
             // Save canvas scroll position
             positionData.canvasScroll = {
@@ -213,9 +218,9 @@ class ProcessFlowDesigner {
             const nodes = document.querySelectorAll('.node');
             nodes.forEach(node => {
                 if (node.dataset.id) {
-                    const rect = node.getBoundingClientRect();
-                    const x = rect.left - canvasRect.left + canvas.scrollLeft;
-                    const y = rect.top - canvasRect.top + canvas.scrollTop;
+                    // Use offsetLeft/offsetTop for accurate positioning unaffected by transforms
+                    const x = node.offsetLeft;
+                    const y = node.offsetTop;
                     
                     const nodeId = node.dataset.id;
                     
@@ -243,9 +248,9 @@ class ProcessFlowDesigner {
             const taskNodes = document.querySelectorAll('.task-node');
             taskNodes.forEach(taskNode => {
                 if (taskNode.dataset.id) {
-                    const rect = taskNode.getBoundingClientRect();
-                    const x = rect.left - canvasRect.left + canvas.scrollLeft;
-                    const y = rect.top - canvasRect.top + canvas.scrollTop;
+                    // Use offsetLeft/offsetTop for accurate positioning unaffected by transforms
+                    const x = taskNode.offsetLeft;
+                    const y = taskNode.offsetTop;
                     
                     const taskId = taskNode.dataset.id;
                     
@@ -269,9 +274,9 @@ class ProcessFlowDesigner {
             const nextActionSlots = document.querySelectorAll('.next-action-slot');
             nextActionSlots.forEach(slot => {
                 if (slot.dataset.nodeId) {
-                    const rect = slot.getBoundingClientRect();
-                    const x = rect.left - canvasRect.left + canvas.scrollLeft;
-                    const y = rect.top - canvasRect.top + canvas.scrollTop;
+                    // Use offsetLeft/offsetTop for accurate positioning unaffected by transforms
+                    const x = slot.offsetLeft;
+                    const y = slot.offsetTop;
                     
                     const slotKey = `${slot.dataset.nodeId}-${slot.dataset.slotIndex || 0}`;
                     
@@ -695,17 +700,7 @@ class ProcessFlowDesigner {
                 }
             });
             
-            // Trigger flowline redraw to ensure proper connections
-            if (this.flowlineManager && restoredCount.flowlines > 0) {
-                setTimeout(() => {
-                    try {
-                        this.flowlineManager.updateFlowlines();
-                        console.log('🔄 Flowlines redrawn after position restoration');
-                    } catch (flowlineError) {
-                        console.error('❌ Error redrawing flowlines:', flowlineError);
-                    }
-                }, 100); // Longer delay to ensure all elements are positioned
-            }
+            // Note: Flowlines will be redrawn after animations complete in showWorkflowElements()
             
             // Verification: Check that restored positions are actually applied
             setTimeout(() => {
@@ -875,8 +870,8 @@ class ProcessFlowDesigner {
             button.style.color = '';
         });
         
-        // Transition elements off-screen for each mode
-        this.deactivateWorkflowMode();
+        // Only deactivate mode-specific elements, not workflow elements
+        // Each mode controller handles its own workflow element transitions
         this.deactivateMatrixMode();
         this.deactivateOpportunitiesMode();
         this.deactivateKnowledgeGraphMode();
@@ -1006,7 +1001,7 @@ class ProcessFlowDesigner {
         const elements = [
             ...document.querySelectorAll('.node'),
             ...document.querySelectorAll('.task-node'),
-            ...document.querySelectorAll('.flowline'),
+            ...document.querySelectorAll('.flowline, .flowline-path'),
             ...document.querySelectorAll('.next-action-slot')
         ];
         
@@ -1025,7 +1020,7 @@ class ProcessFlowDesigner {
             }
         });
         
-        // Clear transitions after animation
+        // Clear transitions after animation AND redraw flowlines
         setTimeout(() => {
             elements.forEach(element => {
                 if (element) {
@@ -1033,6 +1028,12 @@ class ProcessFlowDesigner {
                     element.style.transform = '';
                 }
             });
+            
+            // Redraw flowlines after all animations complete
+            if (this.flowlineManager) {
+                console.log('🔄 Redrawing flowlines after workflow element animations complete');
+                this.flowlineManager.updateFlowlines();
+            }
         }, 500);
     }
     
@@ -1043,7 +1044,7 @@ class ProcessFlowDesigner {
         const elements = [
             ...document.querySelectorAll('.node'),
             ...document.querySelectorAll('.task-node'),
-            ...document.querySelectorAll('.flowline'),
+            ...document.querySelectorAll('.flowline, .flowline-path'),
             ...document.querySelectorAll('.next-action-slot')
         ];
         
