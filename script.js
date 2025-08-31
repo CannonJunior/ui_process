@@ -882,7 +882,7 @@ class ProcessFlowDesigner {
      */
     activateWorkflowMode() {
         this.workflowToggle.classList.add('active');
-        this.workflowToggle.style.background = 'linear-gradient(135deg, #4CAF50, #45a049)';
+        this.workflowToggle.style.background = 'linear-gradient(135deg, #4CAF50, #F57C00)';
         this.workflowToggle.style.color = 'white';
         
         // Restore saved positions first
@@ -899,7 +899,7 @@ class ProcessFlowDesigner {
      */
     activateMatrixMode() {
         this.eisenhowerToggle.classList.add('active');
-        this.eisenhowerToggle.style.background = 'linear-gradient(135deg, #FF6B6B, #FF5252)';
+        this.eisenhowerToggle.style.background = 'linear-gradient(135deg, #FF6F00, #F57C00)';
         this.eisenhowerToggle.style.color = 'white';
         
         // Delegate to matrix controller using new activate method
@@ -915,7 +915,7 @@ class ProcessFlowDesigner {
      */
     activateOpportunitiesMode() {
         this.opportunityToggle.classList.add('active');
-        this.opportunityToggle.style.background = 'linear-gradient(135deg, #9C27B0, #7B1FA2)';
+        this.opportunityToggle.style.background = 'linear-gradient(135deg, #9C27B0, #F57C00)';
         this.opportunityToggle.style.color = 'white';
         
         // Delegate to opportunity controller
@@ -933,7 +933,7 @@ class ProcessFlowDesigner {
      */
     activateKnowledgeGraphMode() {
         this.knowledgeGraphToggle.classList.add('active');
-        this.knowledgeGraphToggle.style.background = 'linear-gradient(135deg, #76b3fa, #0763f7)';
+        this.knowledgeGraphToggle.style.background = 'linear-gradient(135deg, #76b3fa, #F57C00)';
         this.knowledgeGraphToggle.style.color = 'white';
         
         // Add KG mode class to canvas

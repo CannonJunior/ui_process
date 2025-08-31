@@ -209,4 +209,53 @@ router.get('/tables', async (req, res) => {
     }
 });
 
+/**
+ * GET /api/v1/db/connection
+ * Get database connection information
+ */
+router.get('/connection', async (req, res) => {
+    try {
+        // Get database connection info
+        const connectionQuery = `
+            SELECT 
+                current_database() as database_name,
+                current_user as username,
+                inet_server_addr() as server_host,
+                inet_server_port() as server_port,
+                version() as version
+        `;
+
+        const result = await query(connectionQuery);
+        const connectionInfo = result.rows[0];
+
+        // Get environment info (safely)
+        const host = process.env.DB_HOST || 'localhost';
+        const port = process.env.DB_PORT || '5432';
+        const database = process.env.DB_NAME || connectionInfo.database_name;
+
+        res.json({
+            connection: {
+                host: host,
+                port: port,
+                database: database,
+                username: connectionInfo.username,
+                server_host: connectionInfo.server_host,
+                server_port: connectionInfo.server_port,
+                version: connectionInfo.version,
+                url: `postgresql://${connectionInfo.username}@${host}:${port}/${database}`
+            },
+            api_endpoint: `http://localhost:${process.env.PORT || 3001}/api/v1/db`,
+            status: 'connected'
+        });
+        
+    } catch (error) {
+        console.error('Connection info query error:', error);
+        res.status(500).json({
+            error: 'Failed to retrieve connection information',
+            message: error.message,
+            status: 'error'
+        });
+    }
+});
+
 export default router;

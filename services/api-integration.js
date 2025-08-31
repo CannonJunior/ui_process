@@ -266,6 +266,7 @@ class APIIntegration {
         if (dataHealthIndicator) {
             dataHealthIndicator.style.cursor = 'pointer';
             dataHealthIndicator.addEventListener('click', () => {
+                console.log('🖱️ dataHealthIndicator clicked - showing database details');
                 this.showDatabaseDetails();
             });
             
@@ -286,17 +287,20 @@ class APIIntegration {
     }
     
     async showDatabaseDetails() {
+        console.log('📊 showDatabaseDetails() called');
         try {
             // Get detailed database information
-            const [healthResponse, schemaResponse, tablesResponse] = await Promise.all([
+            const [healthResponse, schemaResponse, tablesResponse, connectionResponse] = await Promise.all([
                 fetch('http://localhost:3001/health').catch(() => null),
                 fetch('http://localhost:3001/api/v1/db/schema').catch(() => null),
-                fetch('http://localhost:3001/api/v1/db/tables').catch(() => null)
+                fetch('http://localhost:3001/api/v1/db/tables').catch(() => null),
+                fetch('http://localhost:3001/api/v1/db/connection').catch(() => null)
             ]);
 
             let healthData = { database: 'disconnected' };
             let schemaData = null;
             let tablesData = null;
+            let connectionData = null;
 
             if (healthResponse && healthResponse.ok) {
                 healthData = await healthResponse.json();
@@ -308,6 +312,10 @@ class APIIntegration {
 
             if (tablesResponse && tablesResponse.ok) {
                 tablesData = await tablesResponse.json();
+            }
+
+            if (connectionResponse && connectionResponse.ok) {
+                connectionData = await connectionResponse.json();
             }
 
             // Create or update database details modal
@@ -323,20 +331,74 @@ class APIIntegration {
             const isConnected = healthData.database === 'connected';
             const connectionStatus = isConnected ? '🟢 Connected' : '🔴 Disconnected';
             
+            // Build connection information section
+            let connectionSection = '';
+            if (connectionData && connectionData.connection) {
+                const conn = connectionData.connection;
+                connectionSection = `
+                    <div class="database-section">
+                        <h4>🔗 Connection Information</h4>
+                        <div class="connection-details">
+                            <div class="connection-row">
+                                <label>Database URL:</label>
+                                <span class="connection-value">${conn.url}</span>
+                            </div>
+                            <div class="connection-row">
+                                <label>Host:</label>
+                                <span class="connection-value">${conn.host}</span>
+                            </div>
+                            <div class="connection-row">
+                                <label>Port:</label>
+                                <span class="connection-value">${conn.port}</span>
+                            </div>
+                            <div class="connection-row">
+                                <label>Database Name:</label>
+                                <span class="connection-value">${conn.database}</span>
+                            </div>
+                            <div class="connection-row">
+                                <label>Username:</label>
+                                <span class="connection-value">${conn.username}</span>
+                            </div>
+                            <div class="connection-row">
+                                <label>API Endpoint:</label>
+                                <span class="connection-value">${connectionData.api_endpoint}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
             let tablesSection = '';
             if (tablesData && tablesData.tables) {
-                const tableList = tablesData.tables
-                    .slice(0, 15) // Show first 15 tables
-                    .map(table => `<li><strong>${table.table_name}</strong> (${table.table_type})</li>`)
+                // Show all tables, organized by schema
+                const tablesBySchema = {};
+                tablesData.tables.forEach(table => {
+                    if (!tablesBySchema[table.table_schema]) {
+                        tablesBySchema[table.table_schema] = [];
+                    }
+                    tablesBySchema[table.table_schema].push(table);
+                });
+                
+                const schemaTableList = Object.keys(tablesBySchema)
+                    .map(schema => {
+                        const tables = tablesBySchema[schema]
+                            .map(table => `<li><strong>${table.table_name}</strong> (${table.table_type})</li>`)
+                            .join('');
+                        return `
+                            <div class="schema-group">
+                                <h5>Schema: ${schema}</h5>
+                                <ul class="table-list">
+                                    ${tables}
+                                </ul>
+                            </div>
+                        `;
+                    })
                     .join('');
                 
                 tablesSection = `
                     <div class="database-section">
                         <h4>📋 Database Tables (${tablesData.count} total)</h4>
-                        <ul class="table-list">
-                            ${tableList}
-                            ${tablesData.count > 15 ? `<li><em>... and ${tablesData.count - 15} more tables</em></li>` : ''}
-                        </ul>
+                        ${schemaTableList}
                     </div>
                 `;
             }
@@ -382,26 +444,11 @@ class APIIntegration {
                         </div>
                     </div>
 
+                    ${connectionSection}
                     ${tablesSection}
                     ${schemaSection}
 
-                    ${isConnected ? `
-                        <div class="database-section">
-                            <h4>💡 Quick Commands</h4>
-                            <div class="quick-commands">
-                                <button class="quick-cmd-btn" onclick="navigator.clipboard.writeText('/sql &quot;SELECT table_name FROM information_schema.tables WHERE table_schema = \\'public\\'&quot;')">
-                                    📋 Copy: List Tables Query
-                                </button>
-                                <button class="quick-cmd-btn" onclick="navigator.clipboard.writeText('/sql &quot;SELECT COUNT(*) FROM workflows&quot;')">
-                                    📋 Copy: Count Workflows
-                                </button>
-                                <button class="quick-cmd-btn" onclick="navigator.clipboard.writeText('/db-query &quot;SELECT * FROM opportunities LIMIT 5&quot;')">
-                                    📋 Copy: View Opportunities
-                                </button>
-                            </div>
-                            <p class="help-text">💬 Use these commands in chat to query the database directly!</p>
-                        </div>
-                    ` : `
+                    ${!isConnected ? `
                         <div class="database-section error-section">
                             <h4>⚠️ Connection Issue</h4>
                             <p>Unable to connect to the PostgreSQL database. This could be due to:</p>
@@ -473,33 +520,47 @@ class APIIntegration {
                         font-style: italic;
                     }
                     
-                    .quick-commands {
+                    .connection-details {
                         display: flex;
                         flex-direction: column;
                         gap: 8px;
-                        margin: 12px 0;
                     }
                     
-                    .quick-cmd-btn {
-                        background: var(--accent-primary);
-                        color: white;
-                        border: none;
-                        padding: 8px 12px;
-                        border-radius: 4px;
-                        cursor: pointer;
-                        font-size: 0.9em;
-                        transition: background-color 0.2s ease;
+                    .connection-row {
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        padding: 6px 0;
+                        border-bottom: 1px solid var(--border-primary);
                     }
                     
-                    .quick-cmd-btn:hover {
-                        background: var(--accent-hover);
+                    .connection-row:last-child {
+                        border-bottom: none;
                     }
                     
-                    .help-text {
-                        margin: 12px 0 0 0;
-                        font-size: 0.85em;
+                    .connection-row label {
+                        font-weight: bold;
+                        color: var(--text-primary);
+                        min-width: 120px;
+                    }
+                    
+                    .connection-value {
+                        font-family: 'Courier New', monospace;
                         color: var(--text-secondary);
-                        font-style: italic;
+                        word-break: break-all;
+                        text-align: right;
+                        flex: 1;
+                        margin-left: 16px;
+                    }
+                    
+                    .schema-group {
+                        margin: 16px 0;
+                    }
+                    
+                    .schema-group h5 {
+                        margin: 0 0 8px 0;
+                        color: var(--accent-primary);
+                        font-size: 0.9em;
                     }
                     
                     .error-section {

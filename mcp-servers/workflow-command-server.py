@@ -713,6 +713,12 @@ class WorkflowCommandServer:
             result['parameters'] = {'tag': groups[0], 'elements': groups[1]}
             result['action'] = 'batch_tag_elements'
             
+        elif command_name == 'db-query':
+            # Extract SQL query from quoted or unquoted text
+            query = groups[0] if groups[0] else groups[1] if groups[1] else None
+            result['parameters'] = {'query': query}
+            result['action'] = 'handle_db_query'
+            
         # Default case for unhandled commands
         else:
             result['action'] = f"handle_{command_name.replace('-', '_')}"

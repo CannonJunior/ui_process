@@ -416,7 +416,7 @@ class OpportunityController {
     updateToggleButton(isActive) {
         const toggleButton = document.getElementById('opportunityToggle');
         if (toggleButton) {
-            toggleButton.textContent = isActive ? '📋 Workflow' : '💼 Opportunities';
+            toggleButton.textContent = isActive ? '💼 Opportunities' : '💼 Opportunities';
             toggleButton.classList.toggle('active', isActive);
         }
     }

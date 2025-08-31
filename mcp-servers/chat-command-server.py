@@ -66,6 +66,10 @@ class ChatCommandServer:
             'suggest': r'^/suggest(?:\s+(.+))?$',
             'associate': r'^/associate\s+(\S+)\s+(\S+)$',
             
+            # Database commands
+            'sql': r'^/sql\s+(?:"([^"]+)"|(.+))$',
+            'db-query': r'^/db[-_]?query\s+(?:"([^"]+)"|(.+))$',
+            
             # Help and info commands
             'help': r'^/help(?:\s+(.*))?$',
             'commands': r'^/commands$',
@@ -94,6 +98,9 @@ class ChatCommandServer:
             '/analyze &lt;text&gt;': 'Analyze text for potential associations',
             '/suggest [context]': 'Get suggestions for current context',
             '/associate &lt;id1&gt; &lt;id2&gt;': 'Create association between items',
+            
+            '/sql &lt;query&gt;': 'Execute PostgreSQL query directly',
+            '/db-query &lt;query&gt;': 'Execute PostgreSQL query (alias for /sql)',
             
             '/help [command]': 'Show help information',
             '/commands': 'List all available commands',
@@ -330,6 +337,7 @@ class ChatCommandServer:
                     'Matrix Commands': [cmd for cmd in self.command_descriptions.keys() if cmd.startswith('/matrix')],
                     'View & Navigation': [cmd for cmd in self.command_descriptions.keys() if cmd.startswith(('/view', '/select', '/goto', '/find'))],
                     'Analysis Commands': [cmd for cmd in self.command_descriptions.keys() if cmd.startswith(('/analyze', '/suggest', '/associate'))],
+                    'Database Commands': [cmd for cmd in self.command_descriptions.keys() if cmd.startswith(('/sql', '/db'))],
                     'General Commands': [cmd for cmd in self.command_descriptions.keys() if cmd.startswith(('/help', '/commands', '/status'))]
                 }
                 
@@ -341,8 +349,9 @@ class ChatCommandServer:
                         '/node-create process "Start Process"',
                         '/task-create "My Task" "Start Process"',
                         '/note-create "Meeting notes"',
+                        '/sql "SELECT * FROM workflows LIMIT 5"',
                         '/workflow-status',
-                        '/help node'
+                        '/help sql'
                     ]
                 }
                 
@@ -611,6 +620,16 @@ class ChatCommandServer:
                 '/help note',
                 '/help opp-create',
                 '/commands'
+            ],
+            'sql': [
+                '/sql "SELECT * FROM workflows LIMIT 5"',
+                '/sql "SELECT COUNT(*) FROM tasks WHERE status = \'completed\'"',
+                '/sql "SELECT table_name FROM information_schema.tables WHERE table_schema = \'public\'"'
+            ],
+            'db': [
+                '/db-query "SELECT * FROM opportunities ORDER BY created_at DESC LIMIT 10"',
+                '/db-query "SELECT column_name, data_type FROM information_schema.columns WHERE table_name = \'workflows\'"',
+                '/db-query "SELECT status, COUNT(*) as count FROM tasks GROUP BY status"'
             ]
         }
         

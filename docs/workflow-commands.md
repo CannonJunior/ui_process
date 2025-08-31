@@ -754,6 +754,64 @@ Link a note to an opportunity or task.
 
 ---
 
+## 🗄️ Database Commands
+
+Execute PostgreSQL queries directly from the chat interface.
+
+### `/sql <query>`
+Execute a PostgreSQL query directly.
+
+**Parameters:**
+- `<query>` - SQL query to execute (quotes recommended for complex queries)
+
+**Security Features:**
+- Safe mode enabled by default (SELECT queries only)
+- Rate limited to 10 queries per 15 minutes
+- Dangerous operations blocked
+
+**Copy-Paste Examples:**
+```
+/sql "SELECT * FROM workflows LIMIT 5"
+/sql "SELECT COUNT(*) FROM tasks WHERE status = 'completed'"
+/sql "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'"
+/sql "SELECT w.name, COUNT(t.id) as task_count FROM workflows w LEFT JOIN tasks t ON w.id = t.workflow_id GROUP BY w.id, w.name"
+/sql "SELECT status, COUNT(*) as count FROM opportunities GROUP BY status"
+/sql "SELECT version(), current_database(), current_user"
+```
+
+### `/db-query <query>`
+Alternative command for executing PostgreSQL queries (identical to `/sql`).
+
+**Copy-Paste Examples:**
+```
+/db-query "SELECT * FROM opportunities ORDER BY created_at DESC LIMIT 10"
+/db-query "SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'workflows'"
+/db-query "SELECT COUNT(*) as total FROM tasks WHERE created_at > NOW() - INTERVAL '7 days'"
+/db-query "SELECT title, description FROM opportunities WHERE title ILIKE '%innovation%'"
+/db-query "SELECT DATE_TRUNC('month', created_at) as month, COUNT(*) FROM workflows GROUP BY month"
+```
+
+**Database Schema Queries:**
+```
+/sql "SELECT table_name, table_type FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name"
+/sql "SHOW TABLES"
+/db-query "SELECT constraint_name, table_name, column_name FROM information_schema.key_column_usage WHERE table_schema = 'public'"
+```
+
+**Advanced Analytics:**
+```
+/sql "SELECT w.name as workflow, COUNT(t.id) as tasks, AVG(CASE WHEN t.status = 'completed' THEN 1.0 ELSE 0.0 END) * 100 as completion_rate FROM workflows w LEFT JOIN tasks t ON w.id = t.workflow_id GROUP BY w.id, w.name ORDER BY completion_rate DESC"
+/db-query "SELECT status, priority, COUNT(*) FROM opportunities GROUP BY status, priority ORDER BY status, priority"
+```
+
+**Safety Notes:**
+- Only SELECT queries allowed by default in safe mode
+- INSERT/UPDATE/DELETE require safe_mode: false (contact admin)
+- Always use LIMIT for exploratory queries on large tables
+- Check connection status with Data health indicator (click for details)
+
+---
+
 ## 💡 Usage Tips
 
 ### **Quote Handling**
@@ -813,6 +871,7 @@ After comprehensive testing of all 151 documented commands:
 - **Matrix Operations**: ✅ All commands working
 - **View & Navigation**: ✅ Most commands working
 - **Batch Operations**: ✅ All commands working
+- **Database Commands**: ✅ All commands working (PostgreSQL queries)
 - **Help & Info**: ✅ All commands working
 
 ### **🚧 Implementation Status**
