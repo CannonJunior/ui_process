@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Click Handler</title>
+    <style>
+        .health-indicator {
+            display: inline-block;
+            padding: 5px 10px;
+            margin: 5px;
+            border: 1px solid #ccc;
+            cursor: pointer;
+            background: #f0f0f0;
+        }
+        .health-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+        }
+        .health-dot.online { background: green; }
+        .health-dot.offline { background: red; }
+    </style>
+</head>
+<body>
+    <h1>Debug Click Handler</h1>
+    
+    <div id="dataHealthIndicator" class="health-indicator" title="PostgreSQL Database">
+        <div class="health-dot online"></div>
+        <div class="health-status">Data</div>
+    </div>
+    
+    <div id="debug-output"></div>
+    
+    <script>
+        console.log('🚀 Debug script loaded');
+        
+        // Wait for DOM to be ready
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('📄 DOM loaded');
+            
+            const dataHealthIndicator = document.getElementById('dataHealthIndicator');
+            const debugOutput = document.getElementById('debug-output');
+            
+            if (dataHealthIndicator) {
+                console.log('✅ dataHealthIndicator found');
+                debugOutput.innerHTML += '<p>✅ dataHealthIndicator found</p>';
+                
+                // Add click handler
+                dataHealthIndicator.addEventListener('click', function(e) {
+                    console.log('🖱️ Click detected on dataHealthIndicator');
+                    debugOutput.innerHTML += '<p>🖱️ Click detected!</p>';
+                    
+                    // Test API call
+                    fetch('http://localhost:3001/api/v1/db/connection')
+                        .then(response => {
+                            console.log('📡 API response received:', response.status);
+                            debugOutput.innerHTML += `<p>📡 API response: ${response.status}</p>`;
+                            return response.json();
+                        })
+                        .then(data => {
+                            console.log('📊 API data:', data);
+                            debugOutput.innerHTML += `<p>📊 API data received</p>`;
+                            debugOutput.innerHTML += `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+                        })
+                        .catch(error => {
+                            console.error('❌ API error:', error);
+                            debugOutput.innerHTML += `<p>❌ API error: ${error.message}</p>`;
+                        });
+                });
+                
+                // Add hover effect
+                dataHealthIndicator.style.cursor = 'pointer';
+                dataHealthIndicator.addEventListener('mouseenter', () => {
+                    dataHealthIndicator.style.opacity = '0.8';
+                });
+                dataHealthIndicator.addEventListener('mouseleave', () => {
+                    dataHealthIndicator.style.opacity = '1';
+                });
+                
+            } else {
+                console.error('❌ dataHealthIndicator NOT found');
+                debugOutput.innerHTML += '<p>❌ dataHealthIndicator NOT found</p>';
+            }
+        });
+    </script>
+</body>
+</html>

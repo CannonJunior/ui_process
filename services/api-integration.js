@@ -3,12 +3,17 @@
  * Coordinates API client, sync service, and workflow API service
  */
 
+console.log('📂 API Integration module started loading...');
+
 import { getAPIClient } from './api-client.js';
 import SyncService from './sync-service.js';
 import WorkflowAPIService from './workflow-api-service.js';
 
+console.log('📦 All imports loaded successfully');
+
 class APIIntegration {
     constructor() {
+        console.log('🚀 APIIntegration constructor called');
         this.apiClient = null;
         this.syncService = null;
         this.workflowAPIService = null;
@@ -262,24 +267,47 @@ class APIIntegration {
     }
     
     setupDatabaseHealthClickHandler() {
+        console.log('🔧 setupDatabaseHealthClickHandler() called');
         const dataHealthIndicator = document.getElementById('dataHealthIndicator');
+        console.log('🔍 Element lookup result:', dataHealthIndicator ? 'FOUND' : 'NOT FOUND');
+        
         if (dataHealthIndicator) {
-            dataHealthIndicator.style.cursor = 'pointer';
-            dataHealthIndicator.addEventListener('click', () => {
-                console.log('🖱️ dataHealthIndicator clicked - showing database details');
+            // Remove any existing listeners (in case of double setup)
+            dataHealthIndicator.replaceWith(dataHealthIndicator.cloneNode(true));
+            const refreshedElement = document.getElementById('dataHealthIndicator');
+            
+            refreshedElement.style.cursor = 'pointer';
+            console.log('🎯 Adding click listener to dataHealthIndicator');
+            
+            const clickHandler = (event) => {
+                console.log('🖱️ CLICK HANDLER TRIGGERED!', event);
+                event.preventDefault();
+                event.stopPropagation();
                 this.showDatabaseDetails();
-            });
+            };
+            
+            refreshedElement.addEventListener('click', clickHandler, { capture: true });
+            
+            // Also add onclick as backup
+            refreshedElement.onclick = clickHandler;
             
             // Add visual feedback on hover
-            dataHealthIndicator.addEventListener('mouseenter', () => {
-                dataHealthIndicator.style.opacity = '0.8';
+            refreshedElement.addEventListener('mouseenter', () => {
+                refreshedElement.style.opacity = '0.8';
+                console.log('🐭 Mouse enter detected');
             });
             
-            dataHealthIndicator.addEventListener('mouseleave', () => {
-                dataHealthIndicator.style.opacity = '1';
+            refreshedElement.addEventListener('mouseleave', () => {
+                refreshedElement.style.opacity = '1';
+                console.log('🐭 Mouse leave detected');
             });
             
-            console.log('✅ Database health indicator click handler setup');
+            // Add debug border to show element is active
+            refreshedElement.style.border = '2px solid #007bff';
+            
+            console.log('✅ Database health indicator click handler setup COMPLETE');
+            console.log('✅ Element cursor style:', refreshedElement.style.cursor);
+            console.log('✅ Element onclick:', refreshedElement.onclick ? 'SET' : 'NOT SET');
         } else {
             console.warn('⚠️ dataHealthIndicator not found - retrying in 1 second');
             setTimeout(() => this.setupDatabaseHealthClickHandler(), 1000);
@@ -694,18 +722,31 @@ class APIIntegration {
     }
     
     setupUIIntegration() {
+        console.log('🔧 setupUIIntegration() called');
+        console.log('🔧 window.app exists:', window.app ? 'YES' : 'NO');
+        
         // Replace existing workflow methods in the main app
         if (window.app && typeof window.app === 'object') {
+            console.log('📱 Main app found, integrating immediately');
             this.integrateWithMainApp();
         } else {
+            console.log('⏳ Main app not ready, waiting for DOMContentLoaded');
             // Wait for main app to be available
             document.addEventListener('DOMContentLoaded', () => {
-                setTimeout(() => this.integrateWithMainApp(), 1000);
+                console.log('📄 DOMContentLoaded fired, setting up integration timeout');
+                setTimeout(() => {
+                    console.log('⏰ Integration timeout fired, attempting integration');
+                    this.integrateWithMainApp();
+                }, 1000);
             });
         }
     }
     
     integrateWithMainApp() {
+        console.log('🔗 integrateWithMainApp() called');
+        console.log('🔗 ProcessFlowDesigner available:', typeof ProcessFlowDesigner !== 'undefined' ? 'YES' : 'NO');
+        console.log('🔗 window.app is ProcessFlowDesigner:', window.app instanceof ProcessFlowDesigner ? 'YES' : 'NO');
+        
         // Check if ProcessFlowDesigner is available
         if (typeof ProcessFlowDesigner !== 'undefined' && window.app instanceof ProcessFlowDesigner) {
             console.log('🔗 Integrating with ProcessFlowDesigner...');
@@ -1014,11 +1055,17 @@ export function getAPIIntegration() {
 export { APIIntegration };
 
 // Initialize automatically when module is loaded
+console.log('📦 API Integration module loading...');
 const apiIntegration = getAPIIntegration();
+console.log('📦 API Integration instance created:', apiIntegration);
 
 // Make available globally
 if (typeof window !== 'undefined') {
+    console.log('🌐 Making API Integration available globally');
     window.APIIntegration = APIIntegration;
     window.getAPIIntegration = getAPIIntegration;
     window.apiIntegration = apiIntegration;
+    console.log('✅ API Integration module loaded successfully');
+} else {
+    console.warn('⚠️ Window object not available - API Integration not made global');
 }

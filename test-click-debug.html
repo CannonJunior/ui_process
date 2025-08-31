@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Click Handler Debug</title>
+    <style>
+        .health-indicator {
+            display: inline-block;
+            padding: 10px 15px;
+            margin: 10px;
+            border: 2px solid #007bff;
+            border-radius: 5px;
+            cursor: pointer;
+            background: #f8f9fa;
+            transition: all 0.2s;
+        }
+        .health-indicator:hover {
+            background: #e9ecef;
+            opacity: 0.8;
+        }
+        .health-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+        .health-dot.online { background: #28a745; }
+        .debug-output {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f1f1f1;
+            border-radius: 5px;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <h1>Click Handler Debug Test</h1>
+    
+    <!-- Simulate the exact structure from the main app -->
+    <div id="dataHealthIndicator" class="health-indicator" title="PostgreSQL Database">
+        <div class="health-dot online"></div>
+        <div class="health-status">Data</div>
+    </div>
+    
+    <button onclick="testClickManually()">Test Click Manually</button>
+    <button onclick="checkElement()">Check Element</button>
+    
+    <div id="debug-output" class="debug-output">Debug output will appear here...\n</div>
+
+    <script>
+        let debugOutput = '';
+        
+        function log(message) {
+            debugOutput += new Date().toLocaleTimeString() + ' - ' + message + '\n';
+            document.getElementById('debug-output').textContent = debugOutput;
+            console.log(message);
+        }
+        
+        function checkElement() {
+            const element = document.getElementById('dataHealthIndicator');
+            log('Element found: ' + (element ? 'YES' : 'NO'));
+            if (element) {
+                log('Element has onclick: ' + (element.onclick ? 'YES' : 'NO'));
+                log('Element cursor style: ' + element.style.cursor);
+                log('Element listeners: ' + (element._listeners ? element._listeners.length : 'unknown'));
+            }
+        }
+        
+        function testClickManually() {
+            log('Manual click test triggered');
+            showDatabaseDetails();
+        }
+        
+        async function showDatabaseDetails() {
+            log('showDatabaseDetails() called');
+            
+            try {
+                log('Fetching database connection info...');
+                const response = await fetch('http://localhost:3001/api/v1/db/connection');
+                log('Response status: ' + response.status);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    log('Connection data received:');
+                    log(JSON.stringify(data, null, 2));
+                    
+                    // Create and show modal
+                    showModal(data);
+                } else {
+                    log('ERROR: Response not OK - ' + response.status);
+                }
+            } catch (error) {
+                log('ERROR: ' + error.message);
+            }
+        }
+        
+        function showModal(data) {
+            log('Creating modal...');
+            
+            // Remove existing modal if present
+            const existingModal = document.getElementById('databaseDetailsModal');
+            if (existingModal) {
+                existingModal.remove();
+            }
+            
+            // Create modal
+            const modal = document.createElement('div');
+            modal.id = 'databaseDetailsModal';
+            modal.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0,0,0,0.7);
+                z-index: 10000;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            `;
+            
+            const content = document.createElement('div');
+            content.style.cssText = `
+                background: white;
+                padding: 20px;
+                border-radius: 8px;
+                max-width: 600px;
+                max-height: 80vh;
+                overflow-y: auto;
+            `;
+            
+            content.innerHTML = `
+                <h3>Database Connection Details</h3>
+                <pre>${JSON.stringify(data, null, 2)}</pre>
+                <button onclick="document.getElementById('databaseDetailsModal').remove()" 
+                        style="margin-top: 15px; padding: 8px 16px;">Close</button>
+            `;
+            
+            modal.appendChild(content);
+            document.body.appendChild(modal);
+            
+            log('Modal created and shown');
+            
+            // Close on background click
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.remove();
+                }
+            });
+        }
+        
+        // Set up click handler when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            log('DOM loaded, setting up click handler...');
+            
+            const dataHealthIndicator = document.getElementById('dataHealthIndicator');
+            if (dataHealthIndicator) {
+                log('Element found, adding click listener...');
+                
+                // Add click handler
+                dataHealthIndicator.addEventListener('click', () => {
+                    log('🖱️ Click detected!');
+                    showDatabaseDetails();
+                });
+                
+                // Add hover effects
+                dataHealthIndicator.addEventListener('mouseenter', () => {
+                    dataHealthIndicator.style.opacity = '0.8';
+                });
+                
+                dataHealthIndicator.addEventListener('mouseleave', () => {
+                    dataHealthIndicator.style.opacity = '1';
+                });
+                
+                log('✅ Click handler set up successfully');
+            } else {
+                log('❌ Element not found');
+            }
+        });
+        
+        log('Script loaded');
+    </script>
+</body>
+</html>
