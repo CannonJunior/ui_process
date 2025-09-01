@@ -10,10 +10,10 @@ import { query } from '../config/database.js';
 
 const router = express.Router();
 
-// Rate limiting for database queries - stricter limits for security
+// Rate limiting for database queries - reasonable limits for development
 const queryRateLimit = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 10, // Max 10 queries per 15 minutes per IP
+    max: 100, // Max 100 queries per 15 minutes per IP
     message: {
         error: 'Too many database queries. Please wait before trying again.',
         retryAfter: '15 minutes'

@@ -45,7 +45,8 @@ class MCPService {
                 return `${command}${sqlContent}${remainder}`;
             }
             
-            // If no quotes found, return as-is
+            // If no quotes found, return as-is for SQL commands
+            console.log('📊 No quotes found in SQL command, returning as-is');
             return message;
         }
         
