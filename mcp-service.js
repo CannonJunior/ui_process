@@ -26,6 +26,29 @@ class MCPService {
         if (!message || !message.startsWith('/')) {
             return message;
         }
+        
+        // Special handling for SQL/database commands to preserve SQL syntax
+        const sqlCommands = ['/sql', '/db-query'];
+        const isDbCommand = sqlCommands.some(cmd => message.toLowerCase().startsWith(cmd));
+        
+        if (isDbCommand) {
+            console.log('📊 SQL command detected, applying SQL-specific preprocessing');
+            
+            // For SQL commands, we need to extract content from quotes but preserve the SQL syntax
+            // Pattern: /sql "SELECT * FROM table" or /sql 'SELECT * FROM table'
+            const sqlQuotePattern = /^(\/(?:sql|db-query)\s+)(['"])(.*?)\2(.*)$/i;
+            const match = message.match(sqlQuotePattern);
+            
+            if (match) {
+                const [, command, , sqlContent, remainder] = match;
+                console.log('📊 Extracted SQL from quotes:', sqlContent);
+                return `${command}${sqlContent}${remainder}`;
+            }
+            
+            // If no quotes found, return as-is
+            return message;
+        }
+        
         // Handle common quote patterns that cause JSON parsing issues
         // Convert quoted parameters to unquoted ones for better compatibility
         
