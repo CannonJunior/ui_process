@@ -195,33 +195,13 @@ class APIIntegration {
     }
     
     updateServiceHealthIndicators(status, details = {}) {
-        // Update API health indicator in service health section
-        const apiHealthIndicator = document.getElementById('apiHealthIndicator');
-        if (apiHealthIndicator) {
-            const apiHealthDot = apiHealthIndicator.querySelector('.health-dot');
-            const apiHealthStatus = apiHealthIndicator.querySelector('.health-status');
-            
-            if (apiHealthDot && apiHealthStatus) {
-                // Map status to health indicator classes
-                switch (status) {
-                    case 'online':
-                    case 'synced':
-                        apiHealthDot.className = 'health-dot online';
-                        apiHealthStatus.textContent = 'API';
-                        break;
-                    case 'syncing':
-                        apiHealthDot.className = 'health-dot connecting';
-                        apiHealthStatus.textContent = 'API';
-                        break;
-                    case 'offline':
-                    case 'sync-error':
-                    default:
-                        apiHealthDot.className = 'health-dot offline';
-                        apiHealthStatus.textContent = 'API';
-                        break;
-                }
-            }
-        }
+        // DISABLED: Conflicting with api-health-handler.js - let the dedicated handler manage apiHealthIndicator
+        // The api-health-handler.js already monitors and updates the apiHealthIndicator properly
+        console.log('🔧 updateServiceHealthIndicators called with status:', status);
+        console.log('ℹ️  API Health Indicator is managed by api-health-handler.js - skipping duplicate update');
+        
+        // Note: The apiHealthIndicator is now exclusively managed by api-health-handler.js
+        // which checks http://localhost:3001/health every 10 seconds and applies proper styling
         
         // Check and update database status
         this.checkDatabaseStatus();

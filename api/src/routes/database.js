@@ -228,6 +228,18 @@ router.get('/connection', async (req, res) => {
         const result = await query(connectionQuery);
         const connectionInfo = result.rows[0];
 
+        // Check for pgvector extension
+        let extensions = [];
+        try {
+            const extensionQuery = `SELECT extname, extversion FROM pg_extension WHERE extname = 'vector'`;
+            const extensionResult = await query(extensionQuery);
+            if (extensionResult.rows.length > 0) {
+                extensions.push('vector');
+            }
+        } catch (error) {
+            console.log('pgvector extension check failed (this is normal for mock database):', error.message);
+        }
+
         // Get environment info (safely)
         const host = process.env.DB_HOST || 'localhost';
         const port = process.env.DB_PORT || '5432';
@@ -242,6 +254,7 @@ router.get('/connection', async (req, res) => {
                 server_host: connectionInfo.server_host,
                 server_port: connectionInfo.server_port,
                 version: connectionInfo.version,
+                extensions: extensions,
                 url: `postgresql://${connectionInfo.username}@${host}:${port}/${database}`
             },
             api_endpoint: `http://localhost:${process.env.PORT || 3001}/api/v1/db`,

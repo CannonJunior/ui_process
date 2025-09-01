@@ -117,21 +117,13 @@ router.post('/semantic', searchRateLimiterMiddleware, async (req, res, next) => 
         // Generate query embedding
         const queryEmbedding = await embeddingService.generateEmbedding(searchQuery);
         
-        // Mock semantic search results for development
+        // Mock semantic search results for development (opportunities removed)
         const mockResults = [
-            {
-                type: 'opportunity',
-                id: 'mock_opp_001',
-                title: `Opportunity semantically related to "${searchQuery}"`,
-                description: 'This is a mock semantic search result',
-                similarity: 0.85,
-                searchType: 'semantic'
-            },
             {
                 type: 'workflow',
                 id: 'mock_wf_001',
                 title: `Workflow containing "${searchQuery}" concepts`,
-                description: 'Another mock result showing semantic matching',
+                description: 'Mock result showing semantic matching for workflow content',
                 similarity: 0.78,
                 searchType: 'semantic'
             }

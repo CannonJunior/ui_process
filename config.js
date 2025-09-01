@@ -140,6 +140,15 @@ const AppConfig = {
         taskSpacing: 50,       // Spacing between tasks in slots
         tagSpacing: 4,         // Spacing between tags
         tagHeight: 20          // Height of tag elements
+    },
+
+    // Health Check Configuration
+    healthCheck: {
+        apiHealthInterval: 10000,      // API health check interval in milliseconds (10 seconds)
+        dataHealthInterval: 10000,     // Database health check interval in milliseconds (10 seconds)
+        mcpHealthInterval: 10000,      // MCP services health check interval in milliseconds (10 seconds)
+        ollamaHealthInterval: 10000,   // Ollama AI health check interval in milliseconds (10 seconds)
+        searchHealthInterval: 10000    // Search service health check interval in milliseconds (10 seconds)
     }
 };
 

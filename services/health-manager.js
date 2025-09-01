@@ -99,20 +99,22 @@ class ServiceHealthManager {
         // Initial check
         this.checkMCPHealth();
         
-        // Monitor every 30 seconds
+        // Monitor at configured interval (default 10 seconds)
+        const mcpHealthInterval = window.AppConfig?.healthCheck?.mcpHealthInterval || 10000;
         setInterval(() => {
             this.checkMCPHealth();
-        }, 30000);
+        }, mcpHealthInterval);
     }
 
     startOllamaMonitoring() {
         // Initial check
         this.checkOllamaHealth();
         
-        // Monitor every 30 seconds
+        // Monitor at configured interval (default 10 seconds)
+        const ollamaHealthInterval = window.AppConfig?.healthCheck?.ollamaHealthInterval || 10000;
         setInterval(() => {
             this.checkOllamaHealth();
-        }, 30000);
+        }, ollamaHealthInterval);
     }
 
     async checkMCPHealth() {

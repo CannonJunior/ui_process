@@ -5,19 +5,77 @@
 
 console.log('🔗 API health handler script loading...');
 
+// IMMEDIATE CHECK - Don't wait for DOM
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', immediateHealthCheck);
+} else {
+    // DOM already loaded
+    immediateHealthCheck();
+}
+
+async function immediateHealthCheck() {
+    console.log('🚀 IMMEDIATE HEALTH CHECK STARTING');
+    
+    // Try to find and update indicators immediately
+    const apiIndicator = document.getElementById('apiHealthIndicator');
+    const dataIndicator = document.getElementById('dataHealthIndicator');
+    
+    console.log('🔍 Found indicators:', { api: !!apiIndicator, data: !!dataIndicator });
+    
+    if (apiIndicator) {
+        console.log('🎯 Forcing API indicator update...');
+        await forceUpdateIndicator(apiIndicator, 'http://localhost:3001/health');
+    }
+    
+    if (dataIndicator) {
+        console.log('🎯 Forcing Data indicator update...');
+        await forceUpdateIndicator(dataIndicator, 'http://localhost:3001/api/v1/db/connection');
+    }
+}
+
+async function forceUpdateIndicator(element, url) {
+    try {
+        const response = await fetch(url);
+        const isOnline = response.ok;
+        
+        console.log(`🔧 FORCE UPDATE: ${url} -> ${response.status} (${isOnline ? 'ONLINE' : 'OFFLINE'})`);
+        
+        const healthDot = element.querySelector('.health-dot');
+        if (healthDot) {
+            healthDot.classList.remove('online', 'offline', 'connecting');
+            if (isOnline) {
+                healthDot.classList.add('online');
+                healthDot.style.setProperty('color', '#28a745', 'important');
+                console.log('🟢 FORCED DOT TO GREEN');
+            } else {
+                healthDot.classList.add('offline');  
+                healthDot.style.setProperty('color', '#dc3545', 'important');
+                console.log('🔴 FORCED DOT TO RED');
+            }
+        } else {
+            console.error('❌ NO HEALTH DOT FOUND IN INDICATOR');
+        }
+    } catch (error) {
+        console.error('❌ FORCE UPDATE FAILED:', error);
+    }
+}
+
 // Wait for DOM to be ready
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('📄 DOM loaded - setting up API health handler');
+    console.log('📄 DOM loaded - setting up health handlers');
     
     // Multiple attempts to ensure it gets set up
     let attempts = 0;
     const maxAttempts = 10;
     
-    function setupApiHealth() {
+    function setupHealthIndicators() {
         attempts++;
-        console.log(`🔄 API setup attempt ${attempts}/${maxAttempts}`);
+        console.log(`🔄 Health setup attempt ${attempts}/${maxAttempts}`);
         
         const apiHealthIndicator = document.getElementById('apiHealthIndicator');
+        const dataHealthIndicator = document.getElementById('dataHealthIndicator');
+        
+        let foundAny = false;
         
         if (apiHealthIndicator) {
             console.log('✅ apiHealthIndicator found!');
@@ -27,22 +85,39 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Start health monitoring
             startApiHealthMonitoring(apiHealthIndicator);
+            foundAny = true;
             
             console.log('✅ API health handler setup complete');
-            
         } else {
             console.warn(`⚠️ apiHealthIndicator not found (attempt ${attempts})`);
+        }
+        
+        if (dataHealthIndicator) {
+            console.log('✅ dataHealthIndicator found!');
             
-            if (attempts < maxAttempts) {
-                setTimeout(setupApiHealth, 500);
-            } else {
-                console.error('❌ Failed to find apiHealthIndicator after maximum attempts');
-            }
+            // Set up click handler
+            setupDataClickHandler(dataHealthIndicator);
+            
+            // Start health monitoring
+            startDataHealthMonitoring(dataHealthIndicator);
+            foundAny = true;
+            
+            console.log('✅ Data health handler setup complete');
+        } else {
+            console.warn(`⚠️ dataHealthIndicator not found (attempt ${attempts})`);
+        }
+        
+        if (foundAny) {
+            console.log('✅ Health handlers setup complete');
+        } else if (attempts < maxAttempts) {
+            setTimeout(setupHealthIndicators, 500);
+        } else {
+            console.error('❌ Failed to find health indicators after maximum attempts');
         }
     }
     
     // Start setup attempts
-    setupApiHealth();
+    setupHealthIndicators();
 });
 
 function setupApiClickHandler(element) {
@@ -112,8 +187,17 @@ function startApiHealthMonitoring(element) {
     // Check immediately
     checkApiHealth();
     
-    // Check every 30 seconds
-    setInterval(checkApiHealth, 30000);
+    // Check at configured interval (default 10 seconds)
+    const apiHealthInterval = window.AppConfig?.healthCheck?.apiHealthInterval || 10000;
+    setInterval(checkApiHealth, apiHealthInterval);
+    
+    // Also check when page becomes visible (user switches tabs)
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) {
+            console.log('👁️ Page became visible - checking API health');
+            checkApiHealth();
+        }
+    });
 }
 
 function updateApiHealthIndicator(element, isOnline, status) {
@@ -129,15 +213,15 @@ function updateApiHealthIndicator(element, isOnline, status) {
         // Add the correct class
         if (isOnline) {
             healthDot.classList.add('online');
-            healthDot.style.backgroundColor = '#10b981'; // Force green color
+            healthDot.style.setProperty('color', '#28a745', 'important'); // Force green color with !important
         } else {
             healthDot.classList.add('offline');
-            healthDot.style.backgroundColor = '#ef4444'; // Force red color
+            healthDot.style.setProperty('color', '#dc3545', 'important'); // Force red color with !important
         }
         
         console.log(`✅ API health updated: ${isOnline ? 'ONLINE' : 'OFFLINE'} (${status})`);
         console.log('✅ Health dot classes:', healthDot.className);
-        console.log('✅ Health dot style:', healthDot.style.backgroundColor);
+        console.log('✅ Health dot style:', healthDot.style.color);
     } else {
         console.error('❌ Health dot not found in API indicator');
     }
@@ -303,4 +387,309 @@ function createApiModal(healthData, endpointsData, status, errorMessage = null) 
     });
 }
 
-console.log('✅ API health handler script loaded');
+// Data health indicator functions
+function setupDataClickHandler(element) {
+    console.log('🎯 Setting up Data click handler');
+    
+    // Clear any existing handlers by cloning the element
+    const parent = element.parentNode;
+    const newElement = element.cloneNode(true);
+    parent.replaceChild(newElement, element);
+    
+    // Set up the click handler on the new element
+    newElement.style.cursor = 'pointer';
+    
+    const clickHandler = async function(event) {
+        console.log('🖱️ CLICK DETECTED ON DATA INDICATOR!');
+        event.preventDefault();
+        event.stopPropagation();
+        
+        try {
+            await showDataModal();
+        } catch (error) {
+            console.error('❌ Error showing Data modal:', error);
+        }
+    };
+    
+    // Add click handler with multiple methods for maximum compatibility
+    newElement.addEventListener('click', clickHandler, true);
+    newElement.onclick = clickHandler;
+    
+    // Add hover effects
+    newElement.addEventListener('mouseenter', () => {
+        newElement.style.opacity = '0.8';
+        console.log('🐭 Data mouse enter detected');
+    });
+    
+    newElement.addEventListener('mouseleave', () => {
+        newElement.style.opacity = '1';
+        console.log('🐭 Data mouse leave detected');
+    });
+    
+    console.log('✅ Data click handler attached');
+}
+
+function startDataHealthMonitoring(element) {
+    console.log('💓 Starting Data health monitoring');
+    
+    async function checkDataHealth() {
+        try {
+            // Check database connection through API
+            const response = await fetch('http://localhost:3001/api/v1/db/connection');
+            const isOnline = response.ok;
+            
+            updateDataHealthIndicator(element, isOnline, response.status);
+            
+            if (isOnline) {
+                const data = await response.json();
+                console.log('💚 Database is online:', data.status || 'connected');
+            } else {
+                console.log('💔 Database is offline, status:', response.status);
+            }
+            
+        } catch (error) {
+            console.log('💔 Database check failed:', error.message);
+            updateDataHealthIndicator(element, false, 'error');
+        }
+    }
+    
+    // Check immediately
+    checkDataHealth();
+    
+    // Check at configured interval (default 10 seconds)
+    const dataHealthInterval = window.AppConfig?.healthCheck?.dataHealthInterval || 10000;
+    setInterval(checkDataHealth, dataHealthInterval);
+    
+    // Also check when page becomes visible
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) {
+            console.log('👁️ Page became visible - checking Data health');
+            checkDataHealth();
+        }
+    });
+}
+
+function updateDataHealthIndicator(element, isOnline, status) {
+    const healthDot = element.querySelector('.health-dot');
+    const healthStatus = element.querySelector('.health-status');
+    
+    console.log('🔄 Updating Data health indicator:', { isOnline, status, element, healthDot });
+    
+    // Match the colors used in the Database Connection Details modal
+    const statusColor = isOnline ? '#10b981' : '#ef4444';
+    const statusText = isOnline ? 'Connected' : 'Disconnected';
+    const dotSymbol = isOnline ? '🟢' : '🔴';
+    
+    if (healthDot) {
+        // Remove all existing classes
+        healthDot.classList.remove('online', 'offline', 'connecting');
+        
+        // Add the correct class and update both color and symbol to match modal
+        if (isOnline) {
+            healthDot.classList.add('online');
+            healthDot.style.setProperty('color', statusColor, 'important'); // Use same green as modal
+            healthDot.textContent = dotSymbol; // Green circle emoji
+        } else {
+            healthDot.classList.add('offline');
+            healthDot.style.setProperty('color', statusColor, 'important'); // Use same red as modal
+            healthDot.textContent = dotSymbol; // Red circle emoji
+        }
+        
+        console.log(`✅ Data health updated: ${isOnline ? 'ONLINE' : 'OFFLINE'} (${status})`);
+        console.log('✅ Health dot classes:', healthDot.className);
+        console.log('✅ Health dot style:', healthDot.style.color);
+        console.log('✅ Health dot symbol:', healthDot.textContent);
+    } else {
+        console.error('❌ Health dot not found in Data indicator');
+    }
+    
+    if (healthStatus) {
+        // Update text to match modal status and apply same color
+        healthStatus.textContent = statusText;
+        healthStatus.style.setProperty('color', statusColor, 'important');
+        console.log(`✅ Health status text updated: "${statusText}" with color: ${statusColor}`);
+    }
+    
+    // Update title with status
+    element.title = isOnline ? `PostgreSQL Database: Connected (${status})` : `PostgreSQL Database: Disconnected (${status})`;
+    
+    // Force a visual update
+    element.style.display = 'none';
+    element.offsetHeight; // Trigger reflow
+    element.style.display = '';
+}
+
+// Data modal function
+async function showDataModal() {
+    console.log('📊 showDataModal() called');
+    
+    try {
+        // Get database information
+        console.log('📡 Fetching database info...');
+        
+        const connectionResponse = await fetch('http://localhost:3001/api/v1/db/connection');
+        const connectionData = connectionResponse.ok ? await connectionResponse.json() : null;
+        
+        // Get database schema info
+        const schemaResponse = await fetch('http://localhost:3001/api/v1/db/schema').catch(() => null);
+        const schemaData = schemaResponse && schemaResponse.ok ? await schemaResponse.json() : null;
+        
+        // Get table info
+        const tablesResponse = await fetch('http://localhost:3001/api/v1/db/tables').catch(() => null);
+        const tablesData = tablesResponse && tablesResponse.ok ? await tablesResponse.json() : null;
+        
+        console.log('📡 Database responses received:', {
+            connection: connectionResponse.status,
+            schema: schemaResponse ? schemaResponse.status : 'FAILED',
+            tables: tablesResponse ? tablesResponse.status : 'FAILED'
+        });
+        
+        // Create modal
+        createDataModal(connectionData, schemaData, tablesData, connectionResponse.status);
+        
+    } catch (error) {
+        console.error('❌ Error in showDataModal:', error);
+        createDataModal(null, null, null, 'error', error.message);
+    }
+}
+
+function createDataModal(connectionData, schemaData, tablesData, status, errorMessage = null) {
+    console.log('🎭 Creating Data modal...');
+    
+    // Remove existing modal
+    const existingModal = document.getElementById('dataDetailsModal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+    
+    // Create modal
+    const modal = document.createElement('div');
+    modal.id = 'dataDetailsModal';
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    `;
+    
+    const content = document.createElement('div');
+    content.style.cssText = `
+        background: white;
+        padding: 30px;
+        border-radius: 8px;
+        max-width: 700px;
+        max-height: 80vh;
+        overflow-y: auto;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    `;
+    
+    let modalHTML = '<h2>🗄️ Database Connection Details</h2>';
+    
+    if (errorMessage) {
+        modalHTML += `
+            <div style="color: #dc2626; padding: 15px; background: #fef2f2; border-radius: 5px; margin: 15px 0;">
+                <h3>❌ Error</h3>
+                <p>${errorMessage}</p>
+            </div>
+        `;
+    } else {
+        const isOnline = status === 200 || status === 'ok';
+        const statusColor = isOnline ? '#10b981' : '#ef4444';
+        const statusText = isOnline ? '🟢 Connected' : '🔴 Disconnected';
+        
+        modalHTML += `
+            <div style="margin: 20px 0;">
+                <h3>📊 Database Status</h3>
+                <div style="padding: 15px; background: ${isOnline ? '#f0f9ff' : '#fef2f2'}; border-radius: 5px;">
+                    <p><strong>Status:</strong> <span style="color: ${statusColor}; font-weight: bold;">${statusText}</span></p>
+                    <p><strong>Response Code:</strong> ${status}</p>
+                    <p><strong>Database Type:</strong> PostgreSQL with pgvector</p>
+                </div>
+            </div>
+        `;
+        
+        // Connection data information
+        if (connectionData && connectionData.connection) {
+            const conn = connectionData.connection;
+            modalHTML += `
+                <div style="margin: 20px 0;">
+                    <h3>🔗 Connection Info</h3>
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <tr><td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Database:</td><td style="padding: 8px; border: 1px solid #ddd;">${conn.database || 'ui_process_dev'}</td></tr>
+                        <tr><td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Version:</td><td style="padding: 8px; border: 1px solid #ddd;">${conn.version || 'PostgreSQL 15.14'}</td></tr>
+                        <tr><td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Host:</td><td style="padding: 8px; border: 1px solid #ddd;">${conn.host || 'localhost'}</td></tr>
+                        <tr><td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Port:</td><td style="padding: 8px; border: 1px solid #ddd;">${conn.port || '5432'}</td></tr>
+                        <tr><td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">pgvector:</td><td style="padding: 8px; border: 1px solid #ddd;">${conn.extensions?.includes('vector') ? '✅ Available' : '❌ Not Available'}</td></tr>
+                    </table>
+                </div>
+            `;
+        }
+        
+        // Tables information
+        if (tablesData && tablesData.tables) {
+            modalHTML += `
+                <div style="margin: 20px 0;">
+                    <h3>📋 Database Tables</h3>
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; font-family: monospace;">
+            `;
+            
+            tablesData.tables.forEach(table => {
+                modalHTML += `<div>• ${table.name} (${table.rows || 0} rows)</div>`;
+            });
+            
+            modalHTML += '</div></div>';
+        }
+        
+        // Available operations
+        modalHTML += `
+            <div style="margin: 20px 0;">
+                <h3>⚙️ Available Operations</h3>
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; font-family: monospace;">
+                    <div>• GET /api/v1/db/connection - Connection status</div>
+                    <div>• GET /api/v1/db/schema - Database schema</div>
+                    <div>• GET /api/v1/db/tables - List all tables</div>
+                    <div>• POST /api/v1/db/query - Execute SQL queries</div>
+                    <div>• GET /api/v1/workflows - Workflow storage</div>
+                    <div>• GET /api/v1/search/semantic - Vector search</div>
+                </div>
+            </div>
+        `;
+    }
+    
+    modalHTML += `
+        <div style="margin-top: 25px; text-align: center;">
+            <button onclick="document.getElementById('dataDetailsModal').remove()" 
+                    style="padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                Close
+            </button>
+        </div>
+    `;
+    
+    content.innerHTML = modalHTML;
+    modal.appendChild(content);
+    document.body.appendChild(modal);
+    
+    console.log('✅ Data modal created and displayed');
+    
+    // Close on background click
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.remove();
+        }
+    });
+}
+
+// Global function to manually test health indicators
+window.testHealthIndicators = async function() {
+    console.log('🧪 MANUAL HEALTH TEST TRIGGERED');
+    await immediateHealthCheck();
+};
+
+console.log('✅ API and Data health handler script loaded');
+console.log('💡 Run window.testHealthIndicators() in console to manually test health indicators');

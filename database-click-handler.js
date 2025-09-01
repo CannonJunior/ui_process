@@ -105,8 +105,9 @@ function startDatabaseHealthMonitoring(element) {
     // Check immediately
     checkDatabaseHealth();
     
-    // Check every 30 seconds
-    setInterval(checkDatabaseHealth, 30000);
+    // Check at configured interval (default 10 seconds)
+    const dataHealthInterval = window.AppConfig?.healthCheck?.dataHealthInterval || 10000;
+    setInterval(checkDatabaseHealth, dataHealthInterval);
 }
 
 function updateDatabaseHealthIndicator(element, isOnline, status) {

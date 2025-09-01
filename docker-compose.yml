@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg15
+    container_name: ui_process_postgres
+    environment:
+      POSTGRES_DB: ui_process_dev
+      POSTGRES_USER: ui_process_user
+      POSTGRES_PASSWORD: ui_process_dev_password
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256 --auth-local=scram-sha-256"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/migrations:/docker-entrypoint-initdb.d/
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ui_process_user -d ui_process_dev"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    networks:
+      - ui_process_network
+
+networks:
+  ui_process_network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local

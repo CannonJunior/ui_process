@@ -168,38 +168,11 @@ class OpportunityController {
     }
     
     /**
-     * Create sample opportunities for development
+     * Create sample opportunities for development (now returns empty array)
      */
     createSampleOpportunities() {
-        return [
-            {
-                opportunity_id: 'opp-sample-1',
-                title: 'Fast & Furious Franchise',
-                description: 'High-octane action movie series',
-                status: 'active',
-                tags: ['action', 'franchise'],
-                created_at: new Date().toISOString(),
-                metadata: {}
-            },
-            {
-                opportunity_id: 'opp-sample-2',
-                title: 'Racing Championship',
-                description: 'International racing competition',
-                status: 'planning',
-                tags: ['racing', 'competition'],
-                created_at: new Date().toISOString(),
-                metadata: {}
-            },
-            {
-                opportunity_id: 'opp-sample-3',
-                title: 'Automotive Partnership',
-                description: 'Strategic partnership with car manufacturers',
-                status: 'negotiation',
-                tags: ['partnership', 'automotive'],
-                created_at: new Date().toISOString(),
-                metadata: {}
-            }
-        ];
+        // Mock opportunities removed - return empty array
+        return [];
     }
     
     /**

@@ -66,6 +66,29 @@ export async function query(text, params = []) {
         };
     }
     
+    // Handle database connection info query
+    if (textLower.includes('current_database') && textLower.includes('current_user')) {
+        return {
+            rows: [{
+                database_name: 'ui_process_dev',
+                username: 'ui_process_user',
+                server_host: '127.0.0.1',
+                server_port: 5432,
+                version: 'PostgreSQL 15.0 (Mock) on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 9.4.0-1ubuntu1~20.04.2) 9.4.0, 64-bit'
+            }]
+        };
+    }
+    
+    // Handle pgvector extension check
+    if (textLower.includes('select') && textLower.includes('extname') && textLower.includes('pg_extension')) {
+        return {
+            rows: [{
+                extname: 'vector',
+                extversion: '0.5.1'
+            }]
+        };
+    }
+    
     if (textLower.includes('select vector_dims')) {
         return { rows: [{ vector_dims: 3 }] };
     }
@@ -413,23 +436,15 @@ export const vectorOps = {
     initializeSampleData: () => {
         console.log('📊 Initializing sample vector data...');
         
-        // Add some sample document chunks for testing
+        // Add some sample document chunks for testing (opportunities removed)
         const sampleChunks = [
             {
                 organization_id: 'dev-org-id',
                 source_entity_type: 'workflow',
                 source_entity_id: 'sample-workflow-001',
-                chunk_text: 'This is a sample workflow for processing business opportunities and managing tasks efficiently.',
+                chunk_text: 'This is a sample workflow for processing tasks and managing project steps efficiently.',
                 chunk_index: 0,
                 metadata: { sample: true, type: 'workflow_description' }
-            },
-            {
-                organization_id: 'dev-org-id',
-                source_entity_type: 'opportunity',
-                source_entity_id: 'sample-opp-001',
-                chunk_text: 'A promising business opportunity in the technology sector with high potential for growth and scalability.',
-                chunk_index: 0,
-                metadata: { sample: true, type: 'opportunity_description' }
             },
             {
                 organization_id: 'dev-org-id',
