@@ -9,6 +9,12 @@ class ChatInterface {
         this.maxDocuments = 50; // Limit stored documents
         this.maxConversationHistory = 100; // Limit conversation history
         
+        // Command history for input navigation
+        this.commandHistory = [];
+        this.maxCommandHistory = 50; // Limit command history
+        this.commandHistoryIndex = -1; // Current position in history (-1 = not navigating)
+        this.currentInputBackup = ''; // Backup of current input when navigating history
+        
         // MCP Bridge for note-taking integration
         this.mcpBridge = null;
         this.mcpInitialized = false;
@@ -243,6 +249,15 @@ class ChatInterface {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
                 this.sendMessage();
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                this.navigateCommandHistory('up');
+            } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                this.navigateCommandHistory('down');
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                this.clearChatInput();
             }
         });
         
@@ -486,6 +501,9 @@ class ChatInterface {
         
         const message = this.chatInput.value.trim();
         if (!message) return;
+        
+        // Add to command history
+        this.addToCommandHistory(message);
         
         // Clear input and update UI
         this.chatInput.value = '';
@@ -1313,6 +1331,71 @@ class ChatInterface {
         }
         
         this.updateCharCounter(); // Refresh send button state
+    }
+    
+    // Command history management
+    addToCommandHistory(command) {
+        // Don't add empty commands or duplicates of the last command
+        if (!command || command === this.commandHistory[this.commandHistory.length - 1]) {
+            return;
+        }
+        
+        // Add to history
+        this.commandHistory.push(command);
+        
+        // Trim history if it gets too long
+        if (this.commandHistory.length > this.maxCommandHistory) {
+            this.commandHistory.shift();
+        }
+        
+        // Reset navigation index
+        this.commandHistoryIndex = -1;
+        this.currentInputBackup = '';
+    }
+    
+    navigateCommandHistory(direction) {
+        if (this.commandHistory.length === 0) return;
+        
+        // If not currently navigating, backup the current input
+        if (this.commandHistoryIndex === -1) {
+            this.currentInputBackup = this.chatInput.value;
+        }
+        
+        if (direction === 'up') {
+            if (this.commandHistoryIndex < this.commandHistory.length - 1) {
+                this.commandHistoryIndex++;
+            }
+        } else if (direction === 'down') {
+            if (this.commandHistoryIndex > -1) {
+                this.commandHistoryIndex--;
+            }
+        }
+        
+        // Update input field
+        if (this.commandHistoryIndex === -1) {
+            // Back to current input
+            this.chatInput.value = this.currentInputBackup;
+        } else {
+            // Show command from history (from most recent backwards)
+            const historyPosition = this.commandHistory.length - 1 - this.commandHistoryIndex;
+            this.chatInput.value = this.commandHistory[historyPosition];
+        }
+        
+        // Update UI
+        this.updateCharCounter();
+        this.autoResizeInput();
+        
+        // Place cursor at end
+        this.chatInput.setSelectionRange(this.chatInput.value.length, this.chatInput.value.length);
+    }
+    
+    clearChatInput() {
+        this.chatInput.value = '';
+        this.commandHistoryIndex = -1;
+        this.currentInputBackup = '';
+        this.updateCharCounter();
+        this.autoResizeInput();
+        this.chatInput.focus();
     }
 }
 
