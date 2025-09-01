@@ -20,6 +20,18 @@ class ServiceHealthManager {
                 models: [],
                 selectedModel: 'qwen2.5:3b',
                 baseUrl: 'http://localhost:11434'
+            },
+            api: {
+                element: null,
+                dot: null,
+                status: 'offline',
+                baseUrl: 'http://localhost:3001'
+            },
+            data: {
+                element: null,
+                dot: null,
+                status: 'offline',
+                baseUrl: 'http://localhost:3001'
             }
         };
         
@@ -36,6 +48,12 @@ class ServiceHealthManager {
         this.services.ollama.element = document.getElementById('ollamaHealthIndicator');
         this.services.ollama.dot = this.services.ollama.element?.querySelector('.health-dot');
         
+        this.services.api.element = document.getElementById('apiHealthIndicator');
+        this.services.api.dot = this.services.api.element?.querySelector('.health-dot');
+        
+        this.services.data.element = document.getElementById('dataHealthIndicator');
+        this.services.data.dot = this.services.data.element?.querySelector('.health-dot');
+        
         // Add click handlers for more details
         if (this.services.mcp.element) {
             this.services.mcp.element.addEventListener('click', () => this.showMCPStatus());
@@ -45,11 +63,23 @@ class ServiceHealthManager {
             this.services.ollama.element.addEventListener('click', () => this.showOllamaModels());
         }
         
+        if (this.services.api.element) {
+            this.services.api.element.addEventListener('click', () => this.showApiStatus());
+        }
+        
+        if (this.services.data.element) {
+            this.services.data.element.addEventListener('click', () => this.showDataStatus());
+        }
+        
         // Create model selector interface
         this.createModelSelector();
         
         // Load saved model preference
         this.loadModelPreference();
+        
+        // Start API and Data health monitoring
+        this.startApiHealthMonitoring();
+        this.startDataHealthMonitoring();
         
         console.log('ServiceHealthManager initialized');
     }
@@ -428,6 +458,146 @@ class ServiceHealthManager {
         if (command.startsWith('/') && this.services.mcp.status === 'online') {
             // Force a health check
             this.checkMCPHealth();
+        }
+    }
+
+    startApiHealthMonitoring() {
+        // Initial check
+        this.checkApiHealth();
+        
+        // Monitor at configured interval (default 10 seconds)
+        const apiHealthInterval = window.AppConfig?.healthCheck?.apiHealthInterval || 10000;
+        setInterval(() => {
+            this.checkApiHealth();
+        }, apiHealthInterval);
+    }
+
+    startDataHealthMonitoring() {
+        // Initial check
+        this.checkDataHealth();
+        
+        // Monitor at configured interval (default 10 seconds)
+        const dataHealthInterval = window.AppConfig?.healthCheck?.dataHealthInterval || 10000;
+        setInterval(() => {
+            this.checkDataHealth();
+        }, dataHealthInterval);
+    }
+
+    async checkApiHealth() {
+        try {
+            this.updateServiceStatus('api', 'connecting');
+            
+            // Check API health endpoint
+            const response = await fetch(`${this.services.api.baseUrl}/health`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                this.updateServiceStatus('api', 'online');
+                
+                // Update health indicator with additional info
+                const element = this.services.api.element;
+                if (element) {
+                    element.title = `API Server: ${data.status} (${data.version || 'Unknown version'})`;
+                }
+            } else {
+                throw new Error('API server not responding');
+            }
+        } catch (error) {
+            this.updateServiceStatus('api', 'offline');
+            
+            // Update tooltip with error info
+            const element = this.services.api.element;
+            if (element) {
+                element.title = `API Server: Offline - ${error.message}`;
+            }
+        }
+    }
+
+    async checkDataHealth() {
+        try {
+            this.updateServiceStatus('data', 'connecting');
+            
+            // Check database connection through API
+            const response = await fetch(`${this.services.data.baseUrl}/api/v1/db/connection`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                this.updateServiceStatus('data', 'online');
+                
+                // Update health indicator with database info
+                const element = this.services.data.element;
+                if (element) {
+                    const dbType = data.connection?.version || 'PostgreSQL';
+                    const extensions = data.connection?.extensions?.includes('vector') ? ' + pgvector' : '';
+                    element.title = `Database: Connected (${dbType}${extensions})`;
+                }
+            } else {
+                throw new Error('Database not responding');
+            }
+        } catch (error) {
+            this.updateServiceStatus('data', 'offline');
+            
+            // Update tooltip with error info
+            const element = this.services.data.element;
+            if (element) {
+                element.title = `Database: Offline - ${error.message}`;
+            }
+        }
+    }
+
+    showApiStatus() {
+        if (typeof window.showApiModal === 'function') {
+            window.showApiModal();
+        } else {
+            const status = this.services.api.status;
+            let message = '';
+            
+            switch (status) {
+                case 'online':
+                    message = '✅ API Server: Connected\n\nAll API endpoints are available.';
+                    break;
+                case 'connecting':
+                    message = '🔄 API Server: Connecting...\n\nPlease wait while we check the connection.';
+                    break;
+                case 'offline':
+                    message = '❌ API Server: Disconnected\n\nAPI endpoints are not available.\n\nTo fix:\n1. Check if API server is running on port 3001\n2. Run "npm run dev" in the api directory\n3. Refresh the page';
+                    break;
+            }
+            
+            alert(message);
+        }
+    }
+
+    showDataStatus() {
+        if (typeof window.showDataModal === 'function') {
+            window.showDataModal();
+        } else {
+            const status = this.services.data.status;
+            let message = '';
+            
+            switch (status) {
+                case 'online':
+                    message = '✅ Database: Connected\n\nPostgreSQL database is available with pgvector extension.';
+                    break;
+                case 'connecting':
+                    message = '🔄 Database: Connecting...\n\nPlease wait while we check the database connection.';
+                    break;
+                case 'offline':
+                    message = '❌ Database: Disconnected\n\nPostgreSQL database is not available.\n\nTo fix:\n1. Check if PostgreSQL is running\n2. Verify database configuration in .env\n3. Run "docker-compose up -d" if using Docker\n4. Refresh the page';
+                    break;
+            }
+            
+            alert(message);
         }
     }
 }

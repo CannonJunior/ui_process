@@ -87,20 +87,8 @@ class APIIntegration {
             this.updateStatusIndicator('sync-error', event.detail);
         });
         
-        // Initialize database status check
-        setTimeout(() => {
-            this.checkDatabaseStatus();
-        }, 1000);
-        
-        // Set up periodic database status checks (every 30 seconds)
-        setInterval(() => {
-            this.checkDatabaseStatus();
-        }, 30000);
-        
-        // Add click handler for database health indicator
-        setTimeout(() => {
-            this.setupDatabaseHealthClickHandler();
-        }, 1500);
+        // Database health monitoring is now handled by health-manager.js
+        // Conflicting database health checks have been disabled
     }
     
     createStatusIndicator() {
@@ -203,8 +191,7 @@ class APIIntegration {
         // Note: The apiHealthIndicator is now exclusively managed by api-health-handler.js
         // which checks http://localhost:3001/health every 10 seconds and applies proper styling
         
-        // Check and update database status
-        this.checkDatabaseStatus();
+        // Database health is now managed by health-manager.js
     }
     
     async checkDatabaseStatus() {
@@ -263,7 +250,12 @@ class APIIntegration {
                 console.log('🖱️ CLICK HANDLER TRIGGERED!', event);
                 event.preventDefault();
                 event.stopPropagation();
-                this.showDatabaseDetails();
+                // Use the modal from health-modals.js
+                if (typeof window.showDataModal === 'function') {
+                    window.showDataModal();
+                } else {
+                    this.showDatabaseDetails();
+                }
             };
             
             refreshedElement.addEventListener('click', clickHandler, { capture: true });
