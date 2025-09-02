@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Process Flow Designer</title>
+    <title>Robobrain</title>
     <link rel="icon" type="image/x-icon" href="favicon.ico">
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="features/opportunity-view/opportunity-styles.css">
@@ -16,7 +16,7 @@
 <body>
     <div class="toolbar">
         <div class="toolbar-logo">
-            <img src="robobrain.svg" alt="Process Flow Designer" class="logo-image">
+            <img src="robobrain.svg" alt="Robobrain" class="logo-image">
         </div>
         <button id="addButton" class="toolbar-button">Add</button>
         <button id="workflowButton" class="toolbar-button">Workflow</button>
@@ -85,7 +85,7 @@
         
         <div id="chatSidebar" class="chat-sidebar">
             <div class="chat-header">
-                <h3>Process Flow Assistant</h3>
+                <h3>Robobrain Assistant</h3>
                 <button id="closeChatButton" class="close-chat-btn">×</button>
             </div>
             
@@ -98,7 +98,7 @@
             
             <div id="chatMessages" class="chat-messages">
                 <div class="welcome-message">
-                    <p>👋 Hi! I'm your Process Flow Assistant.</p>
+                    <p>👋 Hi! I'm Robobrain.</p>
                     <p>I can help you with:</p>
                     <ul>
                         <li>Creating and managing process flows</li>
@@ -736,12 +736,32 @@
     <!-- API Integration Test -->
     <script src="test-api-integration.js"></script>
     <script src="test-integration-final.js"></script>
+    <script src="test-persistence-verification.js"></script>
+    <script src="test-direct-integration.js"></script>
+    <script src="test-ui-persistence.js"></script>
+    <script src="test-opportunity-persistence.js"></script>
+    <script src="test-direct-api-call.js"></script>
+    
+    <!-- Debug logger for frontend testing -->
+    <script src="debug-logger.js"></script>
     
     <!-- Simple database click handler - ensures functionality works -->
     <script src="database-click-handler.js"></script>
     
     <!-- Simple API health handler - ensures API status and click functionality works -->
     <script src="health-modals.js"></script>
+    
+    <!-- UI Test for opportunity creation flow -->
+    <script src="test-opportunity-ui.js"></script>
+    
+    <!-- Direct UI test to debug the exact issue -->
+    <script src="direct-ui-test.js"></script>
+    
+    <!-- Debug UI Flow script with test button -->
+    <script src="debug-ui-flow.js"></script>
+    
+    <!-- Value field fix test -->
+    <script src="test-value-fix.js"></script>
     
 </body>
 </html>

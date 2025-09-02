@@ -28,6 +28,7 @@ import chatRoutes from './routes/chat.js';
 import relationshipRoutes from './routes/relationships.js';
 import knowledgeGraphRoutes from './routes/knowledge-graph.js';
 import databaseRoutes from './routes/database.js';
+import debugRoutes from './routes/debug.js';
 
 dotenv.config();
 
@@ -119,11 +120,11 @@ if (process.env.DEV_DISABLE_AUTH !== 'true') {
     // Add a mock user for development when auth is disabled
     app.use('/api/v1', (req, res, next) => {
         req.user = {
-            id: 'be1aa163-3704-4111-8503-6ff272112a71',
+            id: '1eb186ae-99e9-4acb-a13d-1c09fa80a58d',
             email: 'dev@uiprocess.local',
             name: 'Development User',
             role: 'admin',
-            organization_id: '282c8350-9847-44d9-b7bc-dc7c0efc249f'
+            organization_id: '665be64b-26a8-46e2-83b5-75341ef5099b'
         };
         next();
     });
@@ -139,6 +140,7 @@ app.use('/api/v1/chat', chatRoutes);
 app.use('/api/v1/relationships', relationshipRoutes);
 app.use('/api/v1/kg', knowledgeGraphRoutes);
 app.use('/api/v1/db', databaseRoutes);
+app.use('/api/v1/debug', debugRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {

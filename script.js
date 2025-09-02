@@ -30,8 +30,20 @@ class ProcessFlowDesigner {
         this.initializeDOMElements();
         
         // Initialize UI managers
-        this.modalManager = new ModalManager(this);
-        this.contextMenuManager = new ContextMenuManager(this);
+        console.log('🔧 INIT: Initializing ModalManager...');
+        try {
+            this.modalManager = new ModalManager(this);
+            console.log('✅ INIT: ModalManager initialized successfully');
+        } catch (error) {
+            console.error('❌ INIT: Failed to initialize ModalManager:', error);
+        }
+        
+        try {
+            this.contextMenuManager = new ContextMenuManager(this);
+            console.log('✅ INIT: ContextMenuManager initialized successfully');
+        } catch (error) {
+            console.error('❌ INIT: Failed to initialize ContextMenuManager:', error);
+        }
         
         // Initialize feature managers
         this.tagManager = new TagManager(this);
@@ -44,8 +56,21 @@ class ProcessFlowDesigner {
         this.opportunityController = new OpportunityController(this);
         
         // Initialize node modules (Phase 8: Node Management System)
-        this.nodeFactory = new NodeFactory(this.configService);
-        this.nodeManager = new NodeManager(this);
+        console.log('🔧 INIT: Initializing NodeFactory...');
+        try {
+            this.nodeFactory = new NodeFactory(this.configService);
+            console.log('✅ INIT: NodeFactory initialized successfully');
+        } catch (error) {
+            console.error('❌ INIT: Failed to initialize NodeFactory:', error);
+        }
+        
+        console.log('🔧 INIT: Initializing NodeManager...');
+        try {
+            this.nodeManager = new NodeManager(this);
+            console.log('✅ INIT: NodeManager initialized successfully');
+        } catch (error) {
+            console.error('❌ INIT: Failed to initialize NodeManager:', error);
+        }
         
         // Initialize flowline modules (Phase 9: Flowline System)
         this.flowlineRenderer = new FlowlineRenderer(this.configService);
@@ -59,6 +84,17 @@ class ProcessFlowDesigner {
         this.workflowIngestion = null;
         
         this.init();
+        
+        // Debug: Check managers after initialization
+        console.log('🔍 POST-INIT: Manager status check:');
+        console.log('- ModalManager:', this.modalManager ? '✅ EXISTS' : '❌ NULL');
+        console.log('- NodeManager:', this.nodeManager ? '✅ EXISTS' : '❌ NULL');
+        if (this.modalManager) {
+            console.log('- showTaskModal available:', typeof this.modalManager.showTaskModal === 'function' ? '✅ YES' : '❌ NO');
+        }
+        if (this.nodeManager) {
+            console.log('- createNode available:', typeof this.nodeManager.createNode === 'function' ? '✅ YES' : '❌ NO');
+        }
     }
     
     // ==================== MATRIX MODE DELEGATION (Phase 7) ====================
@@ -1428,22 +1464,35 @@ class ProcessFlowDesigner {
         const addType = menuItem.dataset.addType;
         
         if (addType === 'node') {
+            console.log('🎯 NODE MENU: User clicked node option in add menu');
+            console.log('🔍 NodeManager status:', this.nodeManager ? 'EXISTS' : 'NULL');
             this.showNodeTypeMenu();
         } else if (addType === 'task') {
+            console.log('🎯 TASK MENU: User clicked task option in add menu');
+            console.log('🔍 ModalManager status:', this.modalManager ? 'EXISTS' : 'NULL');
+            
             // Hide all context menus
             this.hideAllAddMenus();
             
             // Show task modal using ModalManager
             if (this.modalManager && typeof this.modalManager.showTaskModal === 'function') {
+                console.log('✅ TASK MENU: Calling modalManager.showTaskModal()');
                 this.modalManager.showTaskModal();
             } else {
-                console.warn('ModalManager or showTaskModal method not available');
+                console.warn('❌ TASK MENU: ModalManager or showTaskModal method not available');
+                console.warn('ModalManager:', this.modalManager);
+                if (this.modalManager) {
+                    console.warn('Available methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(this.modalManager)));
+                }
             }
         } else if (addType === 'opportunity') {
+            console.log('🎯 OPPORTUNITY MENU: User clicked opportunity option in add menu');
+            
             // Hide all context menus
             this.hideAllAddMenus();
             
             // Show opportunity modal
+            console.log('🎭 OPPORTUNITY MENU: Calling showOpportunityModal()...');
             this.showOpportunityModal();
         }
     }
@@ -1458,21 +1507,31 @@ class ProcessFlowDesigner {
     }
     
     handleNodeTypeMenuClick(event) {
+        console.log('🎯 NODE TYPE: User clicked on node type menu item');
         event.preventDefault();
         event.stopPropagation();
         
         const menuItem = event.target.closest('.menu-item');
-        if (!menuItem) return;
+        if (!menuItem) {
+            console.warn('❌ NODE TYPE: No menu item found');
+            return;
+        }
         
         const nodeType = menuItem.dataset.nodeType;
+        console.log('🔍 NODE TYPE: Selected type:', nodeType);
+        
         if (nodeType) {
             // Create the node using NodeManager
             if (this.nodeManager) {
+                console.log('✅ NODE TYPE: Calling nodeManager.createNode()');
                 this.nodeManager.createNode(nodeType);
             } else {
+                console.warn('❌ NODE TYPE: NodeManager not available, using fallback');
                 // Fallback to legacy method
                 this.createNode(nodeType);
             }
+        } else {
+            console.warn('❌ NODE TYPE: No nodeType in dataset');
         }
         
         this.hideAllAddMenus();
@@ -1562,13 +1621,24 @@ class ProcessFlowDesigner {
     // ==================== OPPORTUNITY MODAL METHODS ====================
     
     setupOpportunityModalEventListeners() {
+        console.log('🔧 Setting up opportunity modal event listeners...');
+        
         // Opportunity modal buttons
         if (this.opportunityModalCancel) {
+            console.log('✅ Found opportunityModalCancel button, adding event listener');
             this.opportunityModalCancel.addEventListener('click', () => this.hideOpportunityModal());
+        } else {
+            console.warn('❌ opportunityModalCancel button not found!');
         }
         
         if (this.opportunityModalCreate) {
-            this.opportunityModalCreate.addEventListener('click', () => this.createOpportunity());
+            console.log('✅ Found opportunityModalCreate button, adding event listener');
+            this.opportunityModalCreate.addEventListener('click', () => {
+                console.log('🖱️ BUTTON CLICKED: opportunityModalCreate button clicked!');
+                this.createOpportunity();
+            });
+        } else {
+            console.warn('❌ opportunityModalCreate button not found!');
         }
         
         if (this.opportunityModalExport) {
@@ -1586,20 +1656,25 @@ class ProcessFlowDesigner {
     }
     
     showOpportunityModal() {
+        console.log('🎭 showOpportunityModal() called - opening opportunity modal');
+        
         if (!this.opportunityModal) {
-            console.error('Opportunity modal not found');
+            console.error('❌ Opportunity modal not found');
             return;
         }
         
         // Reset form
+        console.log('🔄 Resetting opportunity form...');
         this.resetOpportunityForm();
         
         // Show modal
+        console.log('✅ Showing opportunity modal');
         this.opportunityModal.style.display = 'block';
         
         // Focus on title field
         if (this.opportunityTitle) {
             this.opportunityTitle.focus();
+            console.log('🎯 Focus set to opportunity title field');
         }
     }
     
@@ -1683,21 +1758,27 @@ class ProcessFlowDesigner {
     }
     
     createOpportunity() {
+        console.log('🚀 createOpportunity() function called');
+        
         // Validate form
         const validation = this.validateOpportunityForm();
         if (!validation.isValid) {
             alert('Please fix the following errors:\n' + validation.errors.join('\n'));
             return;
         }
+        console.log('✅ Opportunity form validation passed');
         
         // Create opportunity data
         const opportunity = this.createOpportunityData();
+        console.log('📝 Opportunity data created:', opportunity);
         
         // Add to opportunity controller
         if (this.opportunityController && typeof this.opportunityController.addOpportunity === 'function') {
+            console.log('🎯 Adding opportunity to OpportunityController...');
             this.opportunityController.addOpportunity(opportunity);
+            console.log('✅ Opportunity added to controller');
         } else {
-            console.warn('OpportunityController not available - opportunity created locally');
+            console.warn('❌ OpportunityController not available - opportunity created locally');
         }
         
         // Hide modal
@@ -1706,7 +1787,63 @@ class ProcessFlowDesigner {
         // Show success message
         alert(`Opportunity "${opportunity.title}" created successfully!`);
         
-        console.log('Created opportunity:', opportunity);
+        // Fire event for API persistence
+        console.log('🔥 PERSISTENCE EVENT: Dispatching opportunity.created event with data:', opportunity);
+        console.log('🔥 Event dispatch timestamp:', new Date().toISOString());
+        document.dispatchEvent(new CustomEvent('opportunity.created', { 
+            detail: opportunity 
+        }));
+        console.log('✅ opportunity.created event dispatched successfully');
+        
+        // FALLBACK: Also try direct API call if available
+        console.log('🔄 FALLBACK: Attempting direct API persistence...');
+        this.directPersistOpportunity(opportunity);
+        
+        console.log('✅ createOpportunity() completed successfully');
+    }
+    
+    // Direct API persistence fallback method
+    async directPersistOpportunity(opportunity) {
+        try {
+            console.log('📡 DIRECT API: Making direct fetch call to persist opportunity...');
+            
+            // Map opportunity data to API format
+            const apiData = {
+                workflowId: '23854ca3-e4e4-4b7f-8b93-87f34f52411d', // Use default test workflow for now
+                title: opportunity.title,
+                description: opportunity.description,
+                status: opportunity.status || 'active',
+                tags: opportunity.tags || [],
+                priority: opportunity.metadata?.priority || 'medium'
+            };
+            
+            // Only add value if it exists and is a valid number
+            if (opportunity.metadata?.value && typeof opportunity.metadata.value === 'number') {
+                apiData.value = opportunity.metadata.value;
+            }
+            
+            console.log('📡 DIRECT API: Sending data:', apiData);
+            
+            const response = await fetch('http://localhost:3001/api/v1/opportunities', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(apiData)
+            });
+            
+            console.log('📡 DIRECT API: Response status:', response.status);
+            
+            if (response.ok) {
+                const result = await response.json();
+                console.log('✅ DIRECT API: Opportunity persisted successfully:', result);
+            } else {
+                const error = await response.text();
+                console.error('❌ DIRECT API: Failed to persist opportunity:', error);
+            }
+        } catch (error) {
+            console.error('❌ DIRECT API: Error during direct persistence:', error);
+        }
     }
     
     createAndExportOpportunity() {
@@ -1735,6 +1872,16 @@ class ProcessFlowDesigner {
         
         // Show success message
         alert(`Opportunity "${opportunity.title}" created and exported successfully!`);
+        
+        // Fire event for API persistence
+        console.log('🔥 Dispatching opportunity.created event:', opportunity);
+        document.dispatchEvent(new CustomEvent('opportunity.created', { 
+            detail: opportunity 
+        }));
+        
+        // FALLBACK: Also try direct API call if available
+        console.log('🔄 FALLBACK: Attempting direct API persistence...');
+        this.directPersistOpportunity(opportunity);
         
         console.log('Created and exported opportunity:', opportunity);
     }
@@ -2438,6 +2585,71 @@ class ProcessFlowDesigner {
             
             // Store observer reference for cleanup
             taskContainer._resizeObserver = resizeObserver;
+        }
+        
+        // Fire event for API persistence
+        const taskEventData = {
+            id: taskBanner.dataset.id,
+            name: taskName,
+            text: taskName,
+            status: 'pending',
+            position: { 
+                x: parseFloat(taskContainer.style.left) || 0, 
+                y: parseFloat(taskContainer.style.top) || 0 
+            },
+            anchoredTo: taskBanner.dataset.anchoredTo
+        };
+        
+        console.log('🔥 Dispatching task.created event:', taskEventData);
+        document.dispatchEvent(new CustomEvent('task.created', { 
+            detail: taskEventData 
+        }));
+        
+        // FALLBACK: Direct API persistence
+        console.log('🔄 FALLBACK: Attempting direct task persistence...');
+        this.directPersistTask(taskEventData);
+    }
+    
+    // Direct API persistence fallback method for tasks
+    async directPersistTask(taskData) {
+        try {
+            console.log('📡 DIRECT API: Making direct fetch call to persist task...');
+            
+            const apiData = {
+                workflowId: '23854ca3-e4e4-4b7f-8b93-87f34f52411d', // Use default test workflow
+                anchoredTo: taskData.anchoredTo || '23854ca3-e4e4-4b7f-8b93-87f34f52411d', // Use valid UUID for anchor
+                text: taskData.text,
+                status: 'not_started', // API expects not_started, not pending
+                positionX: parseFloat(taskData.position?.x) || 100, // Ensure it's a number
+                positionY: parseFloat(taskData.position?.y) || 100  // Ensure it's a number
+            };
+            
+            // Only add optional numeric fields if they exist and are valid
+            if (taskData.estimatedHours && typeof taskData.estimatedHours === 'number') {
+                apiData.estimatedHours = taskData.estimatedHours;
+            }
+            
+            console.log('📡 DIRECT API: Sending task data:', apiData);
+            
+            const response = await fetch('http://localhost:3001/api/v1/tasks', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(apiData)
+            });
+            
+            console.log('📡 DIRECT API: Task response status:', response.status);
+            
+            if (response.ok) {
+                const result = await response.json();
+                console.log('✅ DIRECT API: Task persisted successfully:', result);
+            } else {
+                const error = await response.text();
+                console.error('❌ DIRECT API: Failed to persist task:', error);
+            }
+        } catch (error) {
+            console.error('❌ DIRECT API: Error during direct task persistence:', error);
         }
     }
     

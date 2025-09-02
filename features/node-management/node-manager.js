@@ -152,7 +152,67 @@ class NodeManager {
         }
         
         console.log(`NodeManager: Created ${type} node with ID ${this.nodeCounter}`);
+        
+        // Fire event for API persistence
+        const nodeEventData = {
+            nodeId: node.dataset.id,
+            type: type,
+            name: node.querySelector('.node-text').textContent,
+            node: node
+        };
+        
+        console.log('🔥 Dispatching node.created event:', nodeEventData);
+        document.dispatchEvent(new CustomEvent('node.created', { 
+            detail: nodeEventData 
+        }));
+        
+        // FALLBACK: Direct API persistence
+        console.log('🔄 FALLBACK: Attempting direct node persistence...');
+        this.directPersistNode(nodeEventData);
+        
         return node;
+    }
+    
+    // Direct API persistence fallback method
+    async directPersistNode(nodeData) {
+        try {
+            console.log('📡 DIRECT API: Making direct fetch call to persist node...');
+            
+            const apiData = {
+                workflowId: '23854ca3-e4e4-4b7f-8b93-87f34f52411d', // Use default test workflow
+                type: nodeData.type,
+                text: nodeData.name,
+                positionX: parseFloat(nodeData.node?.style?.left) || 50,
+                positionY: parseFloat(nodeData.node?.style?.top) || 50,
+                style: {},
+                metadata: {
+                    nodeId: nodeData.nodeId,
+                    created_at: new Date().toISOString()
+                }
+            };
+            
+            console.log('📡 DIRECT API: Sending node data:', apiData);
+            
+            const response = await fetch('http://localhost:3001/api/v1/nodes', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(apiData)
+            });
+            
+            console.log('📡 DIRECT API: Node response status:', response.status);
+            
+            if (response.ok) {
+                const result = await response.json();
+                console.log('✅ DIRECT API: Node persisted successfully:', result);
+            } else {
+                const error = await response.text();
+                console.error('❌ DIRECT API: Failed to persist node:', error);
+            }
+        } catch (error) {
+            console.error('❌ DIRECT API: Error during direct node persistence:', error);
+        }
     }
     
     /**

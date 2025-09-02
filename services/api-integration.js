@@ -18,6 +18,7 @@ class APIIntegration {
         this.syncService = null;
         this.workflowAPIService = null;
         this.isInitialized = false;
+        this.isIntegratedWithApp = false; // Prevent multiple integrations
         
         this.initialize();
     }
@@ -695,34 +696,93 @@ class APIIntegration {
     
     setupUIIntegration() {
         console.log('🔧 setupUIIntegration() called');
+        console.log('🔧 window.processFlowDesigner exists:', window.processFlowDesigner ? 'YES' : 'NO');
         console.log('🔧 window.app exists:', window.app ? 'YES' : 'NO');
         
         // Replace existing workflow methods in the main app
-        if (window.app && typeof window.app === 'object') {
+        const mainApp = window.processFlowDesigner || window.app;
+        if (mainApp && typeof mainApp === 'object') {
             console.log('📱 Main app found, integrating immediately');
             this.integrateWithMainApp();
         } else {
-            console.log('⏳ Main app not ready, waiting for DOMContentLoaded');
-            // Wait for main app to be available
+            console.log('⏳ Main app not ready, setting up multiple fallback attempts');
+            
+            // Try multiple approaches to ensure integration happens
+            // 1. DOMContentLoaded
             document.addEventListener('DOMContentLoaded', () => {
-                console.log('📄 DOMContentLoaded fired, setting up integration timeout');
-                setTimeout(() => {
-                    console.log('⏰ Integration timeout fired, attempting integration');
-                    this.integrateWithMainApp();
-                }, 1000);
+                console.log('📄 DOMContentLoaded fired, attempting integration');
+                this.tryIntegration();
+            });
+            
+            // 2. Immediate polling
+            this.pollForMainApp();
+            
+            // 3. Window load event
+            window.addEventListener('load', () => {
+                console.log('🪟 Window load fired, attempting integration');
+                this.tryIntegration();
             });
         }
     }
     
+    pollForMainApp() {
+        let attempts = 0;
+        const maxAttempts = 50; // 5 seconds max
+        
+        const poll = () => {
+            attempts++;
+            console.log(`🔍 Polling for main app (attempt ${attempts}/${maxAttempts})`);
+            
+            const mainApp = window.processFlowDesigner || window.app;
+            if (mainApp && typeof mainApp === 'object') {
+                console.log('✅ Main app found via polling!');
+                this.integrateWithMainApp();
+                return;
+            }
+            
+            if (attempts < maxAttempts) {
+                setTimeout(poll, 100);
+            } else {
+                console.log('⚠️ Polling timeout - falling back to event-only integration');
+                this.setupFallbackIntegration();
+            }
+        };
+        
+        setTimeout(poll, 100); // Start polling after 100ms
+    }
+    
+    tryIntegration() {
+        console.log('🔄 tryIntegration() called');
+        setTimeout(() => {
+            const mainApp = window.processFlowDesigner || window.app;
+            if (mainApp && typeof mainApp === 'object') {
+                console.log('✅ Main app found in tryIntegration!');
+                this.integrateWithMainApp();
+            } else {
+                console.log('❌ Main app still not found in tryIntegration');
+            }
+        }, 500);
+    }
+    
     integrateWithMainApp() {
         console.log('🔗 integrateWithMainApp() called');
+        
+        // Prevent multiple integrations
+        if (this.isIntegratedWithApp) {
+            console.log('ℹ️ Already integrated with main app, skipping');
+            return;
+        }
+        
         console.log('🔗 ProcessFlowDesigner available:', typeof ProcessFlowDesigner !== 'undefined' ? 'YES' : 'NO');
-        console.log('🔗 window.app is ProcessFlowDesigner:', window.app instanceof ProcessFlowDesigner ? 'YES' : 'NO');
+        const mainApp = window.processFlowDesigner || window.app;
+        console.log('🔗 mainApp found:', mainApp ? 'YES' : 'NO');
+        console.log('🔗 mainApp is ProcessFlowDesigner:', mainApp instanceof ProcessFlowDesigner ? 'YES' : 'NO');
         
         // Check if ProcessFlowDesigner is available
-        if (typeof ProcessFlowDesigner !== 'undefined' && window.app instanceof ProcessFlowDesigner) {
+        if (typeof ProcessFlowDesigner !== 'undefined' && mainApp instanceof ProcessFlowDesigner) {
             console.log('🔗 Integrating with ProcessFlowDesigner...');
-            this.integrateWithProcessFlowDesigner(window.app);
+            this.integrateWithProcessFlowDesigner(mainApp);
+            this.isIntegratedWithApp = true;
         } else {
             console.log('⚠️ ProcessFlowDesigner not found, using fallback integration');
             this.setupFallbackIntegration();
@@ -730,10 +790,19 @@ class APIIntegration {
     }
     
     integrateWithProcessFlowDesigner(app) {
+        console.log('🔗 INTEGRATION: integrateWithProcessFlowDesigner() called with app:', app ? 'PROVIDED' : 'NULL');
+        console.log('🔗 INTEGRATION: App type:', typeof app);
+        console.log('🔗 INTEGRATION: App constructor:', app ? app.constructor.name : 'N/A');
+        
         // Store original methods
         const originalSaveWorkflow = app.saveWorkflow.bind(app);
         const originalLoadWorkflow = app.loadWorkflow.bind(app);
         const originalAppendWorkflow = app.appendWorkflow.bind(app);
+        
+        console.log('🔗 INTEGRATION: About to setup item persistence listeners...');
+        // Setup event listeners for individual item persistence
+        this.setupItemPersistenceListeners(app);
+        console.log('🔗 INTEGRATION: Item persistence listeners setup completed');
         
         // Replace workflow methods
         app.saveWorkflow = async () => {
@@ -1011,6 +1080,250 @@ class APIIntegration {
             syncService: this.syncService,
             workflowAPIService: this.workflowAPIService
         };
+    }
+    
+    setupItemPersistenceListeners(app) {
+        console.log('🔗 PERSISTENCE SETUP: Setting up item persistence listeners...');
+        console.log('🔗 PERSISTENCE SETUP: App parameter:', app ? 'PROVIDED' : 'NULL');
+        
+        // Listen for node creation events
+        document.addEventListener('node.created', async (event) => {
+            console.log('📦 Node created event received:', event.detail);
+            await this.persistNode(event.detail);
+        });
+        
+        // Listen for task creation events
+        document.addEventListener('task.created', async (event) => {
+            console.log('📋 Task created event received:', event.detail);
+            await this.persistTask(event.detail);
+        });
+        
+        // Listen for opportunity creation events  
+        document.addEventListener('opportunity.created', async (event) => {
+            console.log('🎉 EVENT RECEIVED: opportunity.created event triggered!');
+            console.log('🎉 Event timestamp:', new Date().toISOString());
+            console.log('🎉 Event detail data:', event.detail);
+            console.log('🎉 About to call persistOpportunity...');
+            await this.persistOpportunity(event.detail);
+            console.log('🎉 persistOpportunity call completed');
+        });
+        
+        // Listen for flowline creation events
+        document.addEventListener('flowline.created', async (event) => {
+            console.log('🔗 Flowline created event received:', event.detail);
+            await this.persistFlowline(event.detail);
+        });
+        
+        // Also listen for generic DOM events if the above don't work
+        if (app.eventBus) {
+            app.eventBus.on('node.created', async (data) => {
+                console.log('📦 Node created via eventBus:', data);
+                await this.persistNode(data);
+            });
+            
+            app.eventBus.on('task.created', async (data) => {
+                console.log('📋 Task created via eventBus:', data);
+                await this.persistTask(data);
+            });
+        }
+        
+        console.log('✅ Item persistence listeners setup complete');
+    }
+    
+    async persistNode(nodeData) {
+        if (!this.apiClient || !this.apiClient.isConnected()) {
+            console.log('📦 API not connected, skipping node persistence');
+            return;
+        }
+        
+        try {
+            const nodeApiData = {
+                workflowId: await this.getCurrentWorkflowId(),
+                type: nodeData.type,
+                text: nodeData.name || this.getNodeText(nodeData.node),
+                positionX: parseFloat(nodeData.node?.style?.left) || 50,
+                positionY: parseFloat(nodeData.node?.style?.top) || 50,
+                style: {},
+                metadata: {
+                    nodeId: nodeData.nodeId,
+                    created_at: new Date().toISOString()
+                }
+            };
+            
+            console.log('📦 Persisting node to API:', nodeApiData);
+            const result = await this.apiClient.createNode(nodeApiData);
+            console.log('✅ Node persisted successfully:', result);
+            
+        } catch (error) {
+            console.error('❌ Failed to persist node:', error);
+        }
+    }
+    
+    async persistTask(taskData) {
+        if (!this.apiClient || !this.apiClient.isConnected()) {
+            console.log('📋 API not connected, skipping task persistence');
+            return;
+        }
+        
+        try {
+            const taskApiData = {
+                workflowId: await this.getCurrentWorkflowId(),
+                anchoredTo: this.getNodeIdForTask(taskData),
+                text: taskData.name || taskData.text,
+                description: taskData.description || '',
+                status: this.mapTaskStatus(taskData.status || 'pending'),
+                priority: taskData.priority || 'medium',
+                positionX: parseFloat(taskData.position?.x) || 100,
+                positionY: parseFloat(taskData.position?.y) || 100,
+                slot: taskData.slot || 0
+            };
+            
+            // Only add optional numeric fields if they exist and are valid
+            if (taskData.estimatedHours && typeof taskData.estimatedHours === 'number') {
+                taskApiData.estimatedHours = taskData.estimatedHours;
+            }
+            if (taskData.dueDate) {
+                taskApiData.dueDate = taskData.dueDate;
+            }
+            if (taskData.assignedTo) {
+                taskApiData.assignedTo = taskData.assignedTo;
+            }
+            if (taskData.opportunityId) {
+                taskApiData.opportunityId = taskData.opportunityId;
+            }
+            
+            console.log('📋 Persisting task to API:', taskApiData);
+            const result = await this.apiClient.createTask(taskApiData);
+            console.log('✅ Task persisted successfully:', result);
+            
+        } catch (error) {
+            console.error('❌ Failed to persist task:', error);
+        }
+    }
+    
+    async persistOpportunity(opportunityData) {
+        console.log('🔥 persistOpportunity() called with data:', opportunityData);
+        console.log('🔍 API Client status:', this.apiClient ? 'EXISTS' : 'NULL');
+        console.log('🔍 API Client connected:', this.apiClient ? this.apiClient.isConnected() : 'N/A');
+        
+        if (!this.apiClient || !this.apiClient.isConnected()) {
+            console.log('❌ API not connected, skipping opportunity persistence');
+            console.log('❌ API Client:', this.apiClient);
+            console.log('❌ Is Connected:', this.apiClient ? this.apiClient.isConnected() : 'N/A');
+            return;
+        }
+        
+        try {
+            console.log('🔄 Getting current workflow ID...');
+            const workflowId = await this.getCurrentWorkflowId();
+            console.log('📋 Current workflow ID:', workflowId);
+            
+            const oppApiData = {
+                workflowId: workflowId,
+                title: opportunityData.title || opportunityData.name,
+                description: opportunityData.description || 'Opportunity created from UI',
+                status: opportunityData.status || 'active',
+                priority: opportunityData.metadata?.priority || 'medium', // Fix: Use metadata.priority
+                tags: opportunityData.tags || []
+            };
+            
+            // Only add optional fields if they exist and are valid
+            if (opportunityData.metadata?.value && typeof opportunityData.metadata.value === 'number') {
+                oppApiData.value = opportunityData.metadata.value;
+            }
+            if (opportunityData.metadata?.contact_person) {
+                oppApiData.contactPerson = opportunityData.metadata.contact_person;
+            }
+            if (opportunityData.metadata?.notes) {
+                oppApiData.notes = opportunityData.metadata.notes;
+            }
+            if (opportunityData.metadata?.deadline) {
+                oppApiData.deadline = opportunityData.metadata.deadline;
+            }
+            
+            console.log('🚀 CALLING API: Persisting opportunity to API with data:', oppApiData);
+            console.log('🌐 API Client createOpportunity method exists:', typeof this.apiClient.createOpportunity === 'function');
+            console.log('🌐 API Client methods available:', Object.getOwnPropertyNames(this.apiClient));
+            
+            if (typeof this.apiClient.createOpportunity !== 'function') {
+                console.error('❌ API Client createOpportunity method not found!');
+                console.error('❌ Available methods:', Object.getOwnPropertyNames(this.apiClient).filter(name => typeof this.apiClient[name] === 'function'));
+                return;
+            }
+            
+            console.log('🌐 Making API call now...');
+            const result = await this.apiClient.createOpportunity(oppApiData);
+            console.log('✅ Opportunity persisted successfully:', result);
+            
+        } catch (error) {
+            console.error('❌ Failed to persist opportunity:', error);
+        }
+    }
+    
+    async persistFlowline(flowlineData) {
+        // TODO: Individual flowline persistence not implemented yet
+        // Flowlines are currently handled through full workflow saves
+        console.log('🔗 Flowline creation detected but individual persistence not implemented yet:', flowlineData);
+        console.log('💡 Flowlines will be persisted when the full workflow is saved');
+        return;
+    }
+    
+    // Helper methods
+    async getCurrentWorkflowId() {
+        if (this.workflowAPIService?.currentWorkflowId) {
+            return this.workflowAPIService.currentWorkflowId;
+        }
+        return await this.createDefaultWorkflow();
+    }
+    
+    async createDefaultWorkflow() {
+        if (!this.apiClient || !this.apiClient.isConnected()) {
+            return null;
+        }
+        
+        try {
+            const defaultWorkflow = {
+                name: 'Unnamed Workflow',
+                description: 'Auto-created workflow for items',
+                version: '1.0.0',
+                metadata: {
+                    auto_created: true,
+                    created_at: new Date().toISOString()
+                }
+            };
+            
+            const result = await this.apiClient.createWorkflow(defaultWorkflow);
+            this.workflowAPIService.currentWorkflowId = result.id;
+            console.log('✅ Created default workflow:', result);
+            return result.id;
+        } catch (error) {
+            console.error('❌ Failed to create default workflow:', error);
+            return null;
+        }
+    }
+    
+    getNodeText(node) {
+        if (!node) return 'Unnamed Node';
+        const textElement = node.querySelector('.node-text');
+        return textElement ? textElement.textContent : 'Unnamed Node';
+    }
+    
+    getNodeIdForTask(taskData) {
+        // Try to find the associated node for this task
+        // This might need to be enhanced based on how tasks are linked to nodes
+        return taskData.nodeId || taskData.anchoredTo || null;
+    }
+    
+    mapTaskStatus(status) {
+        // Map frontend task status to API expected values
+        const statusMap = {
+            'pending': 'not_started',
+            'not_started': 'not_started',
+            'in_progress': 'in_progress',
+            'completed': 'completed',
+            'on_hold': 'on_hold'
+        };
+        return statusMap[status] || 'not_started';
     }
 }
 

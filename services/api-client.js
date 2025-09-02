@@ -360,6 +360,19 @@ class APIClient {
         });
     }
     
+    // ===== FLOWLINE API METHODS =====
+    
+    async getFlowlines(workflowId) {
+        return this.makeRequest(`/flowlines?workflowId=${workflowId}`);
+    }
+    
+    async createFlowline(flowlineData) {
+        return this.makeRequest('/flowlines', {
+            method: 'POST',
+            body: JSON.stringify(flowlineData)
+        });
+    }
+    
     // ===== SEARCH API METHODS =====
     
     async textSearch(query, options = {}) {

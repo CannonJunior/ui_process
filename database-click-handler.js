@@ -123,7 +123,7 @@ function updateDatabaseHealthIndicator(element, isOnline, status) {
         // Add the correct class
         if (isOnline) {
             healthDot.classList.add('online');
-            healthDot.style.backgroundColor = '#10b981'; // Force green color
+            //healthDot.style.backgroundColor = '#10b981'; // Force green color
         } else {
             healthDot.classList.add('offline');
             healthDot.style.backgroundColor = '#ef4444'; // Force red color
