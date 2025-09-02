@@ -277,7 +277,7 @@ function createDatabaseModal(connectionData, tablesData, errorMessage = null) {
     modalHTML += `
         <div style="margin-top: 25px; text-align: center;">
             <button onclick="document.getElementById('databaseDetailsModal').remove()" 
-                    style="padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                    style="padding: 10px 20px; color: white; border: none; border-radius: 5px; cursor: pointer;">
                 Close
             </button>
         </div>

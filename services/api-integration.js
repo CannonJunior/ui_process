@@ -1294,7 +1294,7 @@ class APIIntegration {
             
             const result = await this.apiClient.createWorkflow(defaultWorkflow);
             this.workflowAPIService.currentWorkflowId = result.id;
-            console.log('✅ Created default workflow:', result);
+            console.log('✅ Created default workflow:', result.id);
             return result.id;
         } catch (error) {
             console.error('❌ Failed to create default workflow:', error);

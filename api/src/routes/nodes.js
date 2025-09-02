@@ -74,6 +74,7 @@ router.post('/', async (req, res, next) => {
         `, [workflowId, type, text, positionX, positionY, 
             JSON.stringify(style), JSON.stringify(metadata)]);
 
+        console.log('✅ Node created successfully:', result.rows[0].id);
         res.status(201).json(result.rows[0]);
     } catch (error) {
         next(error);
