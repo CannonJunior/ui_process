@@ -173,9 +173,9 @@ function startApiHealthMonitoring(element) {
             
             if (isOnline) {
                 const data = await response.json();
-                console.log('💚 API is online:', data.status);
+                // console.log('💚 API is online:', data.status);
             } else {
-                console.log('💔 API is offline, status:', response.status);
+                // console.log('💔 API is offline, status:', response.status);
             }
             
         } catch (error) {
@@ -442,9 +442,9 @@ function startDataHealthMonitoring(element) {
             
             if (isOnline) {
                 const data = await response.json();
-                console.log('💚 Database is online:', data.status || 'connected');
+                // console.log('💚 Database is online:', data.status || 'connected');
             } else {
-                console.log('💔 Database is offline, status:', response.status);
+                // console.log('💔 Database is offline, status:', response.status);
             }
             
         } catch (error) {

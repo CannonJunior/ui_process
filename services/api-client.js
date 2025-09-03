@@ -339,10 +339,28 @@ class APIClient {
     }
     
     async createTask(taskData) {
-        return this.makeRequest('/tasks', {
-            method: 'POST',
-            body: JSON.stringify(taskData)
-        });
+        console.log('🌐 API CLIENT: Creating task with data:');
+        console.log('🌐 Request URL: /api/v1/tasks');
+        console.log('🌐 Request method: POST');
+        console.log('🌐 Request body (taskData):', JSON.stringify(taskData, null, 2));
+        console.log('🌐 anchoredTo specifically:', taskData.anchoredTo, typeof taskData.anchoredTo);
+        
+        try {
+            const result = await this.makeRequest('/tasks', {
+                method: 'POST',
+                body: JSON.stringify(taskData)
+            });
+            console.log('🌐 API CLIENT: Task created successfully:', result);
+            return result;
+        } catch (error) {
+            console.error('🌐 API CLIENT: Failed to create task:', error);
+            console.error('🌐 API CLIENT: Error details:', {
+                message: error.message,
+                status: error.status,
+                response: error.response
+            });
+            throw error;
+        }
     }
     
     // ===== OPPORTUNITY API METHODS =====

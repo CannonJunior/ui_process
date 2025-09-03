@@ -12,7 +12,11 @@ const router = express.Router();
 
 const taskSchema = Joi.object({
     workflowId: Joi.string().uuid().required(),
-    anchoredTo: Joi.string().uuid().required(),
+    anchoredTo: Joi.alternatives().try(
+        Joi.string().uuid(),
+        Joi.string().allow(''),
+        Joi.allow(null)
+    ).optional(),
     opportunityId: Joi.string().uuid().optional(),
     text: Joi.string().min(1).required(),
     description: Joi.string().optional(),
@@ -81,21 +85,100 @@ router.get('/', async (req, res, next) => {
 // POST /api/v1/tasks
 router.post('/', async (req, res, next) => {
     try {
+        console.log('🔍 TASKS API: Received POST request body:', JSON.stringify(req.body, null, 2));
+        console.log('🔍 TASKS API: anchoredTo value:', req.body.anchoredTo, 'type:', typeof req.body.anchoredTo);
+        
         const { error, value } = taskSchema.validate(req.body);
         if (error) {
+            console.log('❌ TASKS API: Validation error:', error.details[0].message);
+            console.log('❌ TASKS API: Full error details:', JSON.stringify(error.details, null, 2));
             throw new ValidationError(error.details[0].message);
         }
 
-        const { workflowId, anchoredTo, opportunityId, text, description, status,
+        const { workflowId, opportunityId, text, description, status,
                 priority, dueDate, estimatedHours, assignedTo, positionX, positionY, slot } = value;
 
+        // Clean up anchoredTo - if it's not a valid UUID, set to null
+        let anchoredTo = value.anchoredTo;
+        if (anchoredTo && typeof anchoredTo === 'string' && anchoredTo.trim() !== '') {
+            const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+            if (!uuidRegex.test(anchoredTo)) {
+                console.log(`⚠️ TASKS API: Invalid UUID "${anchoredTo}" converted to null`);
+                anchoredTo = null;
+            }
+        } else {
+            anchoredTo = null;
+        }
+
+        console.log('✅ TASKS API: Processed anchoredTo:', anchoredTo);
+
         // Verify workflow access
+        console.log('🔍 TASKS API: Checking workflow access');
+        console.log('🔍 TASKS API: workflowId:', workflowId);
+        console.log('🔍 TASKS API: user.organization_id:', req.user?.organization_id);
+        console.log('🔍 TASKS API: full user object:', JSON.stringify(req.user, null, 2));
+        
         const workflowCheck = await query(`
             SELECT id FROM workflows WHERE id = $1 AND organization_id = $2
         `, [workflowId, req.user.organization_id]);
 
+        console.log('🔍 TASKS API: Workflow query result:', workflowCheck.rows.length, 'rows found');
+        console.log('🔍 TASKS API: Query result rows:', JSON.stringify(workflowCheck.rows, null, 2));
+
         if (workflowCheck.rows.length === 0) {
-            throw new NotFoundError('Workflow not found');
+            // Let's also check if the workflow exists without organization filter
+            const workflowExistsCheck = await query(`SELECT id FROM workflows WHERE id = $1`, [workflowId]);
+            console.log('🔍 TASKS API: Workflow exists (no org filter):', workflowExistsCheck.rows.length, 'rows found');
+            
+            if (workflowExistsCheck.rows.length === 0) {
+                // Workflow doesn't exist at all, create it automatically
+                console.log('🆕 TASKS API: Auto-creating missing workflow:', workflowId);
+                
+                try {
+                    // First, ensure the organization exists
+                    const orgCheck = await query(`SELECT id FROM organizations WHERE id = $1`, [req.user.organization_id]);
+                    console.log('🔍 TASKS API: Organization exists:', orgCheck.rows.length, 'rows found');
+                    
+                    if (orgCheck.rows.length === 0) {
+                        // Create the missing organization first
+                        console.log('🆕 TASKS API: Auto-creating missing organization:', req.user.organization_id);
+                        await query(`
+                            INSERT INTO organizations (id, name, slug, created_at, updated_at)
+                            VALUES ($1, $2, $3, NOW(), NOW())
+                        `, [
+                            req.user.organization_id,
+                            'Development Organization',
+                            'auto-created-dev-org'
+                        ]);
+                        console.log('✅ TASKS API: Successfully auto-created organization:', req.user.organization_id);
+                    }
+                    
+                    // Now create the workflow
+                    await query(`
+                        INSERT INTO workflows (id, organization_id, name, description, version, metadata, created_at, updated_at)
+                        VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
+                    `, [
+                        workflowId,
+                        req.user.organization_id,
+                        'Auto-created Workflow',
+                        'Automatically created when creating a task',
+                        '1.0.0',
+                        JSON.stringify({
+                            auto_created: true,
+                            created_by: 'task_creation',
+                            created_at: new Date().toISOString()
+                        })
+                    ]);
+                    
+                    console.log('✅ TASKS API: Successfully auto-created workflow:', workflowId);
+                } catch (createError) {
+                    console.error('❌ TASKS API: Failed to auto-create workflow:', createError);
+                    throw new NotFoundError('Workflow not found and could not be created');
+                }
+            } else {
+                // Workflow exists but not for this organization
+                throw new NotFoundError('Workflow not found');
+            }
         }
 
         const result = await query(`

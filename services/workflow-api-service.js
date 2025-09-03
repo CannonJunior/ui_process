@@ -241,6 +241,11 @@ class WorkflowAPIService {
                     slot: taskData.slot || 0
                 };
                 
+                console.log('🔧 WORKFLOW API SERVICE: Creating task');
+                console.log('🔧 Original taskData:', JSON.stringify(taskData, null, 2));
+                console.log('🔧 Processed apiTaskData:', JSON.stringify(apiTaskData, null, 2));
+                console.log('🔧 anchoredTo specifically:', apiTaskData.anchoredTo, typeof apiTaskData.anchoredTo);
+                
                 const result = await this.apiClient.createTask(apiTaskData);
                 this.cache.set(`task_${result.id}`, result);
                 

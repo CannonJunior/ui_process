@@ -122,7 +122,7 @@ class ServiceHealthManager {
         
         this.services[service].status = status;
         
-        console.log(`Health: ${service} → ${status}`);
+        // console.log(`Health: ${service} → ${status}`);
     }
 
     startMCPMonitoring() {

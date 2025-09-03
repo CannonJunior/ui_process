@@ -179,7 +179,7 @@ router.get('/schema', async (req, res) => {
 
 /**
  * GET /api/v1/db/tables
- * Get list of all tables
+ * Get list of all tables with row counts
  */
 router.get('/tables', async (req, res) => {
     try {
@@ -194,10 +194,30 @@ router.get('/tables', async (req, res) => {
         `;
 
         const result = await query(tablesQuery);
+        
+        // Get row counts for each table
+        const tablesWithCounts = await Promise.all(
+            result.rows.map(async (table) => {
+                try {
+                    const countQuery = `SELECT COUNT(*) as row_count FROM "${table.table_schema}"."${table.table_name}"`;
+                    const countResult = await query(countQuery);
+                    return {
+                        ...table,
+                        row_count: parseInt(countResult.rows[0].row_count)
+                    };
+                } catch (error) {
+                    console.warn(`Could not get count for table ${table.table_name}:`, error.message);
+                    return {
+                        ...table,
+                        row_count: 0
+                    };
+                }
+            })
+        );
 
         res.json({
-            tables: result.rows,
-            count: result.rows.length
+            tables: tablesWithCounts,
+            count: tablesWithCounts.length
         });
         
     } catch (error) {
@@ -267,6 +287,77 @@ router.get('/connection', async (req, res) => {
             error: 'Failed to retrieve connection information',
             message: error.message,
             status: 'error'
+        });
+    }
+});
+
+/**
+ * POST /api/v1/db/clear-tables
+ * Clear data from selected tables
+ */
+router.post('/clear-tables', async (req, res) => {
+    try {
+        const { tables } = req.body;
+
+        if (!tables || !Array.isArray(tables) || tables.length === 0) {
+            return res.status(400).json({
+                error: 'Tables array is required',
+                message: 'Please provide an array of table names to clear'
+            });
+        }
+
+        console.log(`🗑️ Clearing ${tables.length} tables:`, tables);
+
+        const results = [];
+        
+        for (const table of tables) {
+            try {
+                // Validate table name format to prevent SQL injection
+                if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(table.table_name)) {
+                    results.push({
+                        table: table.table_name,
+                        status: 'error',
+                        message: 'Invalid table name format'
+                    });
+                    continue;
+                }
+
+                const deleteQuery = `DELETE FROM "${table.table_schema}"."${table.table_name}"`;
+                const result = await query(deleteQuery);
+                
+                results.push({
+                    table: table.table_name,
+                    schema: table.table_schema,
+                    status: 'success',
+                    deletedRows: result.rowCount
+                });
+
+                console.log(`✅ Cleared table ${table.table_schema}.${table.table_name}: ${result.rowCount} rows deleted`);
+                
+            } catch (error) {
+                console.error(`❌ Error clearing table ${table.table_name}:`, error);
+                results.push({
+                    table: table.table_name,
+                    schema: table.table_schema,
+                    status: 'error',
+                    message: error.message
+                });
+            }
+        }
+
+        res.json({
+            message: 'Table clearing completed',
+            results: results,
+            totalTablesProcessed: results.length,
+            successCount: results.filter(r => r.status === 'success').length,
+            errorCount: results.filter(r => r.status === 'error').length
+        });
+        
+    } catch (error) {
+        console.error('Clear tables error:', error);
+        res.status(500).json({
+            error: 'Failed to clear tables',
+            message: error.message
         });
     }
 });

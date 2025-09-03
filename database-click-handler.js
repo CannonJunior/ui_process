@@ -91,9 +91,9 @@ function startDatabaseHealthMonitoring(element) {
             
             if (isOnline) {
                 const data = await response.json();
-                console.log('💚 Database is online:', data.status);
+                // console.log('💚 Database is online:', data.status);
             } else {
-                console.log('💔 Database is offline, status:', response.status);
+                // console.log('💔 Database is offline, status:', response.status);
             }
             
         } catch (error) {
@@ -262,15 +262,56 @@ function createDatabaseModal(connectionData, tablesData, errorMessage = null) {
         if (tablesData && tablesData.tables) {
             modalHTML += `
                 <div style="margin: 20px 0;">
-                    <h3>📋 Available Tables (${tablesData.count})</h3>
-                    <div style="max-height: 200px; overflow-y: auto; border: 1px solid #ddd; padding: 10px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <h3>📋 Available Tables (${tablesData.count})</h3>
+                        <div>
+                            <label style="margin-right: 15px; cursor: pointer;">
+                                <input type="checkbox" id="selectAllTables" onchange="toggleAllTables()" style="margin-right: 5px;">
+                                Select All
+                            </label>
+                            <button id="clearTablesBtn" onclick="clearSelectedTables()" 
+                                    style="padding: 5px 15px; background: #dc2626; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                                Clear Selected
+                            </button>
+                        </div>
+                    </div>
+                    <div style="max-height: 300px; overflow-y: auto; border: 1px solid #ddd; padding: 10px;" id="tablesContainer">
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr style="background: #f5f5f5;">
+                                    <th style="padding: 8px; border: 1px solid #ddd; text-align: left; width: 30px;"></th>
+                                    <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Table Name</th>
+                                    <th style="padding: 8px; border: 1px solid #ddd; text-align: right; width: 80px;">Row Count</th>
+                                </tr>
+                            </thead>
+                            <tbody>
             `;
             
-            tablesData.tables.forEach(table => {
-                modalHTML += `<div style="padding: 5px; border-bottom: 1px solid #eee;">• ${table.table_name}</div>`;
+            tablesData.tables.forEach((table, index) => {
+                modalHTML += `
+                    <tr>
+                        <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">
+                            <input type="checkbox" class="table-checkbox" 
+                                   data-table-name="${table.table_name}" 
+                                   data-table-schema="${table.table_schema}"
+                                   onchange="updateSelectAllState()">
+                        </td>
+                        <td style="padding: 8px; border: 1px solid #ddd;">
+                            ${table.table_schema}.${table.table_name}
+                        </td>
+                        <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">
+                            <span id="count-${table.table_schema}-${table.table_name}">${table.row_count || 0}</span>
+                        </td>
+                    </tr>
+                `;
             });
             
-            modalHTML += '</div></div>';
+            modalHTML += `
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
         }
     }
     
@@ -296,5 +337,113 @@ function createDatabaseModal(connectionData, tablesData, errorMessage = null) {
         }
     });
 }
+
+// JavaScript functions for table management
+function toggleAllTables() {
+    const selectAllCheckbox = document.getElementById('selectAllTables');
+    const tableCheckboxes = document.querySelectorAll('.table-checkbox');
+    
+    tableCheckboxes.forEach(checkbox => {
+        checkbox.checked = selectAllCheckbox.checked;
+    });
+    
+    console.log(`📋 ${selectAllCheckbox.checked ? 'Selected' : 'Deselected'} all ${tableCheckboxes.length} tables`);
+}
+
+function updateSelectAllState() {
+    const selectAllCheckbox = document.getElementById('selectAllTables');
+    const tableCheckboxes = document.querySelectorAll('.table-checkbox');
+    const checkedCount = document.querySelectorAll('.table-checkbox:checked').length;
+    
+    if (checkedCount === 0) {
+        selectAllCheckbox.checked = false;
+        selectAllCheckbox.indeterminate = false;
+    } else if (checkedCount === tableCheckboxes.length) {
+        selectAllCheckbox.checked = true;
+        selectAllCheckbox.indeterminate = false;
+    } else {
+        selectAllCheckbox.checked = false;
+        selectAllCheckbox.indeterminate = true;
+    }
+}
+
+async function clearSelectedTables() {
+    const selectedCheckboxes = document.querySelectorAll('.table-checkbox:checked');
+    
+    if (selectedCheckboxes.length === 0) {
+        alert('Please select at least one table to clear.');
+        return;
+    }
+    
+    const tableNames = Array.from(selectedCheckboxes).map(cb => cb.dataset.tableName).join(', ');
+    
+    if (!confirm(`Are you sure you want to clear all data from ${selectedCheckboxes.length} selected table(s)?\n\nTables: ${tableNames}\n\nThis action cannot be undone.`)) {
+        return;
+    }
+    
+    console.log(`🗑️ Clearing ${selectedCheckboxes.length} selected tables`);
+    
+    // Prepare table data
+    const tablesToClear = Array.from(selectedCheckboxes).map(checkbox => ({
+        table_name: checkbox.dataset.tableName,
+        table_schema: checkbox.dataset.tableSchema
+    }));
+    
+    try {
+        // Show loading state
+        const clearBtn = document.getElementById('clearTablesBtn');
+        clearBtn.disabled = true;
+        clearBtn.textContent = 'Clearing...';
+        clearBtn.style.background = '#9ca3af';
+        
+        const response = await fetch('http://localhost:3001/api/v1/db/clear-tables', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ tables: tablesToClear })
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+            console.log('✅ Tables cleared successfully:', result);
+            
+            // Update row counts in the UI
+            result.results.forEach(tableResult => {
+                if (tableResult.status === 'success') {
+                    const countElement = document.getElementById(`count-${tableResult.schema}-${tableResult.table}`);
+                    if (countElement) {
+                        countElement.textContent = '0';
+                    }
+                }
+            });
+            
+            // Uncheck all checkboxes
+            selectedCheckboxes.forEach(checkbox => checkbox.checked = false);
+            updateSelectAllState();
+            
+            alert(`Successfully cleared ${result.successCount} table(s). ${result.errorCount > 0 ? `Failed to clear ${result.errorCount} table(s).` : ''}`);
+            
+        } else {
+            throw new Error(result.message || 'Failed to clear tables');
+        }
+        
+    } catch (error) {
+        console.error('❌ Error clearing tables:', error);
+        alert(`Error clearing tables: ${error.message}`);
+    } finally {
+        // Reset button state
+        const clearBtn = document.getElementById('clearTablesBtn');
+        clearBtn.disabled = false;
+        clearBtn.textContent = 'Clear Selected';
+        clearBtn.style.background = '#dc2626';
+    }
+}
+
+// Make functions globally available
+window.toggleAllTables = toggleAllTables;
+window.updateSelectAllState = updateSelectAllState;
+window.clearSelectedTables = clearSelectedTables;
 
 console.log('✅ Database click handler script loaded');

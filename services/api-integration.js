@@ -1192,7 +1192,12 @@ class APIIntegration {
                 taskApiData.opportunityId = taskData.opportunityId;
             }
             
-            console.log('📋 Persisting task to API:', taskApiData);
+            console.log('📋 DETAILED: Persisting task to API with data:');
+            console.log('📋 Original taskData:', JSON.stringify(taskData, null, 2));
+            console.log('📋 Processed taskApiData:', JSON.stringify(taskApiData, null, 2));
+            console.log('📋 anchoredTo value:', taskApiData.anchoredTo);
+            console.log('📋 anchoredTo type:', typeof taskApiData.anchoredTo);
+            
             const result = await this.apiClient.createTask(taskApiData);
             console.log('✅ Task persisted successfully:', result);
             
@@ -1270,14 +1275,28 @@ class APIIntegration {
     
     // Helper methods
     async getCurrentWorkflowId() {
+        console.log('🔍 getCurrentWorkflowId called');
+        console.log('🔍 workflowAPIService exists:', !!this.workflowAPIService);
+        console.log('🔍 current workflowId:', this.workflowAPIService?.currentWorkflowId);
+        
         if (this.workflowAPIService?.currentWorkflowId) {
+            console.log('✅ Using existing workflow ID:', this.workflowAPIService.currentWorkflowId);
             return this.workflowAPIService.currentWorkflowId;
         }
-        return await this.createDefaultWorkflow();
+        
+        console.log('⚠️ No existing workflow ID, creating default workflow...');
+        const newWorkflowId = await this.createDefaultWorkflow();
+        console.log('🆕 Created/received workflow ID:', newWorkflowId);
+        return newWorkflowId;
     }
     
     async createDefaultWorkflow() {
+        console.log('🔧 createDefaultWorkflow called');
+        console.log('🔧 apiClient exists:', !!this.apiClient);
+        console.log('🔧 apiClient connected:', this.apiClient?.isConnected());
+        
         if (!this.apiClient || !this.apiClient.isConnected()) {
+            console.log('❌ API client not available or not connected');
             return null;
         }
         
@@ -1292,12 +1311,22 @@ class APIIntegration {
                 }
             };
             
+            console.log('🔧 Creating workflow with data:', JSON.stringify(defaultWorkflow, null, 2));
             const result = await this.apiClient.createWorkflow(defaultWorkflow);
-            this.workflowAPIService.currentWorkflowId = result.id;
+            console.log('🔧 Workflow creation result:', JSON.stringify(result, null, 2));
+            
+            if (this.workflowAPIService) {
+                this.workflowAPIService.currentWorkflowId = result.id;
+                console.log('🔧 Set workflowAPIService.currentWorkflowId to:', result.id);
+            } else {
+                console.log('⚠️ workflowAPIService not available to store workflow ID');
+            }
+            
             console.log('✅ Created default workflow:', result.id);
             return result.id;
         } catch (error) {
             console.error('❌ Failed to create default workflow:', error);
+            console.error('❌ Error details:', error.message, error.stack);
             return null;
         }
     }
@@ -1310,8 +1339,17 @@ class APIIntegration {
     
     getNodeIdForTask(taskData) {
         // Try to find the associated node for this task
-        // This might need to be enhanced based on how tasks are linked to nodes
-        return taskData.nodeId || taskData.anchoredTo || null;
+        let anchoredToId = taskData.nodeId || taskData.anchoredTo;
+        
+        // If anchoredToId is not a valid UUID (contains only digits), we need to handle it
+        if (anchoredToId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(anchoredToId)) {
+            // This is likely a local node ID (counter), try to find a corresponding UUID
+            // For now, we'll generate a placeholder UUID or return null to make it optional
+            console.log(`⚠️ Task anchoredTo field "${anchoredToId}" is not a valid UUID, using null`);
+            return null;
+        }
+        
+        return anchoredToId;
     }
     
     mapTaskStatus(status) {

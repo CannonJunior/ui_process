@@ -2296,6 +2296,10 @@ input.node-input {
     transition: all 200ms ease-in-out;
 }
 
+#dataHealthIndicator {
+    border: none !important;
+}
+
 .health-indicator:hover {
     transform: scale(1.05);
 }
