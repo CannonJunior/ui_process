@@ -50,7 +50,7 @@ class MatrixController {
     setupMatrixEventListeners() {
         // Matrix toggle button event listener
         if (this.eisenhowerToggle) {
-            this.eisenhowerToggle.addEventListener('click', () => this.toggleEisenhowerMatrix());
+            this.eisenhowerToggle.addEventListener('click', () => this.app.toggleEisenhowerMatrix());
         }
         
         console.log('MatrixController: Event listeners initialized');
@@ -707,7 +707,7 @@ class MatrixController {
      */
     setMatrixMode(isActive) {
         if (isActive !== this.isMatrixMode) {
-            this.toggleEisenhowerMatrix();
+            this.app.toggleEisenhowerMatrix();
         }
     }
     
