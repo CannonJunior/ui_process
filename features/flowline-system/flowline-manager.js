@@ -222,6 +222,9 @@ class FlowlineManager {
         console.log(`FlowlineManager: Updating flowline path for ${sourceNode.dataset.id} to ${targetNode.dataset.id}`);
         this.updateSingleFlowline(flowline);
         
+        // Save to database via API integration
+        this.saveFlowlineToDatabase(flowline);
+        
         console.log(`FlowlineManager: Created ${type} flowline from ${sourceNode.dataset.id} to ${targetNode.dataset.id}`);
         
         return flowline;
@@ -561,6 +564,114 @@ class FlowlineManager {
         });
         
         return result;
+    }
+    
+    /**
+     * Save flowline to database via API integration
+     * @param {Object} flowline - Flowline object to save
+     */
+    async saveFlowlineToDatabase(flowline) {
+        try {
+            // Get API client - check multiple possible locations
+            const apiClient = this.app?.apiClient || window?.apiClient || (window?.getAPIClient && window.getAPIClient());
+            
+            if (!apiClient) {
+                console.warn('FlowlineManager: No API client available, flowline not saved to database');
+                return;
+            }
+            
+            // Convert frontend node IDs to database UUIDs
+            const sourceUUID = await this.getNodeDatabaseId(flowline.source.dataset.id);
+            const targetUUID = await this.getNodeDatabaseId(flowline.target.dataset.id);
+            
+            if (!sourceUUID || !targetUUID) {
+                console.warn('FlowlineManager: Could not find database UUIDs for nodes', {
+                    sourceId: flowline.source.dataset.id,
+                    targetId: flowline.target.dataset.id,
+                    sourceUUID,
+                    targetUUID
+                });
+                return;
+            }
+            
+            // Prepare flowline data for API
+            const flowlineData = {
+                workflowId: this.getWorkflowId(),
+                sourceNodeId: sourceUUID,
+                targetNodeId: targetUUID,
+                type: flowline.type,
+                metadata: {
+                    created_at: new Date().toISOString(),
+                    created_by: 'ui_user',
+                    frontendSourceId: flowline.source.dataset.id,
+                    frontendTargetId: flowline.target.dataset.id
+                }
+            };
+            
+            console.log('🔗 FLOWLINE: Saving to database:', flowlineData);
+            const result = await apiClient.createFlowline(flowlineData);
+            console.log('✅ FLOWLINE: Saved successfully:', result);
+            
+        } catch (error) {
+            console.error('❌ FLOWLINE: Failed to save to database:', error);
+            // Don't throw - we want the visual flowline to remain even if DB save fails
+        }
+    }
+    
+    /**
+     * Get the database UUID for a frontend node ID
+     * @param {string} frontendNodeId - Frontend node ID (like "1", "2", etc.)
+     * @returns {Promise<string|null>} Database UUID or null if not found
+     */
+    async getNodeDatabaseId(frontendNodeId) {
+        try {
+            const apiClient = this.app?.apiClient || window?.apiClient || (window?.getAPIClient && window.getAPIClient());
+            if (!apiClient) return null;
+            
+            // Get all nodes for the current workflow
+            const workflowId = this.getWorkflowId();
+            const response = await apiClient.getNodes(workflowId);
+            
+            // Find the node with matching frontend ID in metadata
+            const node = response.nodes?.find(node => 
+                node.metadata?.nodeId === frontendNodeId
+            );
+            
+            return node ? node.id : null;
+            
+        } catch (error) {
+            console.error('FlowlineManager: Error getting node database ID:', error);
+            return null;
+        }
+    }
+    
+    /**
+     * Get current workflow ID for database operations
+     * @returns {string} Workflow ID
+     */
+    getWorkflowId() {
+        // Try multiple ways to get workflow ID
+        const workflowId = this.app?.currentWorkflowId || 
+                          this.app?.workflow?.id || 
+                          this.app?.workflowId ||
+                          null;
+        
+        if (workflowId && this.isValidUUID(workflowId)) {
+            return workflowId;
+        }
+        
+        // Fallback to the existing auto-created workflow ID from database
+        return '23854ca3-e4e4-4b7f-8b93-87f34f52411d';
+    }
+    
+    /**
+     * Check if a string is a valid UUID
+     * @param {string} uuid - String to check
+     * @returns {boolean} True if valid UUID
+     */
+    isValidUUID(uuid) {
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+        return uuidRegex.test(uuid);
     }
 }
 

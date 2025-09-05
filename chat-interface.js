@@ -547,11 +547,12 @@ class ChatInterface {
                     return;
                 }
                 
-                // Add command suggestions if context suggests commands would be helpful
-                const contextAnalysis = await this.analyzeMessageContext(message);
-                if (contextAnalysis && contextAnalysis.suggested_commands && contextAnalysis.suggested_commands.length > 0) {
-                    this.addCommandSuggestions(contextAnalysis.suggested_commands);
-                }
+                // DISABLED: Command suggestions functionality disabled per user request
+                // TODO: Mark for possible deletion - see ROADMAP.md
+                // const contextAnalysis = await this.analyzeMessageContext(message);
+                // if (contextAnalysis && contextAnalysis.suggested_commands && contextAnalysis.suggested_commands.length > 0) {
+                //     this.addCommandSuggestions(contextAnalysis.suggested_commands);
+                // }
             } else {
                 console.log(`❌ MCP not initialized, checking for fallback command detection...`);
                 
@@ -698,20 +699,21 @@ class ChatInterface {
     }
     
     async handleLLMMessage(message) {
-        // Get application context
-        const context = this.getApplicationContext();
+        // SIMPLIFIED: Direct to Ollama without workflow system integration
+        // Previous workflow context integration disabled per user request
         
-        // Get vector search results for enhanced context
-        const vectorSearchResults = await this.performVectorSearch(message);
+        // Simple prompt with basic conversation history
+        const conversationContext = this.conversationHistory
+            .slice(-6) // Last 3 exchanges (6 messages)
+            .map(msg => `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.content}`)
+            .join('\n');
+            
+        const prompt = conversationContext ? 
+            `Previous conversation:\n${conversationContext}\n\nUser: ${message}\n\nAssistant:` :
+            `User: ${message}\n\nAssistant:`;
         
-        // Get relevant documents based on the message
-        const relevantDocs = this.findRelevantDocuments(message);
-        
-        // Prepare enhanced prompt with context, vector search results, and RAG
-        const enhancedPrompt = this.buildEnhancedPrompt(message, context, relevantDocs, vectorSearchResults);
-        
-        // Send to Ollama
-        const response = await this.callOllama(enhancedPrompt);
+        // Send directly to Ollama
+        const response = await this.callOllama(prompt);
         
         // Add assistant response
         this.addMessage('assistant', response);

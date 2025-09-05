@@ -22,6 +22,7 @@ import authRoutes from './routes/auth.js';
 import workflowRoutes from './routes/workflows.js';
 import opportunityRoutes from './routes/opportunities.js';
 import nodeRoutes from './routes/nodes.js';
+import flowlineRoutes from './routes/flowlines.js';
 import taskRoutes from './routes/tasks.js';
 import searchRoutes from './routes/search.js';
 import chatRoutes from './routes/chat.js';
@@ -102,6 +103,7 @@ app.get('/api/v1', (req, res) => {
             workflows: '/api/v1/workflows',
             opportunities: '/api/v1/opportunities',
             nodes: '/api/v1/nodes',
+            flowlines: '/api/v1/flowlines',
             tasks: '/api/v1/tasks',
             search: '/api/v1/search',
             chat: '/api/v1/chat',
@@ -134,6 +136,7 @@ if (process.env.DEV_DISABLE_AUTH !== 'true') {
 app.use('/api/v1/workflows', workflowRoutes);
 app.use('/api/v1/opportunities', opportunityRoutes);
 app.use('/api/v1/nodes', nodeRoutes);
+app.use('/api/v1/flowlines', flowlineRoutes);
 app.use('/api/v1/tasks', taskRoutes);
 app.use('/api/v1/search', searchRoutes);
 app.use('/api/v1/chat', chatRoutes);
