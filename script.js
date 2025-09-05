@@ -1276,6 +1276,7 @@ class ProcessFlowDesigner {
             'opportunityModal', 'opportunityTitle', 'opportunityDescription', 'opportunityStatus', 'opportunityTags',
             'opportunityValue', 'opportunityPriority', 'opportunityDeadline', 'opportunityContact', 'opportunityNotes',
             'opportunityModalCancel', 'opportunityModalExport', 'opportunityModalCreate',
+            'kgNodeModal', 'kgNodeName', 'kgNodeType', 'kgNodeDescription', 'kgNodeModalCancel', 'kgNodeModalCreate',
             'taskEditModal', 'taskEditName', 'taskEditDescription', 'taskEditStatus', 'taskEditPriority',
             'taskEditDueDate', 'taskEditOpportunity', 'taskEditEstimatedHours', 'taskEditAssignedTo',
             'taskEditModalCancel', 'taskEditModalSave'
@@ -1396,6 +1397,9 @@ class ProcessFlowDesigner {
         // Opportunity modal event listeners
         this.setupOpportunityModalEventListeners();
         
+        // Knowledge graph modal event listeners
+        this.setupKnowledgeGraphModalEventListeners();
+        
         // Task edit modal event listeners
         this.setupTaskEditModalEventListeners();
     }
@@ -1494,6 +1498,15 @@ class ProcessFlowDesigner {
             // Show opportunity modal
             console.log('🎭 OPPORTUNITY MENU: Calling showOpportunityModal()...');
             this.showOpportunityModal();
+        } else if (addType === 'kg-node') {
+            console.log('🧠 KG MENU: User clicked knowledge graph option in add menu');
+            
+            // Hide all context menus
+            this.hideAllAddMenus();
+            
+            // Show knowledge graph modal
+            console.log('🧠 KG MENU: Calling showKnowledgeGraphModal()...');
+            this.showKnowledgeGraphModal();
         }
     }
     
@@ -1907,6 +1920,210 @@ class ProcessFlowDesigner {
     }
     
     // ==================== END OPPORTUNITY MODAL METHODS ====================
+    
+    // ==================== KNOWLEDGE GRAPH MODAL METHODS ====================
+    
+    setupKnowledgeGraphModalEventListeners() {
+        console.log('🔧 Setting up knowledge graph modal event listeners...');
+        
+        // Knowledge graph modal buttons
+        if (this.kgNodeModalCancel) {
+            console.log('✅ Found kgNodeModalCancel button, adding event listener');
+            this.kgNodeModalCancel.addEventListener('click', () => this.hideKnowledgeGraphModal());
+        } else {
+            console.warn('❌ kgNodeModalCancel button not found!');
+        }
+        
+        if (this.kgNodeModalCreate) {
+            console.log('✅ Found kgNodeModalCreate button, adding event listener');
+            this.kgNodeModalCreate.addEventListener('click', () => {
+                console.log('🖱️ BUTTON CLICKED: kgNodeModalCreate button clicked!');
+                this.createKnowledgeGraphNode();
+            });
+        } else {
+            console.warn('❌ kgNodeModalCreate button not found!');
+        }
+        
+        // Modal backdrop click to close
+        if (this.kgNodeModal) {
+            this.kgNodeModal.addEventListener('click', (e) => {
+                if (e.target === this.kgNodeModal) {
+                    this.hideKnowledgeGraphModal();
+                }
+            });
+        }
+        
+        // Entity type change handler for dynamic fields
+        if (this.kgNodeType) {
+            this.kgNodeType.addEventListener('change', (e) => {
+                this.toggleKnowledgeGraphFields(e.target.value);
+            });
+        }
+    }
+    
+    showKnowledgeGraphModal() {
+        console.log('🧠 showKnowledgeGraphModal() called - opening knowledge graph modal');
+        
+        if (!this.kgNodeModal) {
+            console.error('❌ Knowledge graph modal not found');
+            return;
+        }
+        
+        // Reset form
+        console.log('🔄 Resetting knowledge graph form...');
+        this.resetKnowledgeGraphForm();
+        
+        // Show modal
+        console.log('✅ Showing knowledge graph modal');
+        this.kgNodeModal.style.display = 'block';
+        
+        // Focus on name field
+        if (this.kgNodeName) {
+            this.kgNodeName.focus();
+            console.log('🎯 Focus set to knowledge graph name field');
+        }
+    }
+    
+    hideKnowledgeGraphModal() {
+        if (this.kgNodeModal) {
+            this.kgNodeModal.style.display = 'none';
+        }
+    }
+    
+    resetKnowledgeGraphForm() {
+        // Reset basic form fields
+        if (this.kgNodeName) this.kgNodeName.value = '';
+        if (this.kgNodeType) this.kgNodeType.value = '';
+        if (this.kgNodeDescription) this.kgNodeDescription.value = '';
+        
+        // Hide all dynamic field groups
+        this.toggleKnowledgeGraphFields('');
+        
+        // Reset dynamic fields
+        const allInputs = this.kgNodeModal.querySelectorAll('input, select, textarea');
+        allInputs.forEach(input => {
+            if (input.id !== 'kgNodeName' && input.id !== 'kgNodeType' && input.id !== 'kgNodeDescription') {
+                input.value = '';
+            }
+        });
+    }
+    
+    toggleKnowledgeGraphFields(entityType) {
+        // Hide all dynamic field groups
+        const fieldGroups = document.querySelectorAll('.entity-fields');
+        fieldGroups.forEach(group => {
+            group.style.display = 'none';
+        });
+        
+        // Show relevant field group
+        if (entityType) {
+            const targetGroup = document.querySelector(`.entity-fields.${entityType}-fields`);
+            if (targetGroup) {
+                targetGroup.style.display = 'block';
+            }
+        }
+    }
+    
+    validateKnowledgeGraphForm() {
+        const errors = [];
+        
+        // Required fields validation
+        if (!this.kgNodeName || !this.kgNodeName.value.trim()) {
+            errors.push('Name is required');
+        }
+        
+        if (!this.kgNodeType || !this.kgNodeType.value.trim()) {
+            errors.push('Entity type is required');
+        }
+        
+        if (!this.kgNodeDescription || !this.kgNodeDescription.value.trim()) {
+            errors.push('Description is required');
+        }
+        
+        return errors;
+    }
+    
+    async createKnowledgeGraphNode() {
+        console.log('🧠 Creating knowledge graph node...');
+        
+        try {
+            // Validate form
+            const errors = this.validateKnowledgeGraphForm();
+            if (errors.length > 0) {
+                alert(`Please fix the following errors:\n${errors.join('\n')}`);
+                return;
+            }
+            
+            // Collect form data
+            const kgNodeData = this.collectKnowledgeGraphFormData();
+            console.log('🧠 Knowledge graph data:', kgNodeData);
+            
+            // Create through API
+            const response = await this.createKnowledgeGraphNodeAPI(kgNodeData);
+            console.log('✅ Knowledge graph node created:', response);
+            
+            // Hide modal
+            this.hideKnowledgeGraphModal();
+            
+            // Show success message
+            alert(`Knowledge graph node "${kgNodeData.name}" created successfully!`);
+            
+        } catch (error) {
+            console.error('❌ Failed to create knowledge graph node:', error);
+            alert(`Failed to create knowledge graph node: ${error.message}`);
+        }
+    }
+    
+    collectKnowledgeGraphFormData() {
+        const data = {
+            name: this.kgNodeName.value.trim(),
+            entity_type: this.kgNodeType.value.trim(),
+            description: this.kgNodeDescription.value.trim(),
+            properties: {}
+        };
+        
+        // Collect dynamic fields based on entity type
+        const entityType = this.kgNodeType.value.trim();
+        const fieldGroup = document.querySelector(`.entity-fields.${entityType}-fields`);
+        
+        if (fieldGroup) {
+            const inputs = fieldGroup.querySelectorAll('input, select, textarea');
+            inputs.forEach(input => {
+                if (input.value.trim()) {
+                    const key = input.id.replace('kg' + entityType.charAt(0).toUpperCase() + entityType.slice(1), '').toLowerCase();
+                    if (key === 'skills' || key === 'tags') {
+                        // Split comma-separated values into arrays
+                        data.properties[key] = input.value.split(',').map(v => v.trim()).filter(v => v);
+                    } else {
+                        data.properties[key] = input.value.trim();
+                    }
+                }
+            });
+        }
+        
+        return data;
+    }
+    
+    async createKnowledgeGraphNodeAPI(kgNodeData) {
+        const baseURL = typeof PortConfig !== 'undefined' ? PortConfig.getDatabaseApiUrl() : 'http://localhost:3001';
+        
+        const response = await fetch(`${baseURL}/api/v1/kg/entities`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(kgNodeData)
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+            throw new Error(errorData.error || `HTTP ${response.status}`);
+        }
+        
+        return await response.json();
+    }
+    
+    // ==================== END KNOWLEDGE GRAPH MODAL METHODS ====================
     
     // ==================== TASK EDIT MODAL METHODS ====================
     
