@@ -5,7 +5,7 @@
 
 class MCPClient {
     constructor(baseUrl = null) {
-        this.baseUrl = baseUrl || (typeof PortConfig !== 'undefined' ? PortConfig.getMcpServiceUrl() : 'http://localhost:3002');
+        this.baseUrl = baseUrl || (typeof PortConfig !== 'undefined' ? PortConfig.getMcpServiceUrl() : 'http://localhost:3001');
         this.isConnected = false;
         this.connectionCheckInterval = null;
         this.retryAttempts = 0;

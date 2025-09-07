@@ -5,6 +5,47 @@
 
 console.log('🔗 API health handler script loading...');
 
+// Global debug function - available immediately
+window.testDatabaseConnection = async () => {
+    console.log('🔬 Manual database connection test...');
+    try {
+        const response = await fetch('http://localhost:3002/api/v1/db/connection', {
+            method: 'GET',
+            mode: 'cors',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+        
+        console.log('✅ Manual test response:', {
+            status: response.status,
+            ok: response.ok,
+            url: response.url,
+            type: response.type,
+            headers: Object.fromEntries(response.headers.entries())
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            console.log('✅ Manual test data:', data);
+            console.log('✅ Status field:', data.status);
+            console.log('✅ Connection info:', data.connection);
+            return data;
+        } else {
+            console.error('❌ Manual test failed:', response.status);
+            return null;
+        }
+    } catch (error) {
+        console.error('❌ Manual test error:', error);
+        console.error('❌ Error type:', error.constructor.name);
+        console.error('❌ Error message:', error.message);
+        return null;
+    }
+};
+
+console.log('🔧 testDatabaseConnection() function loaded and ready!');
+
 // IMMEDIATE CHECK - Don't wait for DOM
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', immediateHealthCheck);
@@ -29,7 +70,7 @@ async function immediateHealthCheck() {
     
     if (dataIndicator) {
         console.log('🎯 Forcing Data indicator update...');
-        await forceUpdateIndicator(dataIndicator, 'http://localhost:3001/api/v1/db/connection');
+        await forceUpdateIndicator(dataIndicator, 'http://localhost:3002/api/v1/db/connection');
     }
 }
 
@@ -95,14 +136,11 @@ document.addEventListener('DOMContentLoaded', function() {
         if (dataHealthIndicator) {
             console.log('✅ dataHealthIndicator found!');
             
-            // Set up click handler
+            // Set up click handler only - health monitoring handled by health-manager.js
             setupDataClickHandler(dataHealthIndicator);
-            
-            // Start health monitoring
-            startDataHealthMonitoring(dataHealthIndicator);
             foundAny = true;
             
-            console.log('✅ Data health handler setup complete');
+            console.log('✅ Data health click handler setup complete (monitoring handled by health-manager.js)');
         } else {
             console.warn(`⚠️ dataHealthIndicator not found (attempt ${attempts})`);
         }
@@ -405,9 +443,9 @@ function setupDataClickHandler(element) {
         event.stopPropagation();
         
         try {
-            await showDataModal();
+            await showDatabaseModal();
         } catch (error) {
-            console.error('❌ Error showing Data modal:', error);
+            console.error('❌ Error showing Database modal:', error);
         }
     };
     
@@ -434,22 +472,61 @@ function startDataHealthMonitoring(element) {
     
     async function checkDataHealth() {
         try {
-            // Check database connection through API
-            const response = await fetch('http://localhost:3001/api/v1/db/connection');
-            const isOnline = response.ok;
+            // Check both connection and tables like the modal does
+            const connectionResponse = await fetch('http://localhost:3002/api/v1/db/connection', {
+                method: 'GET',
+                mode: 'cors',
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
             
-            updateDataHealthIndicator(element, isOnline, response.status);
+            const tablesResponse = await fetch('http://localhost:3002/api/v1/db/tables', {
+                method: 'GET',
+                mode: 'cors', 
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
             
-            if (isOnline) {
-                const data = await response.json();
-                // console.log('💚 Database is online:', data.status || 'connected');
+            console.log('🔍 Database health check responses:', { 
+                connection: connectionResponse.ok ? 'OK' : 'FAILED',
+                tables: tablesResponse.ok ? 'OK' : 'FAILED'
+            });
+            
+            let isOnline = false;
+            let actualStatus = 'unknown';
+            
+            // If connection API works, PostgreSQL is working - force green
+            if (connectionResponse.ok) {
+                isOnline = true;
+                actualStatus = 'connected';
+                console.log('✅ Database connection API successful - forcing green dot');
             } else {
-                // console.log('💔 Database is offline, status:', response.status);
+                isOnline = false;
+                actualStatus = 'api_failed';
+                console.log('❌ Database connection API failed - red dot');
             }
             
+            updateDataHealthIndicator(element, isOnline, actualStatus);
+            
         } catch (error) {
-            console.log('💔 Database check failed:', error.message);
-            updateDataHealthIndicator(element, false, 'error');
+            console.error('💔 Database check failed:', error);
+            console.error('💔 Error details:', {
+                name: error.name,
+                message: error.message,
+                stack: error.stack
+            });
+            
+            // Check if it's a CORS error
+            if (error.message.includes('CORS') || error.message.includes('blocked')) {
+                console.error('🚫 CORS error detected - browser blocked the request');
+                updateDataHealthIndicator(element, false, 'cors_blocked');
+            } else {
+                updateDataHealthIndicator(element, false, 'fetch_error');
+            }
         }
     }
     
@@ -459,6 +536,38 @@ function startDataHealthMonitoring(element) {
     // Check at configured interval (default 10 seconds)
     const dataHealthInterval = window.AppConfig?.healthCheck?.dataHealthInterval || 10000;
     setInterval(checkDataHealth, dataHealthInterval);
+    
+    // Add a global test function for debugging - make it available immediately
+    if (!window.testDatabaseConnection) {
+        window.testDatabaseConnection = async () => {
+        console.log('🔬 Manual database connection test...');
+        try {
+            const response = await fetch('http://localhost:3002/api/v1/db/connection', {
+                method: 'GET',
+                mode: 'cors',
+                credentials: 'include'
+            });
+            
+            console.log('✅ Manual test response:', {
+                status: response.status,
+                ok: response.ok,
+                headers: Object.fromEntries(response.headers.entries())
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                console.log('✅ Manual test data:', data);
+                return data;
+            } else {
+                console.error('❌ Manual test failed:', response.status);
+                return null;
+            }
+        } catch (error) {
+            console.error('❌ Manual test error:', error);
+            return null;
+        }
+        };
+    }
     
     // Also check when page becomes visible
     document.addEventListener('visibilitychange', () => {
@@ -513,6 +622,10 @@ function updateDataHealthIndicator(element, isOnline, status) {
     // Update title with status
     element.title = isOnline ? `PostgreSQL Database: Connected (${status})` : `PostgreSQL Database: Disconnected (${status})`;
     
+    // Remove any background color to prevent orange background
+    element.style.setProperty('background-color', 'transparent', 'important');
+    element.style.setProperty('background', 'transparent', 'important');
+    
     // Force a visual update
     element.style.display = 'none';
     element.offsetHeight; // Trigger reflow
@@ -527,15 +640,15 @@ async function showDataModal() {
         // Get database information
         console.log('📡 Fetching database info...');
         
-        const connectionResponse = await fetch('http://localhost:3001/api/v1/db/connection');
+        const connectionResponse = await fetch('http://localhost:3002/api/v1/db/connection');
         const connectionData = connectionResponse.ok ? await connectionResponse.json() : null;
         
         // Get database schema info
-        const schemaResponse = await fetch('http://localhost:3001/api/v1/db/schema').catch(() => null);
+        const schemaResponse = await fetch('http://localhost:3002/api/v1/db/schema').catch(() => null);
         const schemaData = schemaResponse && schemaResponse.ok ? await schemaResponse.json() : null;
         
         // Get table info
-        const tablesResponse = await fetch('http://localhost:3001/api/v1/db/tables').catch(() => null);
+        const tablesResponse = await fetch('http://localhost:3002/api/v1/db/tables').catch(() => null);
         const tablesData = tablesResponse && tablesResponse.ok ? await tablesResponse.json() : null;
         
         console.log('📡 Database responses received:', {
@@ -640,7 +753,7 @@ function createDataModal(connectionData, schemaData, tablesData, status, errorMe
             `;
             
             tablesData.tables.forEach(table => {
-                modalHTML += `<div>• ${table.name} (${table.rows || 0} rows)</div>`;
+                modalHTML += `<div>• ${table.table_name} (${table.row_count || 0} rows)</div>`;
             });
             
             modalHTML += '</div></div>';

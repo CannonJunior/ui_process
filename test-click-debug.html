@@ -80,7 +80,7 @@
             
             try {
                 log('Fetching database connection info...');
-                const response = await fetch('http://localhost:3001/api/v1/db/connection');
+                const response = await fetch('http://localhost:3002/api/v1/db/connection');
                 log('Response status: ' + response.status);
                 
                 if (response.ok) {

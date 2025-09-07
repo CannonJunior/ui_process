@@ -193,7 +193,7 @@ class NodeManager {
             
             console.log('📡 DIRECT API: Sending node data:', apiData);
             
-            const response = await fetch('http://localhost:3001/api/v1/nodes', {
+            const response = await fetch('http://localhost:3002/api/v1/nodes', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'

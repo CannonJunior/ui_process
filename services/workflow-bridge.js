@@ -666,7 +666,7 @@ class WorkflowBridge {
             }
 
             // Execute query through the API directly
-            const response = await fetch('http://localhost:3001/api/v1/db/query', {
+            const response = await fetch('http://localhost:3002/api/v1/db/query', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'

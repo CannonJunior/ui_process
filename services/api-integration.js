@@ -293,9 +293,9 @@ class APIIntegration {
             // Get detailed database information
             const [healthResponse, schemaResponse, tablesResponse, connectionResponse] = await Promise.all([
                 fetch('http://localhost:3001/health').catch(() => null),
-                fetch('http://localhost:3001/api/v1/db/schema').catch(() => null),
-                fetch('http://localhost:3001/api/v1/db/tables').catch(() => null),
-                fetch('http://localhost:3001/api/v1/db/connection').catch(() => null)
+                fetch('http://localhost:3002/api/v1/db/schema').catch(() => null),
+                fetch('http://localhost:3002/api/v1/db/tables').catch(() => null),
+                fetch('http://localhost:3002/api/v1/db/connection').catch(() => null)
             ]);
 
             let healthData = { database: 'disconnected' };

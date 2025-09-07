@@ -1230,6 +1230,18 @@ class ProcessFlowDesigner {
         return this.flowlineManager ? this.flowlineManager.getAllFlowlines() : [];
     }
     
+    clearAllFlowlines() {
+        return this.flowlineManager ? this.flowlineManager.clearAllFlowlines() : null;
+    }
+    
+    findFlowlineById(id) {
+        return this.flowlineManager ? this.flowlineManager.findFlowlineById(id) : null;
+    }
+    
+    getFlowlinesForNode(nodeOrId) {
+        return this.flowlineManager ? this.flowlineManager.getFlowlinesForNode(nodeOrId) : [];
+    }
+    
     // Flowline state getters that maintain compatibility
     get flowlines() {
         return this.flowlineManager ? this.flowlineManager.getAllFlowlines() : [];
@@ -1837,7 +1849,7 @@ class ProcessFlowDesigner {
             
             console.log('📡 DIRECT API: Sending data:', apiData);
             
-            const response = await fetch('http://localhost:3001/api/v1/opportunities', {
+            const response = await fetch('http://localhost:3002/api/v1/opportunities', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -2848,7 +2860,7 @@ class ProcessFlowDesigner {
             
             console.log('📡 DIRECT API: Sending task data:', apiData);
             
-            const response = await fetch('http://localhost:3001/api/v1/tasks', {
+            const response = await fetch('http://localhost:3002/api/v1/tasks', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'

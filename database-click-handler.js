@@ -84,7 +84,7 @@ function startDatabaseHealthMonitoring(element) {
     
     async function checkDatabaseHealth() {
         try {
-            const response = await fetch('http://localhost:3001/api/v1/db/connection');
+            const response = await fetch('http://localhost:3002/api/v1/db/connection');
             const isOnline = response.ok;
             
             updateDatabaseHealthIndicator(element, isOnline, response.status);
@@ -158,11 +158,11 @@ async function showDatabaseModal() {
         console.log('📡 Fetching database info...');
         
         const [connectionResponse, tablesResponse] = await Promise.all([
-            fetch('http://localhost:3001/api/v1/db/connection').catch(e => {
+            fetch('http://localhost:3002/api/v1/db/connection').catch(e => {
                 console.error('Connection fetch failed:', e);
                 return null;
             }),
-            fetch('http://localhost:3001/api/v1/db/tables').catch(e => {
+            fetch('http://localhost:3002/api/v1/db/tables').catch(e => {
                 console.error('Tables fetch failed:', e);
                 return null;
             })
@@ -396,7 +396,7 @@ async function clearSelectedTables() {
         clearBtn.textContent = 'Clearing...';
         clearBtn.style.background = '#9ca3af';
         
-        const response = await fetch('http://localhost:3001/api/v1/db/clear-tables', {
+        const response = await fetch('http://localhost:3002/api/v1/db/clear-tables', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'

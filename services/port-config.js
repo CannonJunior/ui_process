@@ -13,10 +13,10 @@ class PortConfig {
             APP_SERVER: isNode ? (process.env.PORT || 8000) : 8000,
             
             // PostgreSQL API server (workflows, tasks, KG data)
-            DATABASE_API: isNode ? (process.env.API_PORT || 3001) : 3001,
+            DATABASE_API: isNode ? (process.env.API_PORT || 3002) : 3002,
             
             // MCP service (chat commands, note-taking)
-            MCP_SERVICE: isNode ? (process.env.MCP_PORT || 3002) : 3002,
+            MCP_SERVICE: isNode ? (process.env.MCP_PORT || 3001) : 3001,
             
             // Ollama AI service (external)
             OLLAMA_AI: isNode ? (process.env.OLLAMA_PORT || 11434) : 11434

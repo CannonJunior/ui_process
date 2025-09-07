@@ -9,12 +9,14 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const { createServer } = require('http');
+const { WebSocketServer } = require('ws');
 const MCPBridge = require('./services/mcp-bridge');
 
 class MCPService {
     constructor() {
         this.app = express();
-        this.port = process.env.MCP_PORT || 3002;
+        this.port = process.env.MCP_PORT || 3001;
         this.mcpBridge = new MCPBridge();
         
         this.setupMiddleware();
@@ -317,8 +319,46 @@ class MCPService {
                 process.exit(1);
             }
 
-            this.server = this.app.listen(this.port, 'localhost', () => {
+            // Create HTTP server and WebSocket server
+            this.server = createServer(this.app);
+            this.wss = new WebSocketServer({ 
+                server: this.server,
+                path: '/'
+            });
+
+            // Handle WebSocket connections
+            this.wss.on('connection', (ws, request) => {
+                console.log('WebSocket connection established from:', request.headers.origin);
+                
+                ws.on('message', (message) => {
+                    console.log('WebSocket message received:', message.toString());
+                    // Echo the message back for now
+                    ws.send(JSON.stringify({
+                        type: 'echo',
+                        data: message.toString(),
+                        timestamp: new Date().toISOString()
+                    }));
+                });
+
+                ws.on('close', () => {
+                    console.log('WebSocket connection closed');
+                });
+
+                ws.on('error', (error) => {
+                    console.error('WebSocket error:', error);
+                });
+
+                // Send welcome message
+                ws.send(JSON.stringify({
+                    type: 'welcome',
+                    message: 'Connected to MCP Service',
+                    timestamp: new Date().toISOString()
+                }));
+            });
+
+            this.server.listen(this.port, 'localhost', () => {
                 console.log(`MCP Service running on http://localhost:${this.port}`);
+                console.log(`WebSocket server running on ws://localhost:${this.port}/`);
                 console.log(`Health check: http://localhost:${this.port}/health`);
                 console.log(`MCP status: http://localhost:${this.port}/api/mcp/status`);
             });
@@ -343,7 +383,12 @@ class MCPService {
         console.log('Initiating graceful shutdown...');
         
         try {
-            // Close server
+            // Close WebSocket server
+            if (this.wss) {
+                this.wss.close();
+            }
+            
+            // Close HTTP server
             if (this.server) {
                 this.server.close();
             }

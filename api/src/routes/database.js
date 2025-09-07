@@ -265,6 +265,13 @@ router.get('/connection', async (req, res) => {
         const port = process.env.DB_PORT || '5432';
         const database = process.env.DB_NAME || connectionInfo.database_name;
 
+        // Add cache-busting headers
+        res.set({
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+        });
+
         res.json({
             connection: {
                 host: host,
@@ -277,7 +284,7 @@ router.get('/connection', async (req, res) => {
                 extensions: extensions,
                 url: `postgresql://${connectionInfo.username}@${host}:${port}/${database}`
             },
-            api_endpoint: `http://localhost:${process.env.PORT || 3001}/api/v1/db`,
+            api_endpoint: `http://localhost:${process.env.PORT || 3002}/api/v1/db`,
             status: 'connected'
         });
         

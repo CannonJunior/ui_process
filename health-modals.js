@@ -159,15 +159,15 @@ async function showDataModal() {
         // Get database information
         console.log('📡 Fetching database info...');
         
-        const connectionResponse = await fetch('http://localhost:3001/api/v1/db/connection');
+        const connectionResponse = await fetch('http://localhost:3002/api/v1/db/connection');
         const connectionData = connectionResponse.ok ? await connectionResponse.json() : null;
         
         // Get database schema info
-        const schemaResponse = await fetch('http://localhost:3001/api/v1/db/schema').catch(() => null);
+        const schemaResponse = await fetch('http://localhost:3002/api/v1/db/schema').catch(() => null);
         const schemaData = schemaResponse && schemaResponse.ok ? await schemaResponse.json() : null;
         
         // Get table info
-        const tablesResponse = await fetch('http://localhost:3001/api/v1/db/tables').catch(() => null);
+        const tablesResponse = await fetch('http://localhost:3002/api/v1/db/tables').catch(() => null);
         const tablesData = tablesResponse && tablesResponse.ok ? await tablesResponse.json() : null;
         
         console.log('📡 Database responses received:', {
@@ -272,7 +272,7 @@ function createDataModal(connectionData, schemaData, tablesData, status, errorMe
             `;
             
             tablesData.tables.forEach(table => {
-                modalHTML += `<div>• ${table.name} (${table.rows || 0} rows)</div>`;
+                modalHTML += `<div>• ${table.table_name} (${table.row_count || 0} rows)</div>`;
             });
             
             modalHTML += '</div></div>';

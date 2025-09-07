@@ -54,7 +54,7 @@
                     debugOutput.innerHTML += '<p>🖱️ Click detected!</p>';
                     
                     // Test API call
-                    fetch('http://localhost:3001/api/v1/db/connection')
+                    fetch('http://localhost:3002/api/v1/db/connection')
                         .then(response => {
                             console.log('📡 API response received:', response.status);
                             debugOutput.innerHTML += `<p>📡 API response: ${response.status}</p>`;

@@ -31,7 +31,7 @@ class ServiceHealthManager {
                 element: null,
                 dot: null,
                 status: 'offline',
-                baseUrl: 'http://localhost:3001'
+                baseUrl: 'http://localhost:3002'
             }
         };
         
