@@ -11,7 +11,7 @@ import { NotFoundError, ValidationError } from '../middleware/errorHandler.js';
 const router = express.Router();
 
 const nodeSchema = Joi.object({
-    workflowId: Joi.string().uuid().required(),
+    workflowId: Joi.string().uuid().optional(), // Made optional to allow automatic assignment
     type: Joi.string().valid('process', 'decision', 'terminal').required(),
     text: Joi.string().min(1).required(),
     positionX: Joi.number().required(),
@@ -56,7 +56,25 @@ router.post('/', async (req, res, next) => {
             throw new ValidationError(error.details[0].message);
         }
 
-        const { workflowId, type, text, positionX, positionY, style, metadata } = value;
+        let { workflowId, type, text, positionX, positionY, style, metadata } = value;
+
+        // If no workflowId provided, get the default workflow for this organization
+        if (!workflowId) {
+            console.log('🔍 No workflowId provided, searching for default workflow...');
+            const defaultWorkflow = await query(`
+                SELECT id FROM workflows 
+                WHERE organization_id = $1 
+                ORDER BY created_at ASC 
+                LIMIT 1
+            `, [req.user.organization_id]);
+
+            if (defaultWorkflow.rows.length === 0) {
+                throw new NotFoundError('No workflows found for this organization. Please create a workflow first.');
+            }
+
+            workflowId = defaultWorkflow.rows[0].id;
+            console.log(`✅ Using default workflow: ${workflowId}`);
+        }
 
         // Verify workflow access
         const workflowCheck = await query(`

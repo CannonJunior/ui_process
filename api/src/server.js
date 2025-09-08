@@ -264,6 +264,69 @@ export function broadcast(workflowId, data) {
 // Make broadcast available globally
 app.locals.broadcast = broadcast;
 
+// ===== DEFAULT WORKFLOW SETUP =====
+
+async function ensureDefaultWorkflow() {
+    try {
+        console.log('🔍 Checking for default workflow...');
+        
+        // Import query function from database config
+        const { query } = await import('./config/database.js');
+        
+        // Check if any workflows exist
+        const existingWorkflows = await query('SELECT COUNT(*) as count FROM workflows');
+        const workflowCount = parseInt(existingWorkflows.rows[0].count);
+        
+        if (workflowCount === 0) {
+            console.log('📝 Creating default workflow...');
+            
+            // Get or create default organization
+            let defaultOrganization;
+            const existingOrgs = await query('SELECT * FROM organizations LIMIT 1');
+            
+            if (existingOrgs.rows.length === 0) {
+                console.log('🏢 Creating default organization...');
+                const orgResult = await query(
+                    'INSERT INTO organizations (name, slug) VALUES ($1, $2) RETURNING *',
+                    ['Default Organization', 'default']
+                );
+                defaultOrganization = orgResult.rows[0];
+            } else {
+                defaultOrganization = existingOrgs.rows[0];
+            }
+            
+            // Create default workflow
+            const workflowResult = await query(`
+                INSERT INTO workflows (organization_id, name, description, version, metadata)
+                VALUES ($1, $2, $3, $4, $5)
+                RETURNING *
+            `, [
+                defaultOrganization.id,
+                'Default Workflow',
+                'Default workflow created automatically for the UI Process Designer',
+                '1.0.0',
+                JSON.stringify({ 
+                    auto_created: true, 
+                    created_at: new Date().toISOString(),
+                    purpose: 'Default workflow for node and task creation'
+                })
+            ]);
+            
+            const defaultWorkflow = workflowResult.rows[0];
+            console.log(`✅ Default workflow created: ${defaultWorkflow.id}`);
+            console.log(`   Name: ${defaultWorkflow.name}`);
+            console.log(`   Organization: ${defaultOrganization.name}`);
+            
+        } else {
+            console.log(`✅ Found ${workflowCount} existing workflow(s)`);
+        }
+        
+    } catch (error) {
+        console.error('❌ Failed to ensure default workflow:', error);
+        console.error('   This may cause issues with node creation');
+    }
+}
+
 // ===== SERVER STARTUP =====
 
 async function startServer() {
@@ -278,6 +341,9 @@ async function startServer() {
             console.error('❌ Database connection failed. Please check your configuration.');
             process.exit(1);
         }
+
+        // Ensure default workflow exists
+        await ensureDefaultWorkflow();
         
         // Start the server
         server.listen(PORT, () => {

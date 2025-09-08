@@ -699,20 +699,37 @@ class ChatInterface {
     }
     
     async handleLLMMessage(message) {
-        // SIMPLIFIED: Direct to Ollama without workflow system integration
-        // Previous workflow context integration disabled per user request
+        // RAG-enhanced LLM processing with database context
         
-        // Simple prompt with basic conversation history
+        // Get relevant context from database
+        const databaseContext = await this.retrieveDatabaseContext(message);
+        
+        // Build conversation context
         const conversationContext = this.conversationHistory
             .slice(-6) // Last 3 exchanges (6 messages)
             .map(msg => `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.content}`)
             .join('\n');
-            
-        const prompt = conversationContext ? 
-            `Previous conversation:\n${conversationContext}\n\nUser: ${message}\n\nAssistant:` :
-            `User: ${message}\n\nAssistant:`;
         
-        // Send directly to Ollama
+        // Build RAG-enhanced prompt
+        let prompt = '';
+        
+        if (databaseContext && databaseContext.length > 0) {
+            const contextSummary = databaseContext.map(ctx => ctx.context).join('\n');
+            prompt = `You have access to the following relevant information from the database:
+
+${contextSummary}
+
+${conversationContext ? `Previous conversation:\n${conversationContext}\n\n` : ''}User: ${message}
+
+Based on the database information and conversation context, provide a helpful response. Reference specific opportunities, tasks, or other data when relevant.`;
+        } else {
+            // Fallback to simple prompt without database context
+            prompt = conversationContext ? 
+                `Previous conversation:\n${conversationContext}\n\nUser: ${message}\n\nAssistant:` :
+                `User: ${message}\n\nAssistant:`;
+        }
+        
+        // Send to Ollama
         const response = await this.callOllama(prompt);
         
         // Add assistant response
@@ -728,6 +745,132 @@ class ChatInterface {
         if (this.conversationHistory.length > this.maxConversationHistory) {
             this.conversationHistory = this.conversationHistory.slice(-this.maxConversationHistory);
         }
+    }
+    
+    async retrieveDatabaseContext(message) {
+        try {
+            // Extract potential entity names or keywords from the message
+            const keywords = this.extractKeywords(message);
+            if (keywords.length === 0) return [];
+
+            console.log(`🔍 Searching database for context: ${keywords.join(', ')}`);
+
+            // Use direct database query for testing (bypasses authentication)
+            const searchTerm = keywords.join(' ');
+            const ragContext = [];
+
+            // Search opportunities
+            const oppResponse = await fetch('http://localhost:3002/api/v1/db/query', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    query: `
+                        SELECT 'opportunity' as type, 
+                               o.title, o.description, o.status, o.priority,
+                               o.contact_person, o.notes, o.value, o.deadline,
+                               array_agg(DISTINCT t.text) FILTER (WHERE t.text IS NOT NULL) as related_tasks,
+                               COUNT(DISTINCT t.id) as task_count
+                        FROM opportunities o
+                        LEFT JOIN tasks t ON t.opportunity_id = o.id
+                        WHERE o.title ILIKE '%${searchTerm}%' OR o.description ILIKE '%${searchTerm}%' OR o.notes ILIKE '%${searchTerm}%'
+                        GROUP BY o.id, o.title, o.description, o.status, o.priority, o.contact_person, o.notes, o.value, o.deadline
+                        ORDER BY o.updated_at DESC
+                        LIMIT 3
+                    `
+                })
+            });
+
+            if (oppResponse.ok) {
+                const oppData = await oppResponse.json();
+                oppData.rows?.forEach(opp => {
+                    ragContext.push({
+                        type: 'opportunity',
+                        title: opp.title,
+                        description: opp.description,
+                        status: opp.status,
+                        priority: opp.priority,
+                        value: opp.value,
+                        contact_person: opp.contact_person,
+                        notes: opp.notes,
+                        task_count: opp.task_count,
+                        related_tasks: opp.related_tasks || [],
+                        context: `Opportunity "${opp.title}" is ${opp.status} with ${opp.priority} priority. ${opp.description || ''} ${opp.notes ? 'Notes: ' + opp.notes : ''} ${opp.task_count > 0 ? `Has ${opp.task_count} related tasks.` : ''}`.trim()
+                    });
+                });
+            }
+
+            // Search tasks
+            const taskResponse = await fetch('http://localhost:3002/api/v1/db/query', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    query: `
+                        SELECT 'task' as type,
+                               t.text as title, t.description, t.status, t.priority,
+                               t.due_date, t.assigned_to,
+                               o.title as opportunity_title, o.description as opportunity_description
+                        FROM tasks t
+                        LEFT JOIN opportunities o ON t.opportunity_id = o.id
+                        WHERE t.text ILIKE '%${searchTerm}%' OR t.description ILIKE '%${searchTerm}%'
+                        ORDER BY t.updated_at DESC
+                        LIMIT 3
+                    `
+                })
+            });
+
+            if (taskResponse.ok) {
+                const taskData = await taskResponse.json();
+                taskData.rows?.forEach(task => {
+                    ragContext.push({
+                        type: 'task',
+                        title: task.title,
+                        description: task.description,
+                        status: task.status,
+                        priority: task.priority,
+                        assigned_to: task.assigned_to,
+                        due_date: task.due_date,
+                        opportunity_title: task.opportunity_title,
+                        context: `Task "${task.title}" is ${task.status}${task.opportunity_title ? ` and relates to opportunity "${task.opportunity_title}"` : ''}. ${task.description || ''} ${task.opportunity_description ? 'Opportunity context: ' + task.opportunity_description : ''}`.trim()
+                    });
+                });
+            }
+
+            console.log(`✅ Found ${ragContext.length} relevant database items`);
+            
+            return ragContext;
+        } catch (error) {
+            console.warn('Database context retrieval failed:', error);
+            return [];
+        }
+    }
+    
+    extractKeywords(message) {
+        // Simple keyword extraction for entities
+        // Look for potential opportunity/task names, proper nouns, etc.
+        const words = message.toLowerCase().split(/\s+/);
+        const keywords = [];
+        
+        // Add words that might be entity names (capitalized, 2+ chars, not common words)
+        const commonWords = new Set(['the', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'is', 'are', 'was', 'were', 'what', 'how', 'when', 'where', 'why', 'who']);
+        
+        words.forEach(word => {
+            const cleanWord = word.replace(/[^\w]/g, '');
+            if (cleanWord.length >= 2 && !commonWords.has(cleanWord)) {
+                keywords.push(cleanWord);
+            }
+        });
+        
+        // Also check for potential acronyms or abbreviations (2-5 chars, uppercase)
+        const acronyms = message.match(/\b[A-Z]{2,5}\b/g);
+        if (acronyms) {
+            keywords.push(...acronyms.map(a => a.toLowerCase()));
+        }
+        
+        return [...new Set(keywords)]; // Remove duplicates
     }
     
     async analyzeMessageContext(message) {
